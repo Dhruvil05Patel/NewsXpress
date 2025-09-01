@@ -14,9 +14,6 @@ bower_components/
 # Build output
 dist/
 build/
-dist-ssr/
-.next/
-out/
 coverage/
 .tmp/
 temp/
@@ -29,8 +26,7 @@ temp/
 .env.production.local
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+.vscode/
 .idea/
 .DS_Store
 *.suo
