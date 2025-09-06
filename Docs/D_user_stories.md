@@ -268,3 +268,102 @@
 #### Exceptions
 4.a. **No internet connection:** The system displays an error notifying the user of no internet connection. \
 4.b. **Translation Failure:** Translation for the selected language fails, the user may get poorly translated news.
+
+---
+
+## UC12: Getting News
+
+### Front of the card
+> As a system I want to obtain news from various news publishers so I can provide summaries of news articles to the users. 
+
+### Back of the card
+- **Preconditions:** System can fetch news articles form at least 3 different publishers, news articles include headline, publication date, and URL, and news articles from different publishers should be easily distinguishable. 
+- **Postconditions:** The system has the news article available from the publisher, and the system is able to generate a summary of the news article. 
+- **Primary Actor:** System
+- **Secondary Actor:** News Publisher
+
+#### Main Flow
+1. The user opens the system to view/obtain news summaries. 
+2. System determines if the article's category matches a user's saved preferences.
+3. The system requests new articles on the topic of interest from multiple news publishers.
+4. The request is granted and the system has available multiple news articles of the topic of interest. 
+5. The system is able to generate valid news summaries of the articles obtained. 
+
+#### Alternate Flow
+2.a. The system attempts to fetch articles from publishers but those articles are not available. 
+3.a. The system recognizes that these articles are similar or have already been provided & summarized before.
+
+#### Exceptions
+3.a. **There is only one news publisher currently exploring this topic:** The system only receives news articles from one publisher at the moment.
+
+---
+
+## UC13: Attach the reference of that Article
+
+### Front of the card
+> As a system I want to attach the reference of that article so that the users that obtain the original news article for further information or use it as a reference. 
+
+### Back of the card
+- **Preconditions:** News articles must provide or have provided a valid URL to their original article, 
+- **Postconditions:** The system has the news article available from the publisher, and the system is able to generate a summary of the news article. The reference link attached shall not be invalid or lead to 404 pages. 
+- **Primary Actor:** System
+- **Secondary Actor:** News Publisher
+
+#### Main Flow
+1. The system requests news articles from the news publishers based on the topic of interest of the user. 
+2. The system checks if a valid reference link has been attached to the news article or not. 
+3. If the reference link has been attached and is valid than the system will provide the link with the summary generated. 
+
+#### Alternate Flow
+3.a. The reference link is not valid. 
+
+#### Exceptions
+3.a. **The reference link has become invalid a short period after:** The reference link was valid in the beginning but became invalid after receving the article. 
+
+---
+
+## UC14: Generate Summaries with AI
+
+### Front of the card
+> As a system, I want to generate summaries of the news article so the users do not have to read the entire article. 
+
+### Back of the card
+- **Preconditions:** The summary must be no longer than a specified length (for example 400 words). The summary should capture the main points of the articles. Headline/main topic, key facts or findings, and conclusion of significant outcomes. If system fails to generate summary it should display an error message. The system should automatically update summaries based on the new update it finds.
+- **Postconditions:** The system generates a valid summary of the provided news article.
+- **Primary Actor:** User
+- **Secondary Actor:** System
+
+#### Main Flow
+1. The user requests a summary of the news article. 
+2. The system uses AI to create the summary of the article. 
+3. The system provides the summary with the reference link to the user. 
+
+#### Alternate Flow
+2.a. AI is not able to generate a summary at the moment. 
+
+#### Exceptions
+3.a. **The summary is inaccurate:**  The system AI generates an inaccurate summary of the news article. 
+
+---
+
+## UC15: Update/Correct the News 
+
+### Front of the card
+> As a system, I want to update/correct the news in the event where I obtain new information regarding the topic so that the user can be properly informed on that topic. 
+
+### Back of the card
+- **Preconditions:** The system should automatically update information to reflect the news article that they have obtained from the publisher. The system must recognize the new information provided in the latest news article compared to the older version. System must verify that the content of the latest news article provided is relevant to the topic (the update cannot be of another topic). The system must correct the news within a correct time frame. The system should update the date of the latest published article to reflect the most recent information. 
+- **Postconditions:** The user has an updated summary and reference link to the updates news article. 
+- **Primary Actor:** System
+- **Secondary Actor:** News Publisher
+
+#### Main Flow
+1. The system fetches an updated news article along with its reference link 
+2. The system creates a summary of that updated article and then provides it to the user. 
+
+
+#### Alternate Flow
+1.a. There is no updated news article on the topic of interest for the user. 
+
+#### Exceptions
+3.a. **The topic is a concluded one:**  Since the topic is concluded, there is no update to provide about the news.
