@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://www.google.com/search?q=https://placehold.co/150x150/F0F0F0/333%3Ftext%3DYour%2BLogo" alt="University Logo" width="150">
+  <img src="https://www.daiict.ac.in/sites/default/files/inline-images/20250107DAUfinalIDcol_SK-01_0.png" alt="University Logo" width="150">
 </div>
 
 # Project: News Aggregator
