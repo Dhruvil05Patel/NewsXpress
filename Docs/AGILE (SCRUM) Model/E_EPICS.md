@@ -37,11 +37,11 @@
 
 # Task E: Identification of EPICS
 
-## Epic 1: Content Aggregation and Processing Pipeline
+## Epic 1: Content Aggregation
 
 ### Epic Summary:
 
-→ This foundational epic covers all backend processes required to build a reliable and intelligent content engine. The primary goal is to autonomously fetch raw news from multiple external publishers, process it into a standardized format, enrich it with AI-generated summaries, and ensure its accuracy and timeliness. This epic is the backbone of the entire platform, as no user-facing features can function without this content pipeline.
+→ This foundational epic covers all backend processes required to build a reliable and intelligent content engine. The primary goal is to autonomously fetch raw news from multiple external publishers, process it into a standardized format, enrich it with AI-generated summaries, and ensure its accuracy and timeliness. This epic is the backbone of the entire platform, as no user-facing features can function without this content.
 
 ### Scope & Key Features:
 
@@ -60,11 +60,9 @@ User Story 2: (System) Attach the reference of that article.
 
 User Story 3: (System) Generate summaries with AI.
 
-User Story 4: (System) Update/correct the news.
+User Story 4: (System) Update the news.
 
 ```
-
-Value: This epic creates the core product asset: aggregated and summarized news. Its successful implementation ensures a constant, reliable, and high-quality stream of content, which is essential for user acquisition and retention.
 
 ## Epic 2: Core News Consumption Experience
 
@@ -96,8 +94,6 @@ UC3: Read the Whole Article
 
 ```
 
-Value: This epic defines the primary user interaction and is the first impression a new user has of the platform. A smooth and efficient core experience is crucial for demonstrating the product's value and encouraging users to return and explore deeper features.
-
 ## Epic 3: User Account and Authentication
 
 ### Epic Summary:
@@ -126,8 +122,6 @@ UC5: Manage Account
 
 ```
 
-Value: Establishes a direct relationship with the user, which is critical for long-term retention. User accounts are the foundation for building personalized experiences, gathering user feedback, and increasing engagement.
-
 ## Epic 4: Personalization and Engagement Engine
 
 ### Epic Summary:
@@ -155,8 +149,6 @@ UC9: Personalized News Feed
 UC10: Receive Notifications of Personalized News
 
 ```
-
-Business Value: This is a key driver for making the product a daily habit for users. Personalization increases the signal-to-noise ratio for the user, making the platform indispensable and driving higher daily active user counts.
 
 ## Epic 5: Enhanced User Experience & Accessibility Features
 
@@ -187,5 +179,3 @@ UC8: Share Article
 UC11: Translate News Summary
 
 ```
-
-Value: These features differentiate the product from competitors, cater to diverse user needs (e.g., multitasking, visual impairments, language barriers), and encourage organic growth through social sharing. They enhance the overall value and usability of the platform.
