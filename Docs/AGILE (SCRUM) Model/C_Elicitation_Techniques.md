@@ -39,18 +39,21 @@
 
 ### User Authentication
 
-- **Interviews:** This is the most effective way to understand user preferences for login methods (e.g., social login, email/password, biometric) and security concerns. You can ask direct questions about their experiences with authentication on other apps.
 - **Questionnaires:** Use a survey to gather data on a large scale. You can ask closed-ended questions like "Do you prefer a password-based or social media-based login?" to quickly gather quantitative data from many potential users.
 - **Prototyping:** Create mock-ups of the sign-up and login screens to get immediate feedback from users on the design and flow. This helps you see if the process is intuitive and user-friendly.
 
 ### Personalized News Feed
 
 - **Ethnography:** Define scenarios for how users interact with the feed. For example, a scenario could be "User scrolls through the feed and clicks on a post about technology". This helps you model how the AI will track user behavior and update the feed.
-- **Brainstorming:** Engage a diverse group of stakeholders, including domain experts and data scientists, in a brainstorming session to generate ideas for new algorithms or features for personalization. 
+- **Brainstorming:** Engage a diverse group of stakeholders, including domain experts and data scientists, in a brainstorming session to generate ideas for new algorithms or features for personalization.
+- **Prototyping:** We will use different ML models to find the best and most accurate model for our personalization feature.
+-  **Questionnaires:** Use questionnaires to ask how well the personalized feed is working. Users can rate it to provide measurable feedback.
 
 ### Multi-Source Aggregation
 
 - **Studying Documentation:** Analyze existing news APIs and documentation from various publishers. This technique helps you understand the technical requirements for integrating data from different sources, including data formats in JSON.
+- **Prototyping:** We can use multiple source aggregation for different APIs and also test via web scraping.
+
 
 ### AI-Generated Summaries
 
@@ -61,7 +64,6 @@
 ### Save/Share/Bookmark
 
 - **Prototyping:** Design mock-ups for how users will save, share, and bookmark articles. Test these prototypes with users to ensure the process is intuitive and easy to use.
-- **Ethnography:** Observe users to understand their motivation for saving or sharing content to understand the value of these features.
 
 ### Push Notifications
 
@@ -113,7 +115,7 @@
   
 ### Accessibility Standards
 
-- **Studying Documentation:** The requirement explicitly mentions **WCAG 2.1 guidelines**. Analyze this documentation to understand the specific rules for screen reader support, contrast ratios, and other accessibility standards.
+- **Studying Documentation:** The requirement explicitly mentions **[WCAG 2.1 guidelines](https://www.w3.org/TR/WCAG21/)**. Analyze this documentation to understand the specific rules for screen reader support, contrast ratios, and other accessibility standards.
 - **Interviews:** Interview potential end-users with disabilities to understand their specific needs and challenges with news consumption. Also interview accessibility specialists to ensure compliance with the WCAG guidelines.
 - **Prototyping:** Create a prototype that supports a text-to-speech and other accessibility features. Have users test this prototype to get direct feedback on the usability of the text-to-speech function and overall app accessibility.
 
