@@ -38,18 +38,38 @@
 
 ### A. Stakeholders and End Users
 
-**Stakeholders:**
+## Stakeholders  
 
-1.  User
-2.  Surfer
-3.  Product Manager
-4.  Developers
-5.  News Source / Provider
-6.  Test Engineers
+1. User  
+2. Surfer  
+3. Product Manager  
+4. Developers  
+5. News Source / Provider  
+6. Test Engineers  
 
-**End Users:**
+## End Users  
 
-1.  User
-2.  Surfer
-3.  Developers
-4.  Test Engineers
+1. User  
+2. Surfer  
+3. Developers  
+4. Test Engineers  
+
+---
+
+## How We Identified Stakeholders & Users  
+
+We used multiple **requirement elicitation techniques** to identify the relevant stakeholders and end users for our News Aggregator project.  
+
+### Techniques Used  
+
+| Technique | Application in Our Project | Outcome |
+|-----------|----------------------------|----------|
+| **Brainstorming (Group Discussion)** | Team discussions to list all possible actors who might interact with or be impacted by the system. | Identified core roles: **Users, Surfers, Developers** |
+| **Stakeholder Analysis (Role-Based Identification)** | Mapped the roles required in a news aggregator ecosystem (e.g., provider, manager, tester). | Added **Product Manager, News Source/Provider, Test Engineers** |
+| **Observation of Similar Systems** | Studied platforms like Google News and Inshorts to see who uses and supports such systems. | Validated **Users & Surfers** as primary end users |
+
+
+---
+
+**Final Outcome**:  
+Through these elicitation techniques, we systematically identified the **Stakeholders (User, Surfer, Product Manager, Developers, News Source, Test Engineers)** and **End Users (User, Surfer, Developers, Test Engineers)** relevant to our News Aggregator project.
