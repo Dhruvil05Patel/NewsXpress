@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react"; //Importing essential node modules
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Laptop,
   Vote,
@@ -15,18 +16,32 @@ import {
   X,
 } from "lucide-react";
 
-// Main sidebar component for navigation and categories
-const SideBar = () => {
-  // State for tracking which category is currently selected
-  const [activeCategory, setActiveCategory] = useState("All");
-  // State for showing/hiding language dropdown menu
+// A responsive top navbar and sidebar for category navigation.
+const SideBar = ({ onLoginClick }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Maps category names to their URL routes.
+  const categoryRoutes = {
+    All: "/all",
+    Technology: "/technology",
+    Business: "/business",
+    Science: "/science",
+    Sports: "/sports",
+    Environment: "/environment",
+    Politics: "/politics",
+    Health: "/health",
+    Entertainment: "/entertainment",
+    "World News": "/world-news",
+    Crime: "/crime",
+  };
+
+  // State for UI toggles: language dropdown and mobile sidebar visibility.
   const [languageDropdown, setLanguageDropdown] = useState(false);
-  // State for mobile sidebar open/close
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // State for controlling mobile sidebar visibility animations
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
 
-  // Array of all news categories with their icons
+  // Data source for all navigation categories and their icons.
   const categories = [
     { name: "All", icon: null },
     { name: "Technology", icon: Laptop },
@@ -41,16 +56,16 @@ const SideBar = () => {
     { name: "Crime", icon: Shield },
   ];
 
-  // Function to handle category selection
+  // Navigates to a category and closes the mobile menu.
   const handleCategoryClick = (categoryName) => {
-    setActiveCategory(categoryName);
-    // Close mobile sidebar when category is selected
+    const route = categoryRoutes[categoryName] || "/all";
+    navigate(route);
     if (sidebarOpen) {
       setSidebarOpen(false);
     }
   };
 
-  // Effect to control mobile sidebar visibility with animation timing
+  // Manages the mobile sidebar's slide-out animation timing.
   useEffect(() => {
     if (sidebarOpen) {
       setIsSidebarVisible(true);
@@ -62,20 +77,20 @@ const SideBar = () => {
 
   return (
     <>
-      {/* Top navigation bar - fixed at the top */}
+      {/* Top navigation bar (always visible) */}
       <nav className="fixed top-0 left-0 right-0 z-30 bg-white shadow-sm border-b border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">
-          {/* Logo section */}
-          <div className="flex items-center space-x-2 mx-5">
+          {/* Logo */}
+          <a href="/" className="flex items-center space-x-2 mx-15">
             <img
               src="/Logo3.png"
               alt="NewsXpress Logo"
-              className=" h-10 w-auto object-contain"
+              className="h-10 w-auto object-contain"
             />
-          </div>
-          {/* Right side of navbar - language and login */}
+          </a>
+
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Language dropdown - only visible on desktop */}
+            {/* Desktop-only actions */}
             <div className="relative hidden lg:block">
               <button
                 onClick={() => setLanguageDropdown(!languageDropdown)}
@@ -84,7 +99,6 @@ const SideBar = () => {
                 <span>🇺🇸 English</span>
                 <ChevronDown className="w-4 h-4" />
               </button>
-              {/* Language dropdown menu */}
               {languageDropdown && (
                 <div className="absolute right-0 mt-2 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
                   <button className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -99,11 +113,14 @@ const SideBar = () => {
                 </div>
               )}
             </div>
-            {/* Login button - only visible on desktop */}
-            <button className="hidden lg:block bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+            <button
+              className="hidden lg:block bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+              onClick={onLoginClick}
+            >
               Login
             </button>
-            {/* Mobile menu toggle button */}
+
+            {/* Mobile menu button */}
             <button
               className="lg:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100"
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -118,17 +135,18 @@ const SideBar = () => {
         </div>
       </nav>
 
-      {/* Desktop sidebar - always visible on large screens */}
+      {/* Desktop-only sidebar */}
       <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 overflow-y-auto z-20">
         <div className="p-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">
             Categories
           </h3>
-          {/* Desktop category navigation */}
           <nav className="space-y-1">
             {categories.map((category) => {
               const IconComponent = category.icon;
-              const isActive = activeCategory === category.name;
+              // Determines if the link is active to apply special styling.
+              const route = categoryRoutes[category.name] || "/all";
+              const isActive = location.pathname === route;
               return (
                 <button
                   key={category.name}
@@ -139,7 +157,6 @@ const SideBar = () => {
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                   }`}
                 >
-                  {/* Category icon or dot for "All" */}
                   {IconComponent ? (
                     <IconComponent
                       className={`w-4 h-4 flex-shrink-0 ${
@@ -161,32 +178,32 @@ const SideBar = () => {
         </div>
       </aside>
 
-      {/* Mobile sidebar container - only visible on mobile */}
+      {/* Mobile-only sidebar with overlay */}
       {isSidebarVisible && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
-          {/* Backdrop overlay */}
+          {/* Backdrop to close menu on click */}
           <div
             className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${
               sidebarOpen ? "bg-opacity-40" : "bg-opacity-0"
             }`}
             onClick={() => setSidebarOpen(false)}
           />
-          {/* Mobile sidebar panel */}
+
+          {/* Sliding sidebar panel */}
           <div
             className={`relative w-64 bg-white shadow-xl h-full p-4 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
               sidebarOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
-            {/* Mobile category section */}
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-4">
                 Categories
               </h3>
-              {/* Mobile category navigation */}
               <nav className="space-y-1">
                 {categories.map((category) => {
                   const IconComponent = category.icon;
-                  const isActive = activeCategory === category.name;
+                  const route = categoryRoutes[category.name] || "/all";
+                  const isActive = location.pathname === route;
                   return (
                     <button
                       key={category.name}
@@ -197,7 +214,6 @@ const SideBar = () => {
                           : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                       }`}
                     >
-                      {/* Category icon or dot for "All" */}
                       {IconComponent ? (
                         <IconComponent
                           className={`w-4 h-4 flex-shrink-0 ${
@@ -217,9 +233,9 @@ const SideBar = () => {
                 })}
               </nav>
             </div>
+
             {/* Mobile bottom section - language and login */}
             <div className="mt-auto pt-4 border-t border-gray-200">
-              {/* Mobile language selection */}
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-gray-900 mb-2 px-3">
                   Language
@@ -239,8 +255,10 @@ const SideBar = () => {
                   </button>
                 </div>
               </div>
-              {/* Mobile login button */}
-              <button className="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200">
+              <button
+                className="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                onClick={onLoginClick}
+              >
                 Login
               </button>
             </div>
