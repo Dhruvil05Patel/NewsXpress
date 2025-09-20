@@ -1,119 +1,137 @@
 // src/mockNews.js
+
 const sampleNews = [
     {
-        title: "AI Startup Raises $500M to Revolutionize Tech Industry",
+        id: 1,
+        title: "Apple Unveils Next-Generation Vision Pro with Enhanced AI Features",
         summary:
-            "A leading AI startup secures record-breaking funding to expand its research.",
+            "The new headset promises a more immersive mixed reality experience, leveraging advanced on-device AI for seamless integration with the user's environment.",
         imageUrl:
-            "https://images.unsplash.com/photo-1677442136019-21780ecad995?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.bbc.com/news/technology",
-        source: "Tech Daily",
-        timestamp: "Jan 20, 10:30 AM",
+            "https://images.pexels.com/photos/8566472/pexels-photo-8566472.jpeg?auto=compress&cs=tinysrgb&w=800&q=60",
+        newsUrl: "https://www.apple.com/apple-vision-pro/",
+        source: "Apple Newsroom",
+        timestamp: "Sep 15, 2025, 11:00 AM",
         category: "Technology",
-        readTime: 6,
+        readTime: 7,
     },
     {
-        title: "Global Markets Rally Amid Economic Recovery Signs",
+        id: 2,
+        title:
+            "Federal Reserve Holds Interest Rates Steady Amid Inflation Concerns",
         summary:
-            "Investors optimistic as markets bounce back with strong quarterly earnings.",
+            "Citing signs of a cooling economy, the U.S. central bank opted to maintain current interest rates but signaled potential future adjustments.",
         imageUrl:
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.reuters.com/markets",
-        source: "Business Insider",
-        timestamp: "Jan 20, 09:15 AM",
+            "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+        newsUrl: "https://www.reuters.com/markets/us/",
+        source: "Reuters",
+        timestamp: "Sep 18, 2025, 02:30 PM",
         category: "Business",
         readTime: 5,
     },
     {
-        title: "Scientists Discover New Exoplanet in Habitable Zone",
-        summary: "Astronomers reveal Earth-like planet that could harbor life.",
+        id: 3,
+        title:
+            "James Webb Telescope Discovers Water Vapor in Atmosphere of Habitable-Zone Exoplanet",
+        summary:
+            "NASA's powerful space telescope has detected key signs of water on a rocky exoplanet, a critical step in the search for extraterrestrial life.",
         imageUrl:
-            "https://images.unsplash.com/photo-1473929737293-32a5e581c34d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.nasa.gov/topics/universe/index.html",
-        source: "Science World",
-        timestamp: "Jan 19, 11:00 AM",
+            "https://images.pexels.com/photos/1169754/pexels-photo-1169754.jpeg?auto=compress&cs=tinysrgb&w=800&q=60",
+        newsUrl: "https://www.nasa.gov/mission/james-webb-space-telescope/",
+        source: "NASA",
+        timestamp: "Sep 19, 2025, 09:45 AM",
         category: "Science",
-        readTime: 7,
+        readTime: 6,
     },
     {
-        title: "Local Team Wins National Championship",
-        summary: "Fans celebrate historic victory as underdogs claim the trophy.",
+        id: 4,
+        title: "India Triumphs in Cricket World Cup Final in Thrilling Finish",
+        summary:
+            "In a nail-biting final match against Australia, India's cricket team secured the World Cup trophy with a spectacular last-over victory.",
         imageUrl:
-            "https://images.unsplash.com/photo-1505842465776-3d90f616310d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.espn.com",
-        source: "Sports Network",
-        timestamp: "Jan 18, 08:45 PM",
+            "https://femalecricket.com/wp-content/uploads/2021/08/India-womens-tour-of-Australia-2021-Schedule.jpg",
+        newsUrl: "https://www.espn.in/cricket/",
+        source: "ESPN",
+        timestamp: "Sep 14, 2025, 10:30 PM",
         category: "Sports",
         readTime: 4,
     },
     {
-        title: "Global Climate Summit Reaches Historic Agreement",
-        summary: "World leaders unite on ambitious climate targets for 2030.",
+        id: 5,
+        title: "UN Climate Report Warns of 'Unprecedented' Ocean Warming",
+        summary:
+            "The latest IPCC report highlights alarming rates of ocean temperature rise, urging immediate global action to protect marine ecosystems.",
         imageUrl:
-            "https://images.unsplash.com/photo-1615201654933-908db8b27c65?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.theguardian.com/environment",
-        source: "Environmental Times",
-        timestamp: "Jan 17, 04:00 PM",
+            "https://wmo.int/sites/default/files/styles/featured_image_x1_768x512/public/2024-03/AdobeStock_181919907_0.jpeg?h=9eb0d413&itok=nQd0k7IJ",
+        newsUrl: "https://www.un.org/en/climatechange/reports",
+        source: "United Nations",
+        timestamp: "Sep 17, 2025, 08:00 AM",
         category: "Environment",
+        readTime: 8,
+    },
+    {
+        id: 6,
+        title: "UK General Election Called for November Amid Political Turmoil",
+        summary:
+            "The British Prime Minister has announced a snap general election, setting the stage for a contentious political battle over the country's future.",
+        imageUrl:
+            "https://images.pexels.com/photos/2846337/pexels-photo-2846337.jpeg?auto=compress&cs=tinysrgb&w=800&q=60",
+        newsUrl: "https://www.bbc.com/news/politics",
+        source: "BBC Politics",
+        timestamp: "Sep 16, 2025, 01:15 PM",
+        category: "Politics",
         readTime: 5,
     },
     {
-        title: "New Policy Shakes Up International Relations",
+        id: 7,
+        title: "WHO Approves New Malaria Vaccine with Over 90% Efficacy in Trials",
         summary:
-            "Governments respond to controversial decision on trade and security.",
+            "A groundbreaking new vaccine for malaria has received approval from the World Health Organization, offering hope for millions in affected regions.",
         imageUrl:
-            "https://images.unsplash.com/photo-1500462918059-b1a0cb512f1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.cnn.com/politics",
-        source: "Political Review",
-        timestamp: "Jan 16, 03:30 PM",
-        category: "Politics",
+            "https://images.pexels.com/photos/3993245/pexels-photo-3993245.jpeg?auto=compress&cs=tinysrgb&w=800&q=60",
+        newsUrl: "https://www.who.int/news-room/fact-sheets/detail/malaria",
+        source: "World Health Org.",
+        timestamp: "Sep 20, 2025, 12:00 PM",
+        category: "Health",
         readTime: 6,
     },
     {
-        title: "Breakthrough Drug Shows Promise in Cancer Treatment",
+        id: 8,
+        title:
+            "Disney's Live-Action 'Odyssey' Surpasses $1 Billion at Global Box Office",
         summary:
-            "Clinical trials reveal a significant leap in cancer survival rates.",
+            "The epic fantasy film has become the fastest movie this year to cross the billion-dollar mark, cementing its status as a commercial blockbuster.",
         imageUrl:
-            "https://images.unsplash.com/photo-1588776814546-28c54a77d8aa?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.medicalnewstoday.com/",
-        source: "Health Today",
-        timestamp: "Jan 15, 12:20 PM",
-        category: "Health",
-        readTime: 5,
-    },
-    {
-        title: "Blockbuster Movie Breaks Global Box Office Records",
-        summary:
-            "The latest release sets an all-time record within the first week.",
-        imageUrl:
-            "https://images.unsplash.com/photo-1524985069026-dd778a71c7b4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.hollywoodreporter.com/",
-        source: "Entertainment Weekly",
-        timestamp: "Jan 14, 09:00 AM",
+            "https://images.unsplash.com/photo-1542204165-65bf26472b9b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+        newsUrl: "https://variety.com/v/film/",
+        source: "Variety",
+        timestamp: "Sep 19, 2025, 04:50 PM",
         category: "Entertainment",
         readTime: 3,
     },
     {
-        title: "World Leaders Meet to Discuss Peace Initiatives",
+        id: 9,
+        title:
+            "African Union Brokers Landmark Trade Deal to Boost Continental Economy",
         summary:
-            "A historic summit aimed at reducing global conflicts and fostering unity.",
+            "Leaders from 54 African nations have signed a historic agreement aimed at reducing tariffs and fostering unprecedented economic cooperation.",
         imageUrl:
-            "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.aljazeera.com/news",
-        source: "Global News",
-        timestamp: "Jan 13, 05:45 PM",
+            "https://images.pexels.com/photos/8891969/pexels-photo-8891969.jpeg?auto=compress&cs=tinysrgb&w=800&q=60",
+        newsUrl: "https://www.aljazeera.com/africa/",
+        source: "Al Jazeera",
+        timestamp: "Sep 18, 2025, 10:20 AM",
         category: "World News",
-        readTime: 8,
+        readTime: 7,
     },
     {
-        title: "Cybercrime on the Rise: Authorities Warn Public",
+        id: 10,
+        title: "Europol Dismantles Major Phishing Network Targeting European Banks",
         summary:
-            "New wave of cyberattacks targets financial institutions worldwide.",
+            "An international law enforcement operation has led to the arrest of 20 individuals involved in a sophisticated cybercrime ring.",
         imageUrl:
-            "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-        newsUrl: "https://www.csoonline.com/",
-        source: "Crime Watch",
-        timestamp: "Jan 12, 06:10 PM",
+            "https://images.pexels.com/photos/5380664/pexels-photo-5380664.jpeg?auto=compress&cs=tinysrgb&w=800&q=60",
+        newsUrl: "https://www.europol.europa.eu/media-press",
+        source: "Europol",
+        timestamp: "Sep 20, 2025, 03:00 PM",
         category: "Crime",
         readTime: 4,
     },

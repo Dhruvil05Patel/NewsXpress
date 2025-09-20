@@ -2,21 +2,26 @@ import React, { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-function LoginPage() {
+// A modal component for handling both user login and registration.
+function LoginPage({ onClose }) {
+  // State to toggle between login (true) and signup (false) forms.
   const [isLogin, setIsLogin] = useState(true);
+
+  // State for all form input fields.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
 
+  // Handles form submission for both login and signup.
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isLogin) {
       toast.success(`✅ Logged in as ${email}`);
     } else {
+      // Basic validation for signup form.
       if (password !== confirmPassword) {
         toast.error("❌ Passwords do not match!");
         return;
@@ -25,21 +30,20 @@ function LoginPage() {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <>
-      {/* Overlay */}
+      {/* Modal Overlay */}
       <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
         <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-8 relative animate-fadeIn">
-          {/* Close button */}
+          {/* Close Button */}
           <button
             className="absolute top-3 right-4 text-2xl text-gray-600 hover:text-red-500"
-            onClick={() => setIsOpen(false)}
+            onClick={onClose}
           >
             &times;
           </button>
 
+          {/* Conditionally render Login or Signup form based on isLogin state */}
           {isLogin ? (
             <>
               {/* Login Form */}
@@ -74,7 +78,7 @@ function LoginPage() {
                   />
                 </div>
 
-                {/* Show Password */}
+                {/* Show Password Checkbox */}
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -88,7 +92,7 @@ function LoginPage() {
                   </label>
                 </div>
 
-                {/* Submit */}
+                {/* Submit Button */}
                 <button
                   type="submit"
                   className="w-full bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 transition"
@@ -97,7 +101,7 @@ function LoginPage() {
                 </button>
               </form>
 
-              {/* Switch to Signup */}
+              {/* Link to switch to the Signup form */}
               <p className="text-center text-sm mt-4">
                 Don’t have an account?{" "}
                 <button
@@ -131,7 +135,9 @@ function LoginPage() {
 
                 {/* Date of Birth */}
                 <div>
-                  <label className="block font-medium mb-1">Date of Birth</label>
+                  <label className="block font-medium mb-1">
+                    Date of Birth
+                  </label>
                   <input
                     type="date"
                     className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 outline-none"
@@ -182,14 +188,14 @@ function LoginPage() {
                   />
                 </div>
 
-                {/* Password checkup */}
+                {/* Real-time password mismatch warning */}
                 {confirmPassword && password !== confirmPassword && (
                   <p className="text-sm text-red-600">
                     ❌ Passwords do not match
                   </p>
                 )}
 
-                {/* Show Password */}
+                {/* Show Password Checkbox */}
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -203,7 +209,7 @@ function LoginPage() {
                   </label>
                 </div>
 
-                {/* Submit */}
+                {/* Submit Button (disabled if passwords don't match) */}
                 <button
                   type="submit"
                   disabled={confirmPassword && password !== confirmPassword}
@@ -213,7 +219,7 @@ function LoginPage() {
                 </button>
               </form>
 
-              {/* Switch to Login */}
+              {/* Link to switch back to the Login form */}
               <p className="text-center text-sm mt-4">
                 Already have an account?{" "}
                 <button
@@ -228,10 +234,10 @@ function LoginPage() {
         </div>
       </div>
 
-      {/* Toast notifications */}
+      {/* Container for toast notifications */}
       <ToastContainer position="top-center" autoClose={3000} />
     </>
   );
 }
 
-export default LoginPage
+export default LoginPage;
