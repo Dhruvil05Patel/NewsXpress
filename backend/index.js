@@ -1,41 +1,57 @@
-const express = require("express"); // Importing the essential library
-const dotenv = require("dotenv");
-const { fetchNews } = require("./FetchingNews");
-const { summarizeNewsArticles } = require("./Summarizing");
+const express = require("express"); // Importing the essential web framework library for building APIs
+const dotenv = require("dotenv"); // For loading environment variables from .env
+const { fetchNews } = require("./FetchingNews"); // Custom function to fetch news articles
+const { summarizeNewsArticles } = require("./Summarizing"); // Custom function to summarize articles
+const { connectDB } = require("./config/db"); // Database connection function (Sequelize + Supabase)
 
-dotenv.config();  // Initialize dotenv to access environment variables
+dotenv.config(); // Initialize dotenv to access environment variables
 
-const app = express();
-const port = 3000;
+const app = express(); // Create an Express application
+const port = process.env.PORT || 5000; // Use PORT from .env or default to 5000
 
-app.get("/get-summarized-news", async (req, res) => { // Endpoint to get summarized news
-  const query = "Gujarati"; // Default query term (can be modified for the desired topic)
+// =================== ROUTES =================== //
+app.get("/get-summarized-news", async (req, res) => {
+  // Endpoint: GET request to fetch summarized news
+
+  const query = "Give me latest news of today"; 
+  // Default query term for news (you can later make this dynamic by using req.query)
+
   try {
+    // 1️⃣ Fetch news articles from external API
     const newsArticles = await fetchNews(query);
 
+    // If no articles were fetched, return "not found"
     if (!newsArticles.length) {
       return res.status(404).json({ message: "No news articles found." });
     }
 
-    // Filter articles with at least a title and link
+    // 2️⃣ Filter only articles that have at least a title and a link
     const articlesWithContent = newsArticles.filter(
-      article => article.title && article.link
+      (article) => article.title && article.link
     );
 
-    // Only summarize up to 5 articles
-    const summarizedNews = await summarizeNewsArticles(articlesWithContent.slice(0, 5));
+    // 3️⃣ Summarize only the first 5 articles (avoid overloading)
+    const summarizedNews = await summarizeNewsArticles(
+      articlesWithContent.slice(0, 5)
+    );
 
+    // 4️⃣ Send JSON response back to client
     res.json({
-      query,
-      count: summarizedNews.length,
-      summarizedNews,
+      query, // The query used for fetching
+      count: summarizedNews.length, // Number of summarized articles
+      summarizedNews, // The actual summaries
     });
   } catch (err) {
+    // Error handling: If something goes wrong, send 500 Internal Server Error
     console.error("Error:", err);
-    res.status(500).json({ error: "Error fetching or summarizing news." }); // Error handling
+    res.status(500).json({ error: "Error fetching or summarizing news." });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);  // Server listening on specified port (here 3000)
+// =================== SERVER START =================== //
+// First connect to the database, then start the server
+connectDB().then(() => {
+  app.listen(port, () => {
+    console.log(`✅ Server running on http: //localhost:${port}`);
+  });
 });
