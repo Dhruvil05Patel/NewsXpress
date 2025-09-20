@@ -1,15 +1,17 @@
-import './App.css'
-import LoginPage from './components/LoginPage'
-import SideBar from './components/Sidebar'
+import SideBar from './components/SideBar';
+import AllNews from './components/categories/AllNews';
 
 function App() {
-
   return (
-    <>
-    <LoginPage/>
-    <SideBar/>
-    </>
-  )
-}
+    
+    <div className="min-h-screen bg-gray-50">
+      <SideBar />
+      <AllNews
+        title="Latest News"
+        subtitle="Stay updated with global headlines"
+      />
+    </div>
+  );
+} 
 
-export default App
+export default App;
