@@ -1,6 +1,16 @@
 import React, { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { registerUser, loginUser, resetPassword, signInWithGoogle } from './auth/controller/authController'
+
+
+
+
+const authWithGoogle = async ()  => {
+        const response = await signInWithGoogle();
+        console.log(response);
+}
+
 
 // A modal component for handling both user login and registration.
 function LoginPage({ onClose }) {
@@ -16,17 +26,33 @@ function LoginPage({ onClose }) {
   const [showPassword, setShowPassword] = useState(false);
 
   // Handles form submission for both login and signup.
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (isLogin) {
-      toast.success(`✅ Logged in as ${email}`);
+      const success = await loginUser(email, password);
+      if(success){
+        setTimeout(() => {
+          onClose()
+        }, 4000)
+      }
     } else {
-      // Basic validation for signup form.
       if (password !== confirmPassword) {
         toast.error("❌ Passwords do not match!");
         return;
       }
-      toast.success(`🎉 Welcome, ${name}`);
+      const success = await registerUser(email, password)
+      if(success){
+        setTimeout(() => {
+          onClose()
+        }, 4000)
+        toast.success(`🎉 Welcome, ${name}`);
+      }
+
+      setEmail('')
+      setPassword('')
+      setConfirmPassword('')
+      setName('')
+      setDob('')
     }
   };
 
@@ -79,7 +105,8 @@ function LoginPage({ onClose }) {
                 </div>
 
                 {/* Show Password Checkbox */}
-                <div className="flex items-center gap-2">
+                <div className="w-full flex items-center justify-between gap-2">
+                  <div className="show-password-container space-x-1">
                   <input
                     type="checkbox"
                     id="showPassLogin"
@@ -88,8 +115,16 @@ function LoginPage({ onClose }) {
                     className="w-4 h-4"
                   />
                   <label htmlFor="showPassLogin" className="text-sm">
-                    Show Password
+                     Show Password
                   </label>
+                  </div>
+                  <button
+                  type="button"
+                  onClick={() => resetPassword(email)}
+                  className="text-black py-2 rounded-lg font-semibold hover:underline transition"
+                  >
+                  Forgot Password?
+                  </button>
                 </div>
 
                 {/* Submit Button */}
@@ -99,7 +134,15 @@ function LoginPage({ onClose }) {
                 >
                   Login
                 </button>
+                <button
+                  type="button"
+                  className="w-full bg-blue-500 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+                  onClick={() => authWithGoogle()}
+                >
+                  Login With Google
+              </button>
               </form>
+              
 
               {/* Link to switch to the Signup form */}
               <p className="text-center text-sm mt-4">
@@ -229,6 +272,7 @@ function LoginPage({ onClose }) {
                   Login
                 </button>
               </p>
+              
             </>
           )}
         </div>
