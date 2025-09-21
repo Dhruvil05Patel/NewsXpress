@@ -54,13 +54,13 @@
 ### Constituent User Stories:
 
 ```
-User Story 1: (System) Getting News.
+User Story: Getting News.
 
-User Story 2: (System) Attach the reference of that article.
+User Story: Attach the reference of that article.
 
-User Story 3: (System) Generate summaries with AI.
+User Story: Generate summaries with AI.
 
-User Story 4: (System) Update the news.
+User Story: Update the news.
 
 ```
 
@@ -72,7 +72,6 @@ User Story 4: (System) Update the news.
 
 ### Scope & Key Features:
 
-```
 Development of the main user interface for displaying a list of aggregated news articles.
 
 Displaying the AI-generated summary when a user selects an article.
@@ -81,16 +80,14 @@ Providing a clear and functional link to redirect the user to the original news 
 
 Handling basic system states like unavailable sources (by showing cached news) and no internet connectivity.
 
-```
-
 ### Constituent User Stories:
 
 ```
-UC1: View Aggregated News Articles
+User Story: View Aggregated News Articles
 
-UC2: Read AI-generated Summaries (Surfer)
+User Story: Read AI-generated Summaries
 
-UC3: Read the Whole Article
+User Story: Read the Whole Article
 
 ```
 
@@ -102,7 +99,6 @@ UC3: Read the Whole Article
 
 ### Scope & Key Features:
 
-```
 Implementing a secure user registration and login system.
 
 Managing user sessions to keep users logged in across multiple visits.
@@ -111,14 +107,12 @@ Building a user profile/settings area where users can view and update their acco
 
 Handling credential validation and providing clear error messaging for invalid login attempts or information submission.
 
-```
-
 ### Constituent User Stories:
 
 ```
-UC4: Register/Login
+User Story: Register/Login
 
-UC5: Manage Account
+User Story: Manage Account
 
 ```
 
@@ -130,7 +124,6 @@ UC5: Manage Account
 
 ### Scope & Key Features:
 
-```
 Developing a system for users to explicitly declare their topics of interest (e.g., Technology, Sports).
 
 Modifying the feed-generation algorithm to prioritize content that matches a user's saved preferences.
@@ -139,14 +132,12 @@ Implementing a push notification system that alerts users to high-importance bre
 
 Providing granular control for users to manage their notification settings.
 
-```
-
 ### Constituent User Stories:
 
 ```
-UC9: Personalized News Feed
+User Story: Personalized News Feed 
 
-UC10: Receive Notifications of Personalized News
+User Story: Receive Notifications of Personalized News
 
 ```
 
@@ -158,24 +149,21 @@ UC10: Receive Notifications of Personalized News
 
 ### Scope & Key Features:
 
-```
-Accessibility: Integrating a text-to-speech engine to read summaries aloud and a translation service to present content in multiple languages.
+Integrating a text-to-speech engine to read summaries aloud and a translation service to present content in multiple languages.
 
-Utility: Providing functionality for users to save or bookmark articles for later reading, creating a personal library.
+Providing functionality for users to save or bookmark articles for later reading, creating a personal library.
 
-Social: Enabling users to easily share article links through their device's native sharing capabilities to other apps and contacts.
-
-```
+Enabling users to easily share article links through their device's native sharing capabilities to other apps and contacts.
 
 ### Constituent User Stories:
 
 ```
-UC6: Text-to-Speech for Summaries
+User Story: Text-to-Speech for Summaries
 
-UC7: Bookmark/Save Article for Later
+User Story: Bookmark/Save Article for Later
 
-UC8: Share Article
+User Story: Share Article
 
-UC11: Translate News Summary
+User Story: Translate News Summary
 
 ```
