@@ -36,108 +36,90 @@
 
 # Task D: User Stories
 
-## UC1: View Aggregated News Articles
+### UC1: View Aggregated News Articles
+> **As a User / Surfer I want see the trending News to keep myself updated.**
 
-### Front of the card
-> As a User / Surfer I want see the trending News to Keep my self Updated.
+**Primary Actor:** User/Surfer
 
-### Back of the card
-- **Preconditions:** System is connected to news sources.
-- **Postconditions:** User / Surfer sees a list of news articles.
-- **Primary Actor:** User/Surfer
-- **Secondary Actor:** System
-
-#### Main Flow
-1. User opens platform.
-2. System displays latest aggregated news.
-
-#### Alternate Flow
-2.a. If sources are unavailable show cached news.
-
-#### Exceptions
-1.a. No internet error message.
+**Acceptance Criteria:**
+* **Given** the system is connected to news sources
+    * **When** the user opens the platform
+    * **Then** the system displays the latest aggregated news.
+* **Given** sources are unavailable
+    * **When** the user opens the platform
+    * **Then** the system shows cached news.
+* **Given** there is no internet connection
+    * **When** the user opens the platform
+    * **Then** an error message is displayed.
 
 ---
 
-## UC2: Register/Login
+### UC2: Register/Login
+> **As a Surfer I want to Login/Register so that I can use the additional features.**
 
-### Front of the card
-> As a surfer I want to Login/Register so that I can use the additional features.
+**Primary Actor:** Surfer
 
-### Back of the card
-- **Preconditions:** User provides valid credentials.
-- **Postconditions:** Session created.
-- **Primary Actor:** Surfer
-- **Secondary Actor:** System
-
-#### Main Flow
-1. Surfer enters credentials.
-2. System validates.
-3. Surfer logged in as a User.
-
-#### Exceptions
-1.a. Invalid credentials error message.
+**Acceptance Criteria:**
+* **Given** the user provides valid credentials
+    * **When** the user enters credentials
+    * **Then** the system validates and logs the user in.
+* **Given** the user provides invalid credentials
+    * **When** the user attempts to log in
+    * **Then** an error message is displayed.
 
 ---
 
-## UC3: Manage Account
+### UC3: Manage Account
+> **As a User I want to change my account information so that if I made any mistake, I can correct it later and also update my preferences.**
 
-### Front of the card
-> As a User I want to change My account Information so that if I made any mistake, I can correct it later and also update my preferences.
+**Primary Actor:** User
 
-### Back of the card
-- **Preconditions:** User opens the setting.
-- **Postconditions:** Details Are Updated.
-- **Primary Actor:** User
-- **Secondary Actor:** System
-
-#### Main Flow
-1. User Goes to the Change the Profile Information.
-2. System validates.
-3. User Successfully changes the details.
-
-#### Exceptions
-1.a. Invalid Information error message.
+**Acceptance Criteria:**
+* **Given** the user is in account settings
+    * **When** the user updates profile information
+    * **Then** the system validates and updates the details.
+* **Given** the user enters invalid information
+    * **When** the system validates the input
+    * **Then** an error message is displayed.
 
 ---
 
-## UC4: Read AI-generated Summaries
+### UC4: Read AI-generated Summaries
+> **As a surfer/User I clicked on the news article so that I can read the summary of that Article.**
 
-### Front of the card
-> As a surfer/User I clicked on the news article so that I can read the summary of that Article.
+**Primary Actor:** Surfer/User
 
-### Back of the card
-- **Preconditions:** Surfer/User Selects the Article.
-- **Postconditions:** Summary displayed to the surfer/User.
-- **Primary Actor:** Surfer/User
-- **Secondary Actor:** System
-
-#### Main Flow
-1. Surfer/User selects news article.
-2. System displays AI-generated summary.
-3. If surfer/user Want to read the whole Article the He/she can read it by clicking of the News Article Link. (Extension Point)
-4. If user want to read the Article in Different Language then He/She can change the language. (Extension Point)
-5. If User wants to listen the News instead of reading them then He/She can do with Text - To - Speech functionality. (Extension Point)
-6. If User want to save / share / Bookmark the News then He/She can do that. (Extension Point)
+**Acceptance Criteria:**
+* **Given** the user selects a news article
+    * **When** the system processes the article
+    * **Then** the AI-generated summary is displayed.
+* **Given** the user selects to read the whole article
+    * **When** the link is clicked
+    * **Then** the system navigates to the full article page.
+* **Given** the user wants a different language
+    * **When** the user changes the language
+    * **Then** the summary is displayed in the selected language.
+* **Given** the user wants to listen instead of reading
+    * **When** the user enables text-to-speech
+    * **Then** the system plays the summary audio.
+* **Given** the user wants to save, share, or bookmark
+    * **When** the user clicks the respective option
+    * **Then** the action is completed successfully.
 
 ---
-## UC5: Read the Whole Article
 
-### Front of the Card
-> As a Surfer I clicked on the News Article Link because I want to read the whole article.
+### UC5: Read the Whole Article
+> **As a Surfer I clicked on the News Article Link because I want to read the whole article.**
 
-### Back of the Card
-- **Preconditions:** User Clicks on the News Article Link.
-- **Postconditions:** Actual News Article displayed to the surfer.
-- **Primary Actor:** Surfer
-- **Secondary Actor:** system, News Source
+**Primary Actor:** Surfer
 
-#### Main Flow
-1. Surfer clicks on the news Article Link.
-2. Surfer Reaches to the page where the Actual News is.
-
-#### Exceptions
-1.a.1. No internet error message.
+**Acceptance Criteria:**
+* **Given** the user clicks the news article link
+    * **When** the system opens the article
+    * **Then** the actual news article is displayed.
+* **Given** there is no internet connection
+    * **When** the user clicks the link
+    * **Then** an error message is displayed.
 
 ---
 
