@@ -36,7 +36,7 @@
 
 # Task D: User Stories
 
-### UC1: View Aggregated News Articles
+### US1: View Aggregated News Articles
 > **As a User / Surfer I want see the trending News to keep myself updated.**
 
 **Primary Actor:** User/Surfer
@@ -54,7 +54,7 @@
 
 ---
 
-### UC2: Register/Login
+### US2: Register/Login
 > **As a Surfer I want to Login/Register so that I can use the additional features.**
 
 **Primary Actor:** Surfer
@@ -69,7 +69,7 @@
 
 ---
 
-### UC3: Manage Account
+### US3: Manage Account
 > **As a User I want to change my account information so that if I made any mistake, I can correct it later and also update my preferences.**
 
 **Primary Actor:** User
@@ -84,7 +84,7 @@
 
 ---
 
-### UC4: Read AI-generated Summaries
+### US4: Read AI-generated Summaries
 > **As a surfer/User I clicked on the news article so that I can read the summary of that Article.**
 
 **Primary Actor:** Surfer/User
@@ -108,7 +108,7 @@
 
 ---
 
-### UC5: Read the Whole Article
+### US5: Read the Whole Article
 > **As a Surfer I clicked on the News Article Link because I want to read the whole article.**
 
 **Primary Actor:** Surfer
@@ -123,145 +123,128 @@
 
 ---
 
-## UC6: Text-to-Speech for Summaries
+### US6: Text-to-Speech for Summaries
 
-### Front of the Card
-> As a User, I want to listen to the news summary so that I can consume information while I am busy with other tasks.
+## Front of the Card
+> **As a User, I want to listen to the news summary so that I can consume information while I am busy with other tasks.**
 
-### Back of the Card
-- **Preconditions:**
-    1. User is on the article summary page.
-    2. The device has audio output.
-    3. User is logged in.
-- **Primary Actor:** User
-- **Secondary Actor:** System
+## Back of the Card
+**Primary Actor:** User
 
-#### Main Flow
-5.a. User clicks the Listen / Play Audio icon on the summary page. \
-5.b. System initiates text-to-speech conversion of the summary text. \
-5.c. System plays the generated audio through the user's device.
-
-#### Exceptions
-5.b.1. No audio output is present. The user would be unable to listen to the news summary.
+**Acceptance Criteria:**
+* **Given** the user is on the article summary page and device has audio
+    * **When** the user clicks the "Listen/Play" button
+    * **Then** the system converts text to speech and plays audio.
+* **Given** no audio output is present
+    * **When** the user clicks the "Listen/Play" button
+    * **Then** the user cannot listen to the summary.
 
 ---
 
-## UC7: Bookmark/Save Article for Later
+### US7: Bookmark/Save Article for Later
 
-### Front of the Card
-> As a User, I want to bookmark/save an interesting article so that I can easily find and read it later.
+## Front of the Card
+> **As a User, I want to bookmark/save an interesting article so that I can easily find and read it later.**
 
-### Back of the Card
-- **Preconditions:** User is logged in.
-- **Postconditions:** The selected article is added to the user's personal "Bookmark" list.
-- **Primary Actor:** User
-- **Secondary Actor:** System
+## Back of the Card
+**Primary Actor:** User
 
-#### Main Flow
-6.a. User clicks the "Save"/"Bookmark" icon on an article Summary. \
-6.b. System adds the article to the user's bookmark list. \
-6.c. System provides visual feedback confirming the article is saved.
-
-#### Alternate Flow
-6.a.1. If the user clicks the "Save" icon on an already saved article, the system removes it from the bookmark list.
-
-#### Exceptions
-6.a.1. **No internet connection:** User is notified to check their internet connection.
+**Acceptance Criteria:**
+* **Given** the user is logged in
+    * **When** the user clicks the bookmark icon
+    * **Then** the article is saved to the user’s bookmark list.
+* **Given** the user clicks bookmark on an already saved article
+    * **When** the action is performed
+    * **Then** the system removes the article from the bookmark list.
+* **Given** there is no internet connection
+    * **When** the user tries to bookmark an article
+    * **Then** the system shows an error notification.
 
 ---
 
-## UC8: Share Article
+### US8: Share Article
 
-### Front of the card
-> As a User, I want to share a news article so that I can send it to friends, family, or colleagues.
+## Front of the card
+> **As a User, I want to share a news article so that I can send it to friends, family, or colleagues.**
 
-### Back of the card
-- **Preconditions:** User is viewing an article summary.
-- **Postconditions:** The user is presented with options to share the article link.
-- **Primary Actor:** User
-- **Secondary Actor:** System
+## Back of the card
+**Primary Actor:** User
 
-#### Main Flow
-7.a User clicks the "Share" icon. \
-7.b System opens the sharing menu (e.g., options for WhatsApp, Email, etc.). \
-7.c User selects an application to share the article link with. \
-
----
-
-## UC9: Personalized News Feed
-
-### Front of the card
-> As a user, I want to select my topics of interest so that my news feed is tailored to what I care about.
-
-### Back of the card
-- **Preconditions:** User is logged in.
-- **Postconditions:** The user's home feed is updated to show news based on their selected preferences.
-- **Primary Actor:** User
-- **Secondary Actor:** System
-
-#### Main Flow
-1. User navigates to their profile or settings page.
-2. User selects the "Preferences" or "Interests" option.
-3. User chooses from a list of categories (e.g., "Technology", "Sports", "World News").
-4. User saves the changes.
-5. System reloads the main news feed, curating it based on the new preferences.
+**Acceptance Criteria:**
+* **Given** the user is viewing a news summary
+    * **When** the user clicks the share icon
+    * **Then** the system shows sharing menu options.
+* **Given** the share menu is displayed
+    * **When** the user selects an application
+    * **Then** the article link is shared through that application.
 
 ---
 
-## UC10: Receive Notifications of Personalized News
+### US9: Personalized News Feed
 
-### Front of the card
-> As a System, I want to send notifications for breaking news on topics a user follows so that the user can stay informed in real-time.
+## Front of the card
+> **As a user, I want to select my topics of interest so that my news feed is tailored to what I care about.**
 
-### Back of the card
-- **Preconditions:** User is logged in, has set their preferences, and has granted the app notification permissions.
-- **Postconditions:** A notification is delivered to the user's device for relevant news.
-- **Primary Actor:** System
-- **Secondary Actor:** User
+## Back of the card
+**Primary Actor:** User
 
-#### Main Flow
-1. System identifies a new, high-importance article based on the preferences.
-2. System determines if the article's category matches a user's saved preferences.
-3. System sends a push notification to the user's device with the article headline.
-4. User taps on the notification.
-5. System opens the app directly to the corresponding article summary.
-
-#### Alternate Flow
-3.a. The user can enable or disable notifications for specific categories within the app settings.
-
-#### Exceptions
-3.a. **User has disabled notifications:** The notification is not delivered.
+**Acceptance Criteria:**
+* **Given** the user is logged in
+    * **When** the user selects preferences in settings
+    * **Then** the system updates the news feed to match selected categories.
 
 ---
 
-## UC11: Translate News Summary
+### US10: Receive Notifications of Personalized News
 
-### Front of the card
-> As a User, I want to translate a news summary into a different language so that I can understand content that was not published in my native tongue.
+## Front of the card
+> **As a System, I want to send notifications for breaking news on topics a user follows so that the user can stay informed in real-time.**
 
-### Back of the card
-- **Preconditions:** User is viewing an article summary. The system is connected to a translation service.
-- **Postconditions:** The summary text is displayed in the user's selected language.
-- **Primary Actor:** User
-- **Secondary Actor:** System
+## Back of the card
+**Primary Actor:** System
 
-#### Main Flow
-1. User clicks on the "Translate" option available on the summary page.
-2. System displays a list of available languages.
-3. User selects their desired language from the list.
-4. System translates the summary text using AI.
-5. System displays the translated summary to the user.
+**Acceptance Criteria:**
+* **Given** the user is logged in, has preferences, and notifications enabled
+    * **When** the system finds breaking news in the user’s interest
+    * **Then** the system sends a push notification.
+* **Given** a push notification is sent
+    * **When** the user taps the notification
+    * **Then** the app opens directly to the article summary.
+* **Given** the user has disabled notifications
+    * **When** breaking news is detected
+    * **Then** no notification is delivered.
 
-#### Alternate Flow
-5.a. The system provides a button to "Show Original" to revert the text to its original language.
-
-#### Exceptions
-4.a. **No internet connection:** The system displays an error notifying the user of no internet connection. \
-4.b. **Translation Failure:** Translation for the selected language fails, the user may get poorly translated news.
 
 ---
 
-## UC12: Getting News
+### US11: Translate News Summary
+
+## Front of the card
+> **As a User, I want to translate a news summary into a different language so that I can understand content that was not published in my native tongue.**
+
+## Back of the card
+**Primary Actor:** User
+
+**Acceptance Criteria:**
+* **Given** the user is viewing an article summary
+    * **When** the user selects the "Translate" option
+    * **Then** the system displays available languages.
+* **Given** the user selects a language
+    * **When** the system translates the summary
+    * **Then** the translated summary is shown.
+* **Given** the summary is translated
+    * **When** the user selects "Show Original"
+    * **Then** the original text is displayed.
+* **Given** no internet connection
+    * **When** the user attempts translation
+    * **Then** an error is displayed.
+* **Given** translation fails
+    * **When** the user attempts translation
+    * **Then** the system shows poorly translated news.
+
+---
+
+## US12: Getting News
 
 ### Front of the card
 > As a system I want to obtain news from various news publishers so I can provide summaries of news articles to the users. 
@@ -288,7 +271,7 @@
 
 ---
 
-## UC13: Attach the reference of that Article
+## US13: Attach the reference of that Article
 
 ### Front of the card
 > As a system I want to attach the reference of that article so that the users that obtain the original news article for further information or use it as a reference. 
@@ -312,7 +295,7 @@
 
 ---
 
-## UC14: Generate Summaries with AI
+## US14: Generate Summaries with AI
 
 ### Front of the card
 > As a system, I want to generate summaries of the news article so the users do not have to read the entire article. 
@@ -336,7 +319,7 @@
 
 ---
 
-## UC15: Update/Correct the News 
+## US15: Update/Correct the News 
 
 ### Front of the card
 > As a system, I want to update/correct the news in the event where I obtain new information regarding the topic so that the user can be properly informed on that topic. 
