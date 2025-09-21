@@ -49,11 +49,20 @@ async function summarizeNewsArticles(articles) {  //Summarize multiple articles
   const summarizedNews = [];
   for (const article of articles) {
     const summary = await summarizeArticle(article, 3);
+    
+    // Extract publication time and calculate read time
+    const timestamp = article.date || "Recently";
+    const readTime = Math.max(1, Math.ceil((summary.length / 200))); // Estimate 200 words per minute
+    
     summarizedNews.push({
       title: article.title,
-      source: article.source?.name || "Unknown Source",
-      link: article.link,
       summary,
+      imageUrl: article.thumbnail || article.image || null, // Let frontend handle missing images
+      newsUrl: article.link,
+      source: article.source?.name || "Unknown Source", 
+      timestamp,
+      category: "General", // You can enhance this by categorizing based on content or source
+      readTime: `${readTime} min read`,
     });
   }
   return summarizedNews;
