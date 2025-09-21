@@ -71,7 +71,7 @@ export default function AllNews({ title, subtitle }) {
                             news.map((item) => (
                                 <div
                                     // The 'key' prop is essential for React to efficiently update lists.
-                                    key={item.id}
+                                    key={item.link || item.newsUrl || item.title}
                                     className="bg-white rounded-2xl shadow-md hover:shadow-xl overflow-hidden transition-transform transform hover:-translate-y-1"
                                 >
                                     <NewsCard {...item} />

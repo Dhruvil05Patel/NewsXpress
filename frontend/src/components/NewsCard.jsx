@@ -21,7 +21,7 @@ export default function NewsCard({
         <article className="flex flex-col h-full">
             {/* Image */}
             <div className="relative">
-                {!imgError ? (
+                {imageUrl && !imgError ? (
                     <img
                         src={imageUrl}
                         alt={title}
@@ -29,8 +29,10 @@ export default function NewsCard({
                         onError={handleImageError}
                     />
                 ) : (
-                    <div className="w-full aspect-video bg-gray-200 flex items-center justify-center">
-                        <span className="text-gray-500">Image unavailable</span>
+                    <div className="w-full aspect-video bg-gradient-to-r from-blue-100 to-blue-200 flex items-center justify-center">
+                        <div className="text-center">
+                            <span className="text-gray-600 text-sm">News Image Not Found</span>
+                        </div>
                     </div>
                 )}
                 <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-3 py-1 rounded-full">

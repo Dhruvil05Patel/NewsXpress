@@ -3,19 +3,19 @@ const dotenv = require("dotenv"); // For loading environment variables from .env
 const { fetchNews } = require("./FetchingNews"); // Custom function to fetch news articles
 const { summarizeNewsArticles } = require("./Summarizing"); // Custom function to summarize articles
 const { connectDB } = require("./config/db"); // Database connection function (Sequelize + Supabase)
+const cors = require("cors"); // Middleware to enable CORS for cross-origin requests
 
 dotenv.config(); // Initialize dotenv to access environment variables
 
 const app = express(); // Create an Express application
 const port = process.env.PORT || 5000; // Use PORT from .env or default to 5000
 
+app.use(cors({ origin: 'http://localhost:5173', credentials: true })); // Enable CORS for frontend requests
 // =================== ROUTES =================== //
 app.get("/get-summarized-news", async (req, res) => {
   // Endpoint: GET request to fetch summarized news
 
-  const query = "Give me latest news of today"; 
-  // Default query term for news (you can later make this dynamic by using req.query)
-
+  const query = "Gujarat"; // Default query term for news
   try {
     // 1️⃣ Fetch news articles from external API
     const newsArticles = await fetchNews(query);
@@ -32,7 +32,7 @@ app.get("/get-summarized-news", async (req, res) => {
 
     // 3️⃣ Summarize only the first 5 articles (avoid overloading)
     const summarizedNews = await summarizeNewsArticles(
-      articlesWithContent.slice(0, 5)
+      articlesWithContent.slice(0, 8)
     );
 
     // 4️⃣ Send JSON response back to client
