@@ -10,7 +10,7 @@ dotenv.config(); // Initialize dotenv to access environment variables
 const app = express(); // Create an Express application
 const port = process.env.PORT || 5000; // Use PORT from .env or default to 5000
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true })); // Enable CORS for frontend requests
+app.use(cors({ origin: process.env.VERCEL_URL, credentials: true })); // Enable CORS for frontend requests
 // =================== ROUTES =================== //
 app.get("/get-summarized-news", async (req, res) => {
   // Endpoint: GET request to fetch summarized news
