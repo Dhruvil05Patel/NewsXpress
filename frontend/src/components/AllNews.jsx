@@ -71,7 +71,7 @@ export default function AllNews() {
     // Display a loading message while data is being fetched.
     if (loading) {
         return (
-            <main className="bg-newspaper min-h-screen lg:ml-64 pt-24">
+            <main className="bg-newspaper min-h-screen lg:ml-64 xl:mr-80 pt-24">
                 <div className="flex justify-center items-center h-full">
                     <div className="font-serif text-lg text-stone-600">
                         Loading Headlines...
@@ -83,7 +83,7 @@ export default function AllNews() {
 
     // --- Render ---
     return (
-        <main className="bg-newspaper text-zinc-900 lg:ml-64 pt-24">
+        <main className="bg-newspaper text-zinc-900 lg:ml-64 xl:mr-80 pt-24">
             <div className="px-4 lg:px-10 py-12 w-full">
                 <div className="w-full mx-auto">
                     {/* Page Header */}
