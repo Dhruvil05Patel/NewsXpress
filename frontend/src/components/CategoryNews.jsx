@@ -58,7 +58,7 @@ export default function CategoryNews({ category, title, subtitle }) {
     // Displays a dynamic loading message while the news is being filtered.
     if (loading) {
         return (
-            <main className="bg-newspaper min-h-screen lg:ml-64 pt-24">
+            <main className="bg-newspaper min-h-screen lg:ml-64 xl:mr-80 pt-24">
                 <div className="flex justify-center items-center h-full">
                     <div className="font-serif text-lg text-stone-600">
                         Loading {title}...
@@ -72,7 +72,7 @@ export default function CategoryNews({ category, title, subtitle }) {
     return (
         // Using a React Fragment `<>` to return multiple elements without a wrapper div.
         <>
-            <main className="bg-newspaper text-zinc-900 lg:ml-64 pt-24">
+            <main className="bg-newspaper text-zinc-900 lg:ml-64 xl:mr-80 pt-24">
                 <div className="px-4 lg:px-10 py-12 w-full">
                     <div className="w-full mx-auto">
                         {/* Header section dynamically displays the title and subtitle from props. */}

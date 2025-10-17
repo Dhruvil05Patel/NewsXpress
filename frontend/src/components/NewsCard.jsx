@@ -1,16 +1,58 @@
 // --- Imports ---
-import React, { useState } from "react";
+// Import React hooks for state and references.
+import React, { useState, useRef } from "react";
+// Import icons from the lucide-react library for the UI.
 import {
     SquareArrowOutUpRight,
     Languages,
     Volume2,
     VolumeX,
+    LoaderCircle,
 } from "lucide-react";
-import LanguageSelector from "./LanguageSelector"; // A modal for choosing a language
+// Import a custom component for language selection.
+import LanguageSelector from "./LanguageSelector";
+
+
+// --- Helper function to chunk text for the ElevenLabs API ---
+/**
+ * Splits a long text into smaller chunks based on sentence endings.
+ * This is necessary because the ElevenLabs API has a character limit per request.
+ * @param {string} text - The full text to be chunked.
+ * @param {number} [limit=2500] - The maximum character length for each chunk.
+ * @returns {string[]} An array of text chunks.
+ */
+const chunkText = (text, limit = 2500) => {
+    // Return an empty array if there's no text.
+    if (!text) return [];
+    // Split text into sentences for cleaner breaks.
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    const chunks = [];
+    let currentChunk = "";
+
+    // Loop through each sentence to build chunks.
+    for (const sentence of sentences) {
+        // If adding the next sentence exceeds the limit, push the current chunk.
+        if (currentChunk.length + sentence.length > limit) {
+            chunks.push(currentChunk.trim());
+            currentChunk = sentence; // Start a new chunk with the current sentence.
+        } else {
+            // Otherwise, add the sentence to the current chunk.
+            currentChunk += ` ${sentence.trim()}`;
+        }
+    }
+
+    // Add the last remaining chunk to the array.
+    if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+    }
+
+    return chunks;
+};
+
 
 /**
- * Displays a single news article with features like translation and text-to-speech.
- * It's designed to be a self-contained, interactive element.
+ * A UI component that displays a single news article with features like
+ * translation and text-to-speech.
  */
 export default function NewsCard({
     title,
@@ -20,61 +62,164 @@ export default function NewsCard({
     source,
     timestamp,
     category,
-    onCardClick, // Function to trigger a full-screen view
+    onCardClick,
 }) {
     // --- State Management ---
-    const [isLangSelectorOpen, setIsLangSelectorOpen] = useState(false); // Manages language selector visibility.
-    const [imgError, setImgError] = useState(false); // Tracks if the image failed to load.
-    const [isSpeaking, setIsSpeaking] = useState(false); // Tracks if text-to-speech is active.
-    const [isTranslated, setIsTranslated] = useState(false); // Tracks if content is translated.
-    const [translatedContent, setTranslatedContent] = useState({ title: "", summary: "" }); // Stores translated text.
-    const [isTranslating, setIsTranslating] = useState(false); // Tracks if translation is in progress.
+    // Manages the visibility of the language selection modal.
+    const [isLangSelectorOpen, setIsLangSelectorOpen] = useState(false);
+    // Tracks if the article's main image failed to load.
+    const [imgError, setImgError] = useState(false);
+    // Tracks if the audio is currently playing.
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    // Tracks if the content has been translated.
+    const [isTranslated, setIsTranslated] = useState(false);
+    // Stores the translated title and summary.
+    const [translatedContent, setTranslatedContent] = useState({ title: "", summary: "" });
+    // Tracks if the translation API call is in progress.
+    const [isTranslating, setIsTranslating] = useState(false);
+    // Tracks if the audio is being fetched from the API.
+    const [isFetchingAudio, setIsFetchingAudio] = useState(false);
+    
+    // --- Refs ---
+    // Holds the HTML <audio> element to control playback.
+    const audioPlayer = useRef(null);
+    // A flag to signal immediate cancellation of ongoing audio playback.
+    const cancelPlaybackRef = useRef(false);
+
 
     // --- Handlers & Logic ---
 
-    // Sets an error state if the article's image fails to load.
+    /**
+     * Sets the image error state to true, causing a fallback UI to render.
+     */
     const handleImageError = () => setImgError(true);
 
-    // Toggles text-to-speech for the article summary.
-    const handleListen = (e) => {
-        e.stopPropagation(); // Prevent card's onCardClick from firing.
-        const textToSpeak = isTranslated ? translatedContent.summary : summary;
-        if ("speechSynthesis" in window) {
-            if (isSpeaking) {
-                window.speechSynthesis.cancel();
-                setIsSpeaking(false);
-                return;
-            }
-            const utterance = new SpeechSynthesisUtterance(textToSpeak || title);
-            utterance.onend = () => setIsSpeaking(false);
-            setIsSpeaking(true);
-            window.speechSynthesis.speak(utterance);
-        } else {
-            alert("Sorry, your browser does not support text-to-speech.");
-        }
-    };
+    /**
+     * Handles the play/stop logic for the text-to-speech feature.
+     */
+    const handleListen = async (e) => {
+        e.stopPropagation(); // Prevents the card's onCardClick from firing.
+        
+        // Determine which text to speak: translated or original.
+        const textToSpeak = (isTranslated ? translatedContent.summary : summary) || (isTranslated ? translatedContent.title : title);
 
-    // If already translated, reverts to original text. Otherwise, opens the language selector.
-    const handleTranslateClick = (e) => {
-        e.stopPropagation();
-        if (isTranslated) {
-            setIsTranslated(false);
+        // If audio is already playing, stop it.
+        if (isSpeaking) {
+            cancelPlaybackRef.current = true; // Signal to stop the speaking loop.
+            if (audioPlayer.current) {
+                audioPlayer.current.pause(); // Pause the current audio element.
+            }
+            setIsSpeaking(false);
+            setIsFetchingAudio(false);
+            return;
+        }
+
+        // Reset cancellation flag for a new playback session.
+        cancelPlaybackRef.current = false;
+
+        // If there's text, use the ElevenLabs API to generate and play audio.
+        if (textToSpeak) {
+            await speakWithElevenLabs(textToSpeak);
         } else {
-            setIsLangSelectorOpen(true);
+            alert("Sorry, there is no content to listen to.");
         }
     };
 
     /**
-     * Performs the translation by calling an external API with the chosen language.
+     * Fetches and plays audio from the ElevenLabs API for the given text.
+     * It streams audio by playing it chunk by chunk.
+     */
+    const speakWithElevenLabs = async (text) => {
+        // --- API Configuration ---
+        const VOICE_ID = "pNInz6obpgDQGcFmaJgB"; // Pre-selected voice 'Adam'.
+        const API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY; // Securely stored API key.
+
+        if (!API_KEY) {
+            alert("ElevenLabs API key is not configured.");
+            return;
+        }
+
+        // Set UI state to show loading indicators.
+        setIsFetchingAudio(true);
+        setIsSpeaking(true);
+
+        // Split the text into manageable chunks for the API.
+        const textChunks = chunkText(text);
+
+        // Process each chunk sequentially.
+        for (const chunk of textChunks) {
+            // If the user clicked "Stop", break out of the loop.
+            if (cancelPlaybackRef.current) break;
+
+            try {
+                // Fetch audio data from the ElevenLabs API.
+                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'audio/mpeg',
+                        'Content-Type': 'application/json',
+                        'xi-api-key': API_KEY,
+                    },
+                    body: JSON.stringify({
+                        text: chunk,
+                        model_id: 'eleven_multilingual_v2', // Use the multilingual model.
+                    }),
+                });
+
+                if (!response.ok) throw new Error("Failed to fetch audio from ElevenLabs.");
+
+                // Convert the response into a playable audio format.
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayer.current = new Audio(audioUrl);
+                setIsFetchingAudio(false); // Audio for this chunk is ready.
+
+                // Play the current audio chunk and wait for it to finish before proceeding.
+                await new Promise((resolve) => {
+                    audioPlayer.current.onended = resolve;
+                    audioPlayer.current.play();
+                });
+
+                // Clean up the created object URL to free memory.
+                URL.revokeObjectURL(audioUrl);
+
+            } catch (error) {
+                console.error("ElevenLabs API Error:", error);
+                alert("Sorry, we couldn't play the audio.");
+                break; // Stop trying if an error occurs.
+            }
+        }
+
+        // Reset all states once playback is complete or stopped.
+        setIsSpeaking(false);
+        setIsFetchingAudio(false);
+        cancelPlaybackRef.current = false;
+    };
+
+    /**
+     * Handles clicks on the "Translate" button. It either reverts to the
+     * original text or opens the language selector.
+     */
+    const handleTranslateClick = (e) => {
+        e.stopPropagation(); // Prevent card click.
+        if (isTranslated) {
+            setIsTranslated(false); // If already translated, show original.
+        } else {
+            setIsLangSelectorOpen(true); // Otherwise, open language picker.
+        }
+    };
+
+    /**
+     * Performs the translation using the MyMemory API.
      * @param {string} targetLanguage - The language code (e.g., 'es', 'fr').
      */
     const performTranslation = async (targetLanguage) => {
-        setIsLangSelectorOpen(false); // Close the selector UI.
-        setIsTranslating(true);
+        setIsLangSelectorOpen(false);
+        setIsTranslating(true); // Show translating indicator.
 
         try {
-            const sourceLanguage = 'en';
-            // Use Promise.all to fetch translations concurrently for better performance.
+            const sourceLanguage = 'en'; // Assuming original text is English.
+            // Fetch translations for both title and summary simultaneously.
             const [titleResponse, summaryResponse] = await Promise.all([
                 fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(title)}&langpair=${sourceLanguage}|${targetLanguage}`),
                 fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(summary)}&langpair=${sourceLanguage}|${targetLanguage}`)
@@ -82,7 +227,9 @@ export default function NewsCard({
             const titleData = await titleResponse.json();
             const summaryData = await summaryResponse.json();
 
+            // Check if both API calls were successful.
             if (titleData.responseStatus === 200 && summaryData.responseStatus === 200) {
+                // Update state with the translated text.
                 setTranslatedContent({
                     title: titleData.responseData.translatedText,
                     summary: summaryData.responseData.translatedText,
@@ -95,17 +242,19 @@ export default function NewsCard({
             console.error("Translation API error:", error);
             alert("Sorry, we couldn't translate the content.");
         } finally {
-            setIsTranslating(false); // Reset loading state regardless of success or failure.
+            setIsTranslating(false); // Hide translating indicator.
         }
     };
 
+
     // --- Render ---
+    // The JSX that defines the component's appearance.
     return (
         <article
             onClick={onCardClick}
             className="relative w-full overflow-hidden rounded-none sm:rounded-lg shadow-md bg-gray-800 text-white cursor-pointer"
         >
-            {/* Conditionally render the image or a fallback div on error. */}
+            {/* Conditionally render the image or a fallback UI if the image fails to load. */}
             {imageUrl && !imgError ? (
                 <img src={imageUrl} alt={title} className="w-full h-[70vh] max-h-[600px] object-cover" onError={handleImageError} />
             ) : (
@@ -114,26 +263,32 @@ export default function NewsCard({
                 </div>
             )}
 
-            {/* Overlays for styling and content */}
+            {/* A dark gradient overlay to make the text readable over the image. */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent"></div>
+            
+            {/* Category tag at the top-left corner. */}
             <span className="absolute top-4 left-4 bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
                 {category}
             </span>
 
-            {/* Content and Action Buttons */}
+            {/* Container for the text content and action buttons at the bottom. */}
             <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-                {/* Display translated or original content based on state. */}
+                {/* Display translated or original title. */}
                 <h2 className="font-serif text-xl sm:text-2xl mb-2 leading-tight line-clamp-3">
                     {isTranslated ? translatedContent.title : title}
                 </h2>
+                {/* Display translated or original summary. */}
                 <p className="font-sans text-gray-300 text-sm md:text-base line-clamp-2 mb-4">
                     {isTranslated ? translatedContent.summary : summary}
                 </p>
+                {/* News source and timestamp. */}
                 <div className="font-sans text-xs text-gray-400 mb-3">
                     <span className="font-semibold">{source}</span> • <span>{timestamp}</span>
                 </div>
 
+                {/* Container for action buttons. */}
                 <div className="flex flex-wrap items-center gap-3">
+                    {/* Translate Button */}
                     <button
                         onClick={handleTranslateClick}
                         disabled={isTranslating}
@@ -143,19 +298,34 @@ export default function NewsCard({
                         <Languages size={16} />
                     </button>
 
+                    {/* Listen Button */}
                     <button
                         onClick={handleListen}
-                        className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all backdrop-blur-sm ${isSpeaking ? "bg-red-500/50 hover:bg-red-500/60" : "bg-white/10 hover:bg-white/20"
-                            }`}
+                        disabled={isFetchingAudio && !isSpeaking}
+                        className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all backdrop-blur-sm disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking ? "bg-red-500/50 hover:bg-red-500/60" : "bg-white/10 hover:bg-white/20"}`}
                     >
-                        {isSpeaking ? (<>Stop Listening <VolumeX size={16} /></>) : (<>Listen News <Volume2 size={16} /></>)}
+                        {isFetchingAudio ? (
+                            <>
+                                <LoaderCircle size={16} className="animate-spin" />
+                                Loading Audio...
+                            </>
+                        ) : isSpeaking ? (
+                            <>
+                                Stop Listening <VolumeX size={16} />
+                            </>
+                        ) : (
+                            <>
+                                Listen News <Volume2 size={16} />
+                            </>
+                        )}
                     </button>
 
+                    {/* Read More Link */}
                     <a
                         href={newsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()} // Prevent card's onClick
+                        onClick={(e) => e.stopPropagation()}
                         className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white text-sm font-semibold rounded-lg transition-all"
                     >
                         Read More <SquareArrowOutUpRight size={16} />
@@ -163,7 +333,7 @@ export default function NewsCard({
                 </div>
             </div>
 
-            {/* Conditionally render the LanguageSelector modal on top of the card. */}
+            {/* Conditionally render the Language Selector modal when needed. */}
             {isLangSelectorOpen && (
                 <LanguageSelector
                     onSelectLanguage={performTranslation}
