@@ -26,75 +26,82 @@ app.use(express.json()); // Parse JSON request bodies
 
 // =================== MAIN ROUTES =================== //
 
-// Default route: fetch latest news (all categories)
+// Default route: read latest news directly from DB
 app.get("/get-summarized-news", async (req, res) => {
   try {
-    console.log("\n Fetching news for category: All");
-    const newsArticles = await fetchNews("all", 15);
-    const articlesWithContent = newsArticles.filter(a => a.title && a.link);
+    const limit = parseInt(req.query.limit) || 15;
+    const forceLive = req.query.live === '1'; // pass ?live=1 to force a fresh fetch
+    console.log(`\n Retrieving latest ${limit} articles from database (All). forceLive=${forceLive}`);
 
-    if (!articlesWithContent.length)
-      return res.status(404).json({ message: "No news articles found." });
+    let articles = [];
+    if (!forceLive) {
+      // Try DB first
+      articles = await getArticles({ limit });
+    }
 
-    console.log(`🤖 Summarizing ${articlesWithContent.length} articles...`);
-    const summarizedNews = await summarizeNewsArticles(articlesWithContent.slice(0, 8));
+    if (!articles || articles.length === 0) {
+      // DB empty or forced live — fetch + summarize
+      console.log("No articles in DB or live fetch requested — fetching live news...");
+      const newsArticles = await fetchNews("all", 15);
+      const articlesWithContent = newsArticles.filter(a => a.title && a.link);
+      if (!articlesWithContent.length) {
+        return res.status(404).json({ message: "No news articles found." });
+      }
+      const summarizedNews = await summarizeNewsArticles(articlesWithContent.slice(0, 8));
 
-    //  Save to database in background (don't wait for completion)
-    saveArticles(summarizedNews)
-      .then(result => {
-        console.log(` Saved ${result.count} articles to database`);
-      })
-      .catch(err => {
-        console.error(" Error saving to database:", err.message);
+      // Optionally save results to DB (comment out if you don't want auto-saving)
+      try {
+        const saveResult = await saveArticles(summarizedNews);
+        console.log(`Auto-saved ${saveResult.count} articles (errors: ${saveResult.errors.length})`);
+      } catch (saveErr) {
+        console.warn("Auto-save failed:", saveErr);
+      }
+
+      return res.json({
+        category: "All",
+        location: "India",
+        count: summarizedNews.length,
+        summarizedNews
       });
+    }
 
+    // Return DB results
     res.json({
       category: "All",
       location: "India",
-      count: summarizedNews.length,
-      summarizedNews
+      count: articles.length,
+      summarizedNews: articles
     });
   } catch (err) {
-    console.error("Error:", err);
-    res.status(500).json({ error: "Error fetching or summarizing news." });
+    console.error("Error reading/fetching articles:", err);
+    res.status(500).json({ error: "Error retrieving news." });
   }
 });
 
-//  Category-based routes (dynamic)
+// Category-based route: read by topic from DB
 app.get("/get-summarized-news/:category", async (req, res) => {
   const category = req.params.category;
-
   try {
-    console.log(`\n Fetching news for category: ${category}`);
-    const newsArticles = await fetchNews(category, 15);
-    const articlesWithContent = newsArticles.filter(a => a.title && a.link);
+    const limit = parseInt(req.query.limit) || 15;
+    console.log(`\n Retrieving up to ${limit} articles from database for category: ${category}`);
 
-    if (!articlesWithContent.length)
+    const articles = await getArticlesByTopic(category, limit);
+
+    if (!articles || articles.length === 0) {
       return res.status(404).json({
-        message: `No news found for category: ${category}`
+        message: `No news found in database for category: ${category}`
       });
-
-    console.log(`🤖 Summarizing ${articlesWithContent.length} articles...`);
-    const summarizedNews = await summarizeNewsArticles(articlesWithContent.slice(0, 8));
-
-    //  Save to database in background (don't wait for completion)
-    saveArticles(summarizedNews)
-      .then(result => {
-        console.log(` Saved ${result.count} articles to database for category: ${category}`);
-      })
-      .catch(err => {
-        console.error(` Error saving to database for category ${category}:`, err.message);
-      });
+    }
 
     res.json({
       category,
       location: "India",
-      count: summarizedNews.length,
-      summarizedNews
+      count: articles.length,
+      summarizedNews: articles
     });
   } catch (err) {
-    console.error("Error:", err);
-    res.status(500).json({ error: "Error fetching or summarizing news." });
+    console.error(`Error fetching articles by topic ${category}:`, err);
+    res.status(500).json({ error: "Error retrieving news from database." });
   }
 });
 

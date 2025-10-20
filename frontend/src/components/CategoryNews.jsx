@@ -4,7 +4,6 @@
 import { useState, useEffect } from "react";
 import NewsCard from "./NewsCard";
 import ReelView from "./ReelView";
-import sampleNews from "./mockNews";
 
 // --- Component Definition ---
 /**
@@ -22,20 +21,38 @@ export default function CategoryNews({ category, title, subtitle }) {
     const [reelState, setReelState] = useState({ isOpen: false, index: 0 }); // Manages the reel view modal.
 
     // --- Side Effects (useEffect) ---
-    // This effect filters the news whenever the `category` prop changes.
+    // Fetch category-specific news from backend when `category` changes.
     useEffect(() => {
         setLoading(true);
 
-        // Filter the master list of news based on the `category` prop.
-        const categoryArticles = sampleNews.filter(
-            (item) => item.category === category
-        );
+        const loadCategory = async () => {
+            try {
+                const resp = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:4000'}/get-summarized-news/${encodeURIComponent(category)}?limit=20`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const payload = await resp.json();
+                const articles = Array.isArray(payload.summarizedNews) ? payload.summarizedNews : [];
 
-        // Simulate a small delay to prevent jarring UI updates on fast switches.
-        setTimeout(() => {
-            setNews(categoryArticles);
-            setLoading(false);
-        }, 300); // 300ms delay
+                const normalized = articles.map((a) => ({
+                    id: a.id || a.original_url || a.newsUrl || a.title,
+                    title: a.title,
+                    summary: a.summary || a.content_text || "",
+                    imageUrl: a.imageUrl || a.image_url || a.thumbnail || null,
+                    newsUrl: a.newsUrl || a.original_url || a.link || "",
+                    source: (typeof a.source === 'string') ? a.source : (a.source?.name || "Unknown"),
+                    timestamp: a.timestamp || (a.published_at ? new Date(a.published_at).toLocaleString() : "Recently"),
+                    category: a.category || a.topic || category,
+                }));
+
+                setNews(normalized);
+            } catch (err) {
+                console.error("Error loading category news:", err);
+                setNews([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadCategory();
     }, [category]); // The key dependency: this effect re-runs if `category` changes.
 
     // --- Event Handlers ---
