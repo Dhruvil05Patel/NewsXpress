@@ -10,11 +10,8 @@ module.exports = (sequelize) => {
     auth_id: {
       type: DataTypes.UUID,
       allowNull: true,
-      references: {
-        model: 'auth.users', // Supabase auth table
-        key: 'id',
-      },
-      onDelete: 'CASCADE',
+      unique: true,
+      comment: 'References auth.users in Supabase auth schema',
     },
     full_name: {
       type: DataTypes.TEXT,
