@@ -4,6 +4,7 @@ const { fetchNews } = require("./FetchingNews");
 const { summarizeNewsArticles } = require("./Summarizing");
 const { connectDB } = require("./config/db");
 const { saveArticles, getArticlesByTopic, getArticles } = require("./ArticleService");
+const {translationController} = require("./translation-and-speech/controller/translationController")
 const cors = require("cors");
 
 dotenv.config();
@@ -23,6 +24,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json()); // Parse JSON request bodies
+
 
 // =================== MAIN ROUTES =================== //
 
@@ -168,6 +170,8 @@ app.get("/articles", async (req, res) => {
     res.status(500).json({ error: "Error fetching articles from database." });
   }
 });
+
+app.post('/api/translation' , translationController)
 
 // =================== SERVER START =================== //
 connectDB().then(() => {
