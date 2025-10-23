@@ -12,6 +12,7 @@ import {
 // Import a custom component for language selection.
 import LanguageSelector from "./LanguageSelector";
 import { handleTranslation } from "../services/translation-and-speech/translate";
+import {textToSpeech} from "../services/translation-and-speech/textToSpeech"
 
 
 // --- Helper function to chunk text for the ElevenLabs API ---
@@ -80,6 +81,9 @@ export default function NewsCard({
     const [isTranslating, setIsTranslating] = useState(false);
     // Tracks if the audio is being fetched from the API.
     const [isFetchingAudio, setIsFetchingAudio] = useState(false);
+    // Tracks the selected Language
+    const [selectedLanguage, setSelectedLanguage] = useState("en");
+
     
     // --- Refs ---
     // Holds the HTML <audio> element to control playback.
@@ -120,82 +124,19 @@ export default function NewsCard({
 
         // If there's text, use the ElevenLabs API to generate and play audio.
         if (textToSpeak) {
-            await speakWithElevenLabs(textToSpeak);
+            await textToSpeech(
+                textToSpeak,
+                selectedLanguage,
+                setIsFetchingAudio,
+                setIsSpeaking,
+                cancelPlaybackRef,
+                audioPlayer
+            );
         } else {
             alert("Sorry, there is no content to listen to.");
         }
     };
-
-    /**
-     * Fetches and plays audio from the ElevenLabs API for the given text.
-     * It streams audio by playing it chunk by chunk.
-     */
-    const speakWithElevenLabs = async (text) => {
-        // --- API Configuration ---
-        const VOICE_ID = "pNInz6obpgDQGcFmaJgB"; // Pre-selected voice 'Adam'.
-        const API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY; // Securely stored API key.
-
-        if (!API_KEY) {
-            alert("ElevenLabs API key is not configured.");
-            return;
-        }
-
-        // Set UI state to show loading indicators.
-        setIsFetchingAudio(true);
-        setIsSpeaking(true);
-
-        // Split the text into manageable chunks for the API.
-        const textChunks = chunkText(text);
-
-        // Process each chunk sequentially.
-        for (const chunk of textChunks) {
-            // If the user clicked "Stop", break out of the loop.
-            if (cancelPlaybackRef.current) break;
-
-            try {
-                // Fetch audio data from the ElevenLabs API.
-                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'audio/mpeg',
-                        'Content-Type': 'application/json',
-                        'xi-api-key': API_KEY,
-                    },
-                    body: JSON.stringify({
-                        text: chunk,
-                        model_id: 'eleven_multilingual_v2', // Use the multilingual model.
-                    }),
-                });
-
-                if (!response.ok) throw new Error("Failed to fetch audio from ElevenLabs.");
-
-                // Convert the response into a playable audio format.
-                const audioBlob = await response.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
-                audioPlayer.current = new Audio(audioUrl);
-                setIsFetchingAudio(false); // Audio for this chunk is ready.
-
-                // Play the current audio chunk and wait for it to finish before proceeding.
-                await new Promise((resolve) => {
-                    audioPlayer.current.onended = resolve;
-                    audioPlayer.current.play();
-                });
-
-                // Clean up the created object URL to free memory.
-                URL.revokeObjectURL(audioUrl);
-
-            } catch (error) {
-                console.error("ElevenLabs API Error:", error);
-                alert("Sorry, we couldn't play the audio.");
-                break; // Stop trying if an error occurs.
-            }
-        }
-
-        // Reset all states once playback is complete or stopped.
-        setIsSpeaking(false);
-        setIsFetchingAudio(false);
-        cancelPlaybackRef.current = false;
-    };
+    
 
     /**
      * Handles clicks on the "Translate" button. It either reverts to the
@@ -213,7 +154,8 @@ export default function NewsCard({
     const performTranslation = async (targetLanguage) => {
         setIsLangSelectorOpen(false);
         setIsTranslating(true);
-
+        setSelectedLanguage(targetLanguage);
+     
         try {
             // Translate title and summary simultaneously
             const [translatedTitle, translatedSummary] = await Promise.all([
@@ -222,8 +164,8 @@ export default function NewsCard({
             ]);
 
             setTranslatedContent({
-            title: translatedTitle,
-            summary: translatedSummary,
+                title: translatedTitle,
+                summary: translatedSummary,
             });
             setIsTranslated(true);
         } catch (error) {
