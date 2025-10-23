@@ -6,6 +6,7 @@ const { connectDB } = require("./config/db");
 const { saveArticles, getArticlesByTopic, getArticles } = require("./ArticleService");
 const {translationController} = require("./translation-and-speech/controller/translationController")
 const cors = require("cors");
+const { handleTextToSpeech } = require("./translation-and-speech/controller/textToSpeechController");
 
 dotenv.config();
 
@@ -172,6 +173,7 @@ app.get("/articles", async (req, res) => {
 });
 
 app.post('/api/translation' , translationController)
+app.post('/api/tts' , handleTextToSpeech)
 
 // =================== SERVER START =================== //
 connectDB().then(() => {
