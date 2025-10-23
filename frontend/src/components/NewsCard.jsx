@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 // Import a custom component for language selection.
 import LanguageSelector from "./LanguageSelector";
+import { handleTranslation } from "../services/translation-and-speech/translate";
 
 
 // --- Helper function to chunk text for the ElevenLabs API ---
@@ -209,42 +210,29 @@ export default function NewsCard({
         }
     };
 
-    /**
-     * Performs the translation using the MyMemory API.
-     * @param {string} targetLanguage - The language code (e.g., 'es', 'fr').
-     */
     const performTranslation = async (targetLanguage) => {
         setIsLangSelectorOpen(false);
-        setIsTranslating(true); // Show translating indicator.
+        setIsTranslating(true);
 
         try {
-            const sourceLanguage = 'en'; // Assuming original text is English.
-            // Fetch translations for both title and summary simultaneously.
-            const [titleResponse, summaryResponse] = await Promise.all([
-                fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(title)}&langpair=${sourceLanguage}|${targetLanguage}`),
-                fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(summary)}&langpair=${sourceLanguage}|${targetLanguage}`)
+            // Translate title and summary simultaneously
+            const [translatedTitle, translatedSummary] = await Promise.all([
+            await handleTranslation(title, targetLanguage),
+            await handleTranslation(summary, targetLanguage),
             ]);
-            const titleData = await titleResponse.json();
-            const summaryData = await summaryResponse.json();
 
-            // Check if both API calls were successful.
-            if (titleData.responseStatus === 200 && summaryData.responseStatus === 200) {
-                // Update state with the translated text.
-                setTranslatedContent({
-                    title: titleData.responseData.translatedText,
-                    summary: summaryData.responseData.translatedText,
-                });
-                setIsTranslated(true);
-            } else {
-                throw new Error("Translation API returned an error.");
-            }
+            setTranslatedContent({
+            title: translatedTitle,
+            summary: translatedSummary,
+            });
+            setIsTranslated(true);
         } catch (error) {
-            console.error("Translation API error:", error);
-            alert("Sorry, we couldn't translate the content.");
+            console.error('Translation failed:', error);
+            alert('Sorry, translation failed.');
         } finally {
-            setIsTranslating(false); // Hide translating indicator.
+            setIsTranslating(false);
         }
-    };
+        };
 
 
     // --- Render ---
