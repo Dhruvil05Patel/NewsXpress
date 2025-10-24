@@ -1,6 +1,6 @@
 // --- Imports ---
 import React, { useState } from 'react';
-import { languages } from './languages'; // A predefined list of languages
+import { languages } from '../utils/languages'; // A predefined list of languages
 import { X } from 'lucide-react';      // Icon for the close button
 
 /**

@@ -13,6 +13,9 @@ async function handleTextToSpeech(req, res) {
             }
         };
 
+        console.log(ttsVoiceMap[language_code] );
+        
+
         const [ttsResponse] = await ttsClient.synthesizeSpeech(ttsRequest);
         const audioContent = ttsResponse.audioContent
 
