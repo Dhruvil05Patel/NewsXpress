@@ -6,6 +6,9 @@ import SideBar from "./components/SideBar";
 import AllNews from "./components/AllNews";
 import CategoryNews from "./components/CategoryNews";
 import LoginPage from "./components/LoginPage";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 // --- Category Configuration ---
 // A centralized object to store titles and subtitles for each news category.
@@ -151,6 +154,17 @@ function App() {
         {/* The LoginPage is rendered conditionally based on the `showLogin` state. */}
         {showLogin && <LoginPage onClose={closeLogin} />}
       </div>
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}       // duration in ms
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </BrowserRouter>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { textToSpeech } from '../services/translation-and-speech/textToSpeech';
+import {toast} from 'react-toastify';
 
 /**
  * Custom hook to manage text-to-speech functionality
@@ -37,16 +38,20 @@ export const useTextToSpeech = (selectedLanguage) => {
         cancelPlaybackRef.current = false;
 
         if (textToSpeak) {
-        await textToSpeech(
-            textToSpeak,
-            selectedLanguage,
-            setIsFetchingAudio,
-            setIsSpeaking,
-            cancelPlaybackRef,
-            audioPlayer
-        );
+            try {
+                await textToSpeech(
+                textToSpeak,
+                selectedLanguage,
+                setIsFetchingAudio,
+                setIsSpeaking,
+                cancelPlaybackRef,
+                audioPlayer
+                );   
+            } catch (error) {  
+                toast.error(error.message || "Something went wrong while fetching audio.",);
+            }
         } else {
-        alert("Sorry, there is no content to listen to.");
+            alert("Sorry, there is no content to listen to.");
         }
     };
 

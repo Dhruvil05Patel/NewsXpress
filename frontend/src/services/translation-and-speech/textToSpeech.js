@@ -25,7 +25,10 @@ export const textToSpeech = async (
       }),
     });
 
-    if (!response.ok) throw new Error("TTS Request Failed");
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Unknown Error')
+    }
 
     const audioBlob = await response.blob();
     const audioUrl = URL.createObjectURL(audioBlob);
@@ -39,12 +42,10 @@ export const textToSpeech = async (
 
     URL.revokeObjectURL(audioUrl);
   } catch (error) {
-    console.error("TTS Error:", error);
-    alert("Sorry, we couldn't play the audio.");
-    return;
+    throw error;
+  } finally{
+    setIsSpeaking(false);
+    setIsFetchingAudio(false);
+    cancelPlaybackRef.current = false;
   }
-
-  setIsSpeaking(false);
-  setIsFetchingAudio(false);
-  cancelPlaybackRef.current = false;
 };
