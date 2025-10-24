@@ -5,6 +5,10 @@ const ttsVoiceMap = require('../utils/languageVoiceMap')
 async function handleTextToSpeech(req, res) {
     const {text , language_code} = req.body
     try{
+        if(ttsVoiceMap[language_code] === undefined){
+            res.status(404).json({error : 'Text-to-Speech for this language is not supported.'});
+            return;
+        }
         const ttsRequest = {
             input : {text : text},
             voice : ttsVoiceMap[language_code] || ttsVoiceMap['en'],
