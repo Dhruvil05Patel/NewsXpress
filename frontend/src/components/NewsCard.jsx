@@ -1,7 +1,4 @@
-// --- Imports ---
-// Import React hooks for state and references.
-import React, { useState, useRef } from "react";
-// Import icons from the lucide-react library for the UI.
+import React, { useState } from "react";
 import {
     SquareArrowOutUpRight,
     Languages,
@@ -9,53 +6,10 @@ import {
     VolumeX,
     LoaderCircle,
 } from "lucide-react";
-// Import a custom component for language selection.
 import LanguageSelector from "./LanguageSelector";
-import { handleTranslation } from "../services/translation-and-speech/translate";
-import {textToSpeech} from "../services/translation-and-speech/textToSpeech"
+import { useTextToSpeech } from "../hooks/useTextToSpeech";
+import { useTranslation } from "../hooks/useTranslation";
 
-
-// --- Helper function to chunk text for the ElevenLabs API ---
-/**
- * Splits a long text into smaller chunks based on sentence endings.
- * This is necessary because the ElevenLabs API has a character limit per request.
- * @param {string} text - The full text to be chunked.
- * @param {number} [limit=2500] - The maximum character length for each chunk.
- * @returns {string[]} An array of text chunks.
- */
-const chunkText = (text, limit = 2500) => {
-    // Return an empty array if there's no text.
-    if (!text) return [];
-    // Split text into sentences for cleaner breaks.
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    const chunks = [];
-    let currentChunk = "";
-
-    // Loop through each sentence to build chunks.
-    for (const sentence of sentences) {
-        // If adding the next sentence exceeds the limit, push the current chunk.
-        if (currentChunk.length + sentence.length > limit) {
-            chunks.push(currentChunk.trim());
-            currentChunk = sentence; // Start a new chunk with the current sentence.
-        } else {
-            // Otherwise, add the sentence to the current chunk.
-            currentChunk += ` ${sentence.trim()}`;
-        }
-    }
-
-    // Add the last remaining chunk to the array.
-    if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim());
-    }
-
-    return chunks;
-};
-
-
-/**
- * A UI component that displays a single news article with features like
- * translation and text-to-speech.
- */
 export default function NewsCard({
     title,
     summary,
@@ -66,119 +20,49 @@ export default function NewsCard({
     category,
     onCardClick,
 }) {
-    // --- State Management ---
-    // Manages the visibility of the language selection modal.
-    const [isLangSelectorOpen, setIsLangSelectorOpen] = useState(false);
-    // Tracks if the article's main image failed to load.
+    // Local state for image error handling
     const [imgError, setImgError] = useState(false);
-    // Tracks if the audio is currently playing.
-    const [isSpeaking, setIsSpeaking] = useState(false);
-    // Tracks if the content has been translated.
-    const [isTranslated, setIsTranslated] = useState(false);
-    // Stores the translated title and summary.
-    const [translatedContent, setTranslatedContent] = useState({ title: "", summary: "" });
-    // Tracks if the translation API call is in progress.
-    const [isTranslating, setIsTranslating] = useState(false);
-    // Tracks if the audio is being fetched from the API.
-    const [isFetchingAudio, setIsFetchingAudio] = useState(false);
-    // Tracks the selected Language
-    const [selectedLanguage, setSelectedLanguage] = useState("en");
 
-    
-    // --- Refs ---
-    // Holds the HTML <audio> element to control playback.
-    const audioPlayer = useRef(null);
-    // A flag to signal immediate cancellation of ongoing audio playback.
-    const cancelPlaybackRef = useRef(false);
+    // Use custom hooks
+    const {
+        isTranslated,
+        translatedContent,
+        isTranslating,
+        selectedLanguage,
+        isLangSelectorOpen,
+        setIsLangSelectorOpen,
+        handleTranslateClick,
+        performTranslation,
+    } = useTranslation();
 
+    const {
+        isSpeaking,
+        isFetchingAudio,
+        handleListen,
+    } = useTextToSpeech(selectedLanguage);
 
-    // --- Handlers & Logic ---
-
-    /**
-     * Sets the image error state to true, causing a fallback UI to render.
-     */
+    // Image error handler
     const handleImageError = () => setImgError(true);
 
-    /**
-     * Handles the play/stop logic for the text-to-speech feature.
-     */
-    const handleListen = async (e) => {
-        e.stopPropagation(); // Prevents the card's onCardClick from firing.
-        
-        // Determine which text to speak: translated or original.
-        const textToSpeak = (isTranslated ? translatedContent.summary : summary) || (isTranslated ? translatedContent.title : title);
-
-        // If audio is already playing, stop it.
-        if (isSpeaking) {
-            cancelPlaybackRef.current = true; // Signal to stop the speaking loop.
-            if (audioPlayer.current) {
-                audioPlayer.current.pause(); // Pause the current audio element.
-            }
-            setIsSpeaking(false);
-            setIsFetchingAudio(false);
-            return;
-        }
-
-        // Reset cancellation flag for a new playback session.
-        cancelPlaybackRef.current = false;
-
-        // If there's text, use the ElevenLabs API to generate and play audio.
-        if (textToSpeak) {
-            await textToSpeech(
-                textToSpeak,
-                selectedLanguage,
-                setIsFetchingAudio,
-                setIsSpeaking,
-                cancelPlaybackRef,
-                audioPlayer
-            );
-        } else {
-            alert("Sorry, there is no content to listen to.");
-        }
-    };
-    
-
-    /**
-     * Handles clicks on the "Translate" button. It either reverts to the
-     * original text or opens the language selector.
-     */
-    const handleTranslateClick = (e) => {
-        e.stopPropagation(); // Prevent card click.
-        if (isTranslated) {
-            setIsTranslated(false); // If already translated, show original.
-        } else {
-            setIsLangSelectorOpen(true); // Otherwise, open language picker.
-        }
+    // Wrapper function to handle translate click event
+    const onTranslateClick = (e) => {
+        e.stopPropagation();
+        handleTranslateClick();
     };
 
-    const performTranslation = async (targetLanguage) => {
-        setIsLangSelectorOpen(false);
-        setIsTranslating(true);
-        setSelectedLanguage(targetLanguage);
-     
-        try {
-            // Translate title and summary simultaneously
-            const [translatedTitle, translatedSummary] = await Promise.all([
-            await handleTranslation(title, targetLanguage),
-            await handleTranslation(summary, targetLanguage),
-            ]);
+    // Wrapper for performTranslation with current title/summary
+    const onSelectLanguage = (targetLanguage) => {
+        performTranslation(title, summary, targetLanguage);
+    };
 
-            setTranslatedContent({
-                title: translatedTitle,
-                summary: translatedSummary,
-            });
-            setIsTranslated(true);
-        } catch (error) {
-            console.error('Translation failed:', error);
-            alert('Sorry, translation failed.');
-        } finally {
-            setIsTranslating(false);
-        }
-        };
+    // Wrapper for handleListen with appropriate text
+    const onListenClick = async (e) => {
+        e.stopPropagation();
+        const textToSpeak = (isTranslated ? translatedContent.summary : summary) || 
+                           (isTranslated ? translatedContent.title : title);
+        await handleListen(textToSpeak);
+    };
 
-
-    // --- Render ---
-    // The JSX that defines the component's appearance.
     return (
         <article
             onClick={onCardClick}
@@ -186,7 +70,12 @@ export default function NewsCard({
         >
             {/* Conditionally render the image or a fallback UI if the image fails to load. */}
             {imageUrl && !imgError ? (
-                <img src={imageUrl} alt={title} className="w-full h-[70vh] max-h-[600px] object-cover" onError={handleImageError} />
+                <img 
+                    src={imageUrl} 
+                    alt={title} 
+                    className="w-full h-[70vh] max-h-[600px] object-cover" 
+                    onError={handleImageError} 
+                />
             ) : (
                 <div className="w-full h-[70vh] max-h-[600px] bg-gradient-to-r from-blue-900 to-blue-700 flex items-center justify-center">
                     <span className="text-gray-300 text-sm">Image Not Found</span>
@@ -220,7 +109,7 @@ export default function NewsCard({
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Translate Button */}
                     <button
-                        onClick={handleTranslateClick}
+                        onClick={onTranslateClick}
                         disabled={isTranslating}
                         className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-50"
                     >
@@ -230,7 +119,7 @@ export default function NewsCard({
 
                     {/* Listen Button */}
                     <button
-                        onClick={handleListen}
+                        onClick={onListenClick}
                         disabled={isFetchingAudio && !isSpeaking}
                         className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all backdrop-blur-sm disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking ? "bg-red-500/50 hover:bg-red-500/60" : "bg-white/10 hover:bg-white/20"}`}
                     >
@@ -266,7 +155,7 @@ export default function NewsCard({
             {/* Conditionally render the Language Selector modal when needed. */}
             {isLangSelectorOpen && (
                 <LanguageSelector
-                    onSelectLanguage={performTranslation}
+                    onSelectLanguage={onSelectLanguage}
                     onClose={() => setIsLangSelectorOpen(false)}
                 />
             )}
