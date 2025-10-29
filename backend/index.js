@@ -1,57 +1,183 @@
-const express = require("express"); // Importing the essential web framework library for building APIs
-const dotenv = require("dotenv"); // For loading environment variables from .env
-const { fetchNews } = require("./FetchingNews"); // Custom function to fetch news articles
-const { summarizeNewsArticles } = require("./Summarizing"); // Custom function to summarize articles
-const { connectDB } = require("./config/db"); // Database connection function (Sequelize + Supabase)
-const cors = require("cors"); // Middleware to enable CORS for cross-origin requests
+const express = require("express");
+const dotenv = require("dotenv");
+const { fetchNews } = require("./FetchingNews");
+const { summarizeNewsArticles } = require("./Summarizing");
+const { connectDB } = require("./config/db");
+const { saveArticles, getArticlesByTopic, getArticles } = require("./ArticleService");
+const {translationController} = require("./translation-and-speech/controller/translationController")
+const cors = require("cors");
+const { handleTextToSpeech } = require("./translation-and-speech/controller/textToSpeechController");
 
-dotenv.config(); // Initialize dotenv to access environment variables
+dotenv.config();
 
-const app = express(); // Create an Express application
-const port = process.env.PORT || 5000; // Use PORT from .env or default to 5000
+const app = express();
+const port = process.env.PORT || 4000;
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true })); // Enable CORS for frontend requests
-// =================== ROUTES =================== //
+// CORS configuration - allow multiple origins
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",  // Frontend Vite dev server
+    "http://localhost:3000",  // Alternative React dev server
+    "http://localhost:4000",  // Backend itself (for direct browser access)
+  ],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
+app.use(express.json()); // Parse JSON request bodies
+
+
+// =================== MAIN ROUTES =================== //
+
+// Default route: read latest news directly from DB
 app.get("/get-summarized-news", async (req, res) => {
-  // Endpoint: GET request to fetch summarized news
-
-  const query = "Gujarat"; // Default query term for news
   try {
-    // 1️⃣ Fetch news articles from external API
-    const newsArticles = await fetchNews(query);
+    const limit = parseInt(req.query.limit) || 15;
+    const forceLive = req.query.live === '1'; // pass ?live=1 to force a fresh fetch
+    console.log(`\n Retrieving latest ${limit} articles from database (All). forceLive=${forceLive}`);
 
-    // If no articles were fetched, return "not found"
-    if (!newsArticles.length) {
-      return res.status(404).json({ message: "No news articles found." });
+    let articles = [];
+    if (!forceLive) {
+      // Try DB first
+      articles = await getArticles({ limit });
     }
 
-    // 2️⃣ Filter only articles that have at least a title and a link
-    const articlesWithContent = newsArticles.filter(
-      (article) => article.title && article.link
-    );
+    if (!articles || articles.length === 0) {
+      // DB empty or forced live — fetch + summarize
+      console.log("No articles in DB or live fetch requested — fetching live news...");
+      const newsArticles = await fetchNews("all", 15);
+      const articlesWithContent = newsArticles.filter(a => a.title && a.link);
+      if (!articlesWithContent.length) {
+        return res.status(404).json({ message: "No news articles found." });
+      }
+      const summarizedNews = await summarizeNewsArticles(articlesWithContent.slice(0, 8));
 
-    // 3️⃣ Summarize only the first 5 articles (avoid overloading)
-    const summarizedNews = await summarizeNewsArticles(
-      articlesWithContent.slice(0, 8)
-    );
+      // Optionally save results to DB (comment out if you don't want auto-saving)
+      try {
+        const saveResult = await saveArticles(summarizedNews);
+        console.log(`Auto-saved ${saveResult.count} articles (errors: ${saveResult.errors.length})`);
+      } catch (saveErr) {
+        console.warn("Auto-save failed:", saveErr);
+      }
 
-    // 4️⃣ Send JSON response back to client
+      return res.json({
+        category: "All",
+        location: "India",
+        count: summarizedNews.length,
+        summarizedNews
+      });
+    }
+
+    // Return DB results
     res.json({
-      query, // The query used for fetching
-      count: summarizedNews.length, // Number of summarized articles
-      summarizedNews, // The actual summaries
+      category: "All",
+      location: "India",
+      count: articles.length,
+      summarizedNews: articles
     });
   } catch (err) {
-    // Error handling: If something goes wrong, send 500 Internal Server Error
-    console.error("Error:", err);
-    res.status(500).json({ error: "Error fetching or summarizing news." });
+    console.error("Error reading/fetching articles:", err);
+    res.status(500).json({ error: "Error retrieving news." });
   }
 });
 
+// Category-based route: read by topic from DB
+app.get("/get-summarized-news/:category", async (req, res) => {
+  const category = req.params.category;
+  try {
+    const limit = parseInt(req.query.limit) || 15;
+    console.log(`\n Retrieving up to ${limit} articles from database for category: ${category}`);
+
+    const articles = await getArticlesByTopic(category, limit);
+
+    if (!articles || articles.length === 0) {
+      return res.status(404).json({
+        message: `No news found in database for category: ${category}`
+      });
+    }
+
+    res.json({
+      category,
+      location: "India",
+      count: articles.length,
+      summarizedNews: articles
+    });
+  } catch (err) {
+    console.error(`Error fetching articles by topic ${category}:`, err);
+    res.status(500).json({ error: "Error retrieving news from database." });
+  }
+});
+
+//  Save fetched articles to database
+app.post("/save-articles", async (req, res) => {
+  try {
+    const category = req.query.category || "all";
+
+    console.log(`\n Fetching and saving ${category} news to database...`);
+      
+    const newsArticles = await fetchNews(category, 15);
+    console.log(` Fetched ${newsArticles.length} articles from news API`);
+    
+    const articlesWithContent = newsArticles.filter(a => a.title && a.link);
+    console.log(` Filtered to ${articlesWithContent.length} articles with content`);
+
+    if (!articlesWithContent.length) {
+      return res.status(404).json({ message: "No articles to save." });
+    }
+
+    console.log(` Summarizing articles with AI...`);
+    const summarizedNews = await summarizeNewsArticles(articlesWithContent.slice(0, 8));
+    console.log(` Summarized ${summarizedNews.length} articles`);
+    
+    console.log(` Saving to database...`);
+    const result = await saveArticles(summarizedNews);
+
+    res.json({
+      message: "Articles saved successfully",
+      saved: result.count,
+      total: summarizedNews.length,
+      errors: result.errors.length,
+      errorDetails: result.errors,
+    });
+  } catch (err) {
+    console.error(" Error saving articles:", err);
+    console.error("Stack trace:", err.stack);
+    res.status(500).json({ 
+      error: "Error saving articles to database.",
+      details: err.message 
+    });
+  }
+});
+
+// Get articles from database
+app.get("/articles", async (req, res) => {
+  try {
+    const topic = req.query.topic;
+    const limit = parseInt(req.query.limit) || 20;
+
+    let articles;
+    if (topic) {
+      articles = await getArticlesByTopic(topic, limit);
+    } else {
+      articles = await getArticles({ limit });
+    }
+
+    res.json({
+      count: articles.length,
+      articles,
+    });
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).json({ error: "Error fetching articles from database." });
+  }
+});
+
+app.post('/api/translation' , translationController)
+app.post('/api/tts' , handleTextToSpeech)
+
 // =================== SERVER START =================== //
-// First connect to the database, then start the server
 connectDB().then(() => {
   app.listen(port, () => {
-    console.log(`✅ Server running on http: //localhost:${port}`);
+    console.log(` Server running on http://localhost:${port}`);
   });
 });
