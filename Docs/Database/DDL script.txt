@@ -24,6 +24,11 @@ create table if not exists profiles (
   -- NEW PASSWORD FIELDS
   password text,                     -- hashed password
   pass_updated_times timestamptz[],  -- array of times when password changed
+  
+  -- NEW PREFERENCE FIELDS
+  actor text[],
+  place text,
+  topic text,
 
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -79,11 +84,9 @@ create table if not exists articles (
   content_text text,
   language_code varchar(5),
   image_url text,
-  sentiment numeric(3,2) check (sentiment >= -1.0 and sentiment <= 1.0),
   actors text[],          
   place text,             
-  topic text,             
-  subtopic text,          
+  topic text,                      
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -94,32 +97,21 @@ create trigger trg_articles_updated_at
   before update on articles
   for each row execute function trigger_set_timestamp();
 
--- 4. Bookmarks
-
-create table if not exists bookmarks (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid references profiles(id) on delete cascade,
-  article_id uuid references articles(id) on delete cascade,
-  note text,
-  created_at timestamptz default now()
-);
-
-create index if not exists idx_bookmarks_profile on bookmarks(profile_id);
-create index if not exists idx_bookmarks_article on bookmarks(article_id);
-
--- 5. User Interactions
+-- 4. User Interactions
 
 create table if not exists user_interactions (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid references profiles(id) on delete cascade,
   article_id uuid references articles(id) on delete cascade,
-  interaction_at timestamptz default now()
+  interaction_at timestamptz default now(),
+  bookmark_timestamp timestamptz,
+  note text
 );
 
 create index if not exists idx_user_interactions_profile on user_interactions(profile_id);
 create index if not exists idx_user_interactions_article on user_interactions(article_id);
 
--- 6. Notifications
+-- 5. Notifications
 
 create table if not exists notifications (
   id uuid primary key default gen_random_uuid(),
@@ -134,7 +126,7 @@ create table if not exists notifications (
 
 create index if not exists idx_notifications_profile on notifications(profile_id);
 
--- 7. Useful Views
+-- 6. Useful Views
 
 create or replace view vw_articles_with_source as
 select 
@@ -148,13 +140,14 @@ select
   a.created_at,
   a.actors,
   a.place,
-  a.topic,
-  a.subtopic
+  a.topic
 from articles a 
 left join sources s on a.source_id = s.id;
 
--- 8. Final sanity indexes
+-- 7. Final sanity indexes
 
 create index if not exists idx_articles_published_at on articles(published_at);
 create index if not exists idx_articles_source_id on articles(source_id);
 create index if not exists idx_profiles_username on profiles(username);
+
+-- 
