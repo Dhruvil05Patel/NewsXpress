@@ -31,6 +31,16 @@ module.exports = (sequelize) => {
       defaultValue: DataTypes.NOW,
       comment: 'Timestamp when user interacted with the article',
     },
+    
+    bookmark_timestamp: {
+      type: DataTypes.DATE,
+      allowNull: true,   
+    },
+    note: {
+      type: DataTypes.TEXT,
+      allowNull: true,    
+    },
+  
   }, {
     tableName: 'user_interactions',
     timestamps: false, // No created_at/updated_at in schema

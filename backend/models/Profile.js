@@ -37,6 +37,20 @@ module.exports = (sequelize) => {
       defaultValue: [],
       comment: 'Array of timestamps when password was changed',
     },
+
+    actor: {
+      type: DataTypes.ARRAY(DataTypes.TEXT), // Corresponds to text[]
+      allowNull: true,
+    },
+    place: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    topic: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -67,12 +81,7 @@ module.exports = (sequelize) => {
 
   // Define associations
   Profile.associate = (models) => {
-    Profile.hasMany(models.Bookmark, {
-      foreignKey: 'profile_id',
-      as: 'bookmarks',
-      onDelete: 'CASCADE',
-    });
-
+   
     Profile.hasMany(models.UserInteraction, {
       foreignKey: 'profile_id',
       as: 'interactions',
