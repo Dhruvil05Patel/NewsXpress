@@ -1,9 +1,9 @@
 // src/components/ReelView.jsx
 
 // --- Imports ---
-import React, { useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
-import ReelCard from "./ReelCard"; // The component for rendering a single story in the reel
+import ReelCard from "./ReelCard";
 
 /**
  * A full-screen overlay component that displays news articles in a vertically
@@ -14,57 +14,100 @@ import ReelCard from "./ReelCard"; // The component for rendering a single story
  * @param {Function} props.onClose - The function to call when closing the view.
  */
 export default function ReelView({ news, initialIndex, onClose }) {
-    // --- Refs ---
-    // Ref to hold an array of DOM elements, one for each card, to enable programmatic scrolling.
-    const cardRefs = useRef([]);
+    const [currentIndex, setCurrentIndex] = useState(initialIndex);
+    const containerRef = useRef(null);
+    const scrollTimeout = useRef(null);
 
-    // --- Side Effects (useEffect) ---
-    // Handles setup logic when the component first mounts.
+    // Lock body scroll when mounted
     useEffect(() => {
-        // Immediately scroll to the article that was clicked to open the reel view.
-        if (cardRefs.current[initialIndex]) {
-            // 'instant' behavior prevents a jarring scroll animation on initial load.
-            cardRefs.current[initialIndex].scrollIntoView({ behavior: "instant" });
-        }
-
-        // Lock the body scroll to prevent the underlying page from moving.
         document.body.style.overflow = "hidden";
-
-        // Cleanup function: This runs when the component is unmounted (closed).
         return () => {
-            // Restore body scroll to normal.
             document.body.style.overflow = "auto";
         };
-    }, [initialIndex]); // This effect runs only once on mount.
+    }, []);
+
+    const handleWheel = (e) => {
+        e.preventDefault();
+
+        if (scrollTimeout.current) return; // Prevent rapid scrolling
+
+        const delta = e.deltaY;
+
+        if (delta > 0 && currentIndex < news.length - 1) {
+            // Scroll DOWN (delta > 0) -> Go to NEXT slide
+            setCurrentIndex((prev) => prev + 1);
+        } else if (delta < 0 && currentIndex > 0) {
+            // Scroll UP (delta < 0) -> Go to PREVIOUS slide
+            // --- THIS IS THE CORRECTED LINE ---
+            setCurrentIndex((prev) => prev - 1);
+        }
+
+        // Add a small delay between scroll events
+        scrollTimeout.current = setTimeout(() => {
+            scrollTimeout.current = null;
+        }, 500);
+    };
+
+    // Handle touch events
+    const [touchStart, setTouchStart] = useState(null);
+
+    const handleTouchStart = (e) => {
+        setTouchStart(e.touches[0].clientY);
+    };
+
+    const handleTouchEnd = (e) => {
+        if (!touchStart) return;
+
+        const touchEnd = e.changedTouches[0].clientY;
+        const diff = touchStart - touchEnd;
+
+        if (Math.abs(diff) < 50) return; // Ignore small taps/drags
+
+        if (diff > 0 && currentIndex < news.length - 1) {
+            // Swipe UP (diff > 0) -> Go to NEXT slide
+            setCurrentIndex((prev) => prev + 1);
+        } else if (diff < 0 && currentIndex > 0) {
+            // Swipe DOWN (diff < 0) -> Go to PREVIOUS slide
+            setCurrentIndex((prev) => prev - 1);
+        }
+
+        setTouchStart(null);
+    };
 
     // --- Render ---
     return (
         // Main fixed-position overlay that covers the entire screen.
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm animate-fade-in">
+        <div className="fixed top-16 bottom-0 left-0 right-0 lg:ml-64 xl:mr-80 z-50 bg-black">
             {/* A persistent close button in the top-right corner. */}
             <button
                 onClick={onClose}
-                className="absolute top-4 right-4 z-50 text-white bg-black/50 rounded-full p-2 hover:bg-white/20 transition-colors"
+                className="absolute top-4 right-4 z-[60] text-white bg-black/50 rounded-full p-2 hover:bg-white/20 transition-colors"
                 aria-label="Close reel view"
             >
                 <X size={24} />
             </button>
 
-            {/* The scrollable container for all the news cards. */}
-            {/* `snap-y snap-mandatory` enables vertical scroll-snapping for a reel effect. */}
-            <div className="h-screen w-full overflow-y-scroll snap-y snap-mandatory">
-                {news.map((item, index) => (
-                    // This wrapper div serves as a full-height snap target.
-                    <div
-                        key={item.id || item.title}
-                        // This callback populates the `cardRefs` array with the DOM node of each card.
-                        ref={(el) => (cardRefs.current[index] = el)}
-                        // `scroll-snap-align-start` ensures the top of the card aligns with the container.
-                        className="h-screen w-full scroll-snap-align-start flex-shrink-0"
-                    >
-                        <ReelCard {...item} />
-                    </div>
-                ))}
+            {/* Reel Container */}
+            <div
+                ref={containerRef}
+                className="h-full w-full snap-y snap-mandatory overflow-hidden"
+                onWheel={handleWheel}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+            >
+                <div
+                    className="h-full transition-transform duration-500 ease-out"
+                    style={{ transform: `translateY(-${currentIndex * 100}%)` }}
+                >
+                    {news.map((item, index) => (
+                        <div
+                            key={item.id || item.title}
+                            className="h-full w-full snap-start"
+                        >
+                            <ReelCard {...item} />
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

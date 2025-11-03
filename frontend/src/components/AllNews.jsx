@@ -130,8 +130,8 @@ export default function AllNews() {
                         Featured Stories
                     </h2>
 
-                    {/* News Card Grid */}
-                    <div className="flex flex-col gap-8">
+                    {/* News Card Grid --- THIS IS THE UPDATED LINE --- */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {news.length > 0 ? (
                             news.map((item, index) => (
                                 <NewsCard
