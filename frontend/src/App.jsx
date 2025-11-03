@@ -6,9 +6,9 @@ import SideBar from "./components/SideBar";
 import AllNews from "./components/AllNews";
 import CategoryNews from "./components/CategoryNews";
 import LoginPage from "./components/LoginPage";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-
+import Bookmarks from "./components/Bookmarks";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // --- Category Configuration ---
 // A centralized object to store titles and subtitles for each news category.
@@ -107,11 +107,15 @@ function App() {
           />
           <Route
             path="/business"
-            element={<CategoryNews category="Business" {...categories.business} />}
+            element={
+              <CategoryNews category="Business" {...categories.business} />
+            }
           />
           <Route
             path="/science"
-            element={<CategoryNews category="Science" {...categories.science} />}
+            element={
+              <CategoryNews category="Science" {...categories.science} />
+            }
           />
           <Route
             path="/sports"
@@ -120,12 +124,17 @@ function App() {
           <Route
             path="/environment"
             element={
-              <CategoryNews category="Environment" {...categories.environment} />
+              <CategoryNews
+                category="Environment"
+                {...categories.environment}
+              />
             }
           />
           <Route
             path="/politics"
-            element={<CategoryNews category="Politics" {...categories.politics} />}
+            element={
+              <CategoryNews category="Politics" {...categories.politics} />
+            }
           />
           <Route
             path="/health"
@@ -148,15 +157,16 @@ function App() {
             path="/crime"
             element={<CategoryNews category="Crime" {...categories.crime} />}
           />
+          <Route path="/bookmarks" element={<Bookmarks />} />
         </Routes>
 
         {/* --- Modals --- */}
         {/* The LoginPage is rendered conditionally based on the `showLogin` state. */}
         {showLogin && <LoginPage onClose={closeLogin} />}
       </div>
-      <ToastContainer 
+      <ToastContainer
         position="top-right"
-        autoClose={3000}       // duration in ms
+        autoClose={3000} // duration in ms
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick

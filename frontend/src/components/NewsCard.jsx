@@ -59,14 +59,15 @@ export default function NewsCard({
     const onListenClick = async (e) => {
         e.stopPropagation();
         const textToSpeak = (isTranslated ? translatedContent.summary : summary) || 
-                           (isTranslated ? translatedContent.title : title);
+                            (isTranslated ? translatedContent.title : title);
         await handleListen(textToSpeak);
     };
 
     return (
         <article
             onClick={onCardClick}
-            className="relative w-full overflow-hidden rounded-none sm:rounded-lg shadow-md bg-gray-800 text-white cursor-pointer"
+            // --- THIS IS THE UPDATED LINE ---
+            className="relative w-full overflow-hidden rounded-lg shadow-md bg-gray-800 text-white cursor-pointer"
         >
             {/* Conditionally render the image or a fallback UI if the image fails to load. */}
             {imageUrl && !imgError ? (
@@ -107,7 +108,7 @@ export default function NewsCard({
 
                 {/* Container for action buttons. */}
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Translate Button */}
+                    {/* Translate Button
                     <button
                         onClick={onTranslateClick}
                         disabled={isTranslating}
@@ -115,9 +116,9 @@ export default function NewsCard({
                     >
                         {isTranslating ? 'Translating...' : (isTranslated ? 'Show Original' : 'Translate')}
                         <Languages size={16} />
-                    </button>
+                    </button> */}
 
-                    {/* Listen Button */}
+                    {/* Listen Button
                     <button
                         onClick={onListenClick}
                         disabled={isFetchingAudio && !isSpeaking}
@@ -137,7 +138,7 @@ export default function NewsCard({
                                 Listen News <Volume2 size={16} />
                             </>
                         )}
-                    </button>
+                    </button> */}
 
                     {/* Read More Link */}
                     <a

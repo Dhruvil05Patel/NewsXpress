@@ -100,7 +100,7 @@ export default function CategoryNews({ category, title, subtitle }) {
                         <hr className="border-stone-300 mb-10" />
 
                         {/* News Card Grid */}
-                        <div className="flex flex-col gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {news.length > 0 ? (
                                 // Maps over the filtered `news` array to render a list of NewsCards.
                                 news.map((item, index) => (
