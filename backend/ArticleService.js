@@ -9,7 +9,6 @@ const { sequelize } = require('./config/db');
 // Import all model definitions
 const ArticleModel = require('./models/Article');
 const SourceModel = require('./models/Source');
-const BookmarkModel = require('./models/Bookmark');
 const UserInteractionModel = require('./models/UserInteraction');
 const ProfileModel = require('./models/Profile');
 const NotificationModel = require('./models/Notification');
@@ -17,18 +16,16 @@ const NotificationModel = require('./models/Notification');
 // Initialize all models
 const Article = ArticleModel(sequelize);
 const Source = SourceModel(sequelize);
-const Bookmark = BookmarkModel(sequelize);
 const UserInteraction = UserInteractionModel(sequelize);
 const Profile = ProfileModel(sequelize);
 const Notification = NotificationModel(sequelize);
 
 // Create models object for associations
-const models = { Article, Source, Bookmark, UserInteraction, Profile, Notification };
+const models = { Article, Source, UserInteraction, Profile, Notification };
 
 // Set up all associations
 if (Article.associate) Article.associate(models);
 if (Source.associate) Source.associate(models);
-if (Bookmark.associate) Bookmark.associate(models);
 if (UserInteraction.associate) UserInteraction.associate(models);
 if (Profile.associate) Profile.associate(models);
 if (Notification.associate) Notification.associate(models);
@@ -89,11 +86,9 @@ async function saveArticle(articleData) {
       content_text: articleData.content_text,
       language_code: articleData.language_code || 'en-IN',
       image_url: articleData.image_url,
-      sentiment: articleData.sentiment,
       actors: articleData.actors || [],
       place: articleData.place,
       topic: articleData.topic,
-      subtopic: articleData.subtopic,
     });
 
     console.log(`✅ Saved article: ${article.title}`);

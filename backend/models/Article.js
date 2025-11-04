@@ -46,15 +46,7 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    sentiment: {
-      type: DataTypes.DECIMAL(3, 2),
-      allowNull: true,
-      validate: {
-        min: -1.0,
-        max: 1.0,
-      },
-      comment: 'Sentiment score from -1.0 to 1.0',
-    },
+
     actors: {
       type: DataTypes.ARRAY(DataTypes.TEXT),
       allowNull: true,
@@ -71,11 +63,7 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Main topic/category of the article',
     },
-    subtopic: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      comment: 'Subtopic/subcategory of the article',
-    },
+   
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -114,12 +102,6 @@ module.exports = (sequelize) => {
     Article.belongsTo(models.Source, {
       foreignKey: 'source_id',
       as: 'source',
-    });
-
-    Article.hasMany(models.Bookmark, {
-      foreignKey: 'article_id',
-      as: 'bookmarks',
-      onDelete: 'CASCADE',
     });
 
     Article.hasMany(models.UserInteraction, {

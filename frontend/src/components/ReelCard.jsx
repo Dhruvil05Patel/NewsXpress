@@ -31,11 +31,8 @@ export default function ReelCard({
         performTranslation,
     } = useTranslation();
 
-    const {
-        isSpeaking,
-        isFetchingAudio,
-        handleListen,
-    } = useTextToSpeech(selectedLanguage);
+    const { isSpeaking, isFetchingAudio, handleListen } =
+        useTextToSpeech(selectedLanguage);
 
     // Wrapper function to handle click event
     const onTranslateClick = (e) => {
@@ -51,14 +48,23 @@ export default function ReelCard({
     // Wrapper for handleListen with appropriate text
     const onListenClick = async (e) => {
         e.stopPropagation();
-        const textToSpeak = (isTranslated ? translatedContent.summary : summary) || 
-                           (isTranslated ? translatedContent.title : title);
+        const textToSpeak =
+            (isTranslated ? translatedContent.summary : summary) ||
+            (isTranslated ? translatedContent.title : title);
         await handleListen(textToSpeak);
     };
 
+    // --- RENDER ---
+    // This JSX is restored to the full-screen layout
     return (
         <article className="relative h-full w-full bg-gray-900 text-white flex items-center justify-center">
-            {imageUrl && <img src={imageUrl} alt={title} className="w-full h-full object-cover" />}
+            {imageUrl && (
+                <img
+                    src={imageUrl}
+                    alt={title}
+                    className="w-full h-full object-cover"
+                />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
             <span className="absolute top-20 left-6 bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
                 {category}
@@ -74,7 +80,8 @@ export default function ReelCard({
 
                 <div className="mt-4 flex flex-wrap gap-y-3 justify-between items-center">
                     <div className="font-sans text-xs text-gray-400">
-                        <span className="font-semibold">{source}</span> • <span>{timestamp}</span>
+                        <span className="font-semibold">{source}</span> •{" "}
+                        <span>{timestamp}</span>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -90,7 +97,11 @@ export default function ReelCard({
                         <button
                             onClick={onListenClick}
                             disabled={isFetchingAudio}
-                            className={`p-2.5 rounded-full backdrop-blur-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking ? "bg-red-500/50 hover:bg-red-500/60" : "bg-white/10 hover:bg-white/20"}`}
+                            className={`p-2.5 rounded-full backdrop-blur-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${
+                                isSpeaking
+                                    ? "bg-red-500/50 hover:bg-red-500/60"
+                                    : "bg-white/10 hover:bg-white/20"
+                            }`}
                             aria-label="Listen to news summary"
                         >
                             {isFetchingAudio ? (
