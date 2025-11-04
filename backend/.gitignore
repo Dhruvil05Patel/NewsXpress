@@ -50,4 +50,4 @@ jest-test-results.json
 test-results/
 
 #google credentials
-service-account-key.json
+service-account-key.jsonnode_modules/
