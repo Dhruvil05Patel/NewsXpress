@@ -27,40 +27,78 @@ if (process.env.DATABASE_URL) {
 }
 
 // =================== SEQUELIZE CONFIGURATION =================== //
-// Create a Sequelize instance connected to your Supabase PostgreSQL database
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: "postgres", // Database type is PostgreSQL
-  logging: process.env.NODE_ENV === "development" ? console.log : false, // Log SQL queries only in development
-  pool: {
-    max: 5,      // Maximum number of connections
-    min: 0,      // Minimum number of connections
-    acquire: 30000, // Max time (ms) Sequelize tries to connect before throwing error
-    idle: 10000, // Time (ms) a connection can be idle before being released
-  },
-  define: {
-    timestamps: true,    // Automatically add createdAt and updatedAt columns
-    underscored: true,   // Use snake_case instead of camelCase for column names
-    freezeTableName: true, // Prevent Sequelize from pluralizing table names
-  },
-  dialectOptions: {
-    // SSL config required by Supabase in production
-    ssl:
-      process.env.NODE_ENV === "production"
-        ? {
-            require: true,
-            rejectUnauthorized: false, // Allow self-signed certificates
-          }
-        : false, // No SSL in development
-  },
-});
+ // Create a Sequelize instance connected to your Supabase PostgreSQL database
+  const sequelize = new Sequelize(process.env.DATABASE_URL, {
+   dialect: "postgres", // Database type is PostgreSQL
+   logging: process.env.NODE_ENV === "development" ? console.log : false, // Log SQL queries only in development
+   pool: {
+     max: 5,      // Maximum number of connections
+     min: 0,      // Minimum number of connections
+      acquire: 30000, // Max time (ms) Sequelize tries to connect before throwing error
+      idle: 10000, // Time (ms) a connection can be idle before being released
+   },
+   define: {
+      timestamps: true,    // Automatically add createdAt and updatedAt columns
+      underscored: true,   // Use snake_case instead of camelCase for column names
+     freezeTableName: true, // Prevent Sequelize from pluralizing table names
+   },
+    dialectOptions: {
+      // SSL config required by Supabase in production
+     ssl:
+        process.env.NODE_ENV === "production"
+          ? {
+             require: true,
+             rejectUnauthorized: false, // Allow self-signed certificates
+           }
+         : false, // No SSL in development
+    },
+  });
+  
+// =================== MODEL LOADING & ASSOCIATIONS =================== //
 
-// =================== CONNECT FUNCTION =================== //
-// Function to test database connection
+const db = {};
+
+db.Sequelize = Sequelize;
+db.sequelize = sequelize;
+
+// Import and initialize all your models
+// (Adjust paths if your models are not in ../models/)
+db.Profile = require('../models/Profile')(sequelize);
+db.Source = require('../models/Source')(sequelize);
+db.Article = require('../models/Article')(sequelize);
+db.UserInteraction = require('../models/UserInteraction')(sequelize);
+db.Notification = require('../models/Notification')(sequelize);
+
+// Set up all associations
+// This is crucial for models to know about each other
+if (db.Profile.associate) {
+  db.Profile.associate(db);
+}
+if (db.Article.associate) {
+  db.Article.associate(db);
+}
+if (db.Source.associate) {
+  db.Source.associate(db);
+}
+if (db.UserInteraction.associate) {
+  db.UserInteraction.associate(db);
+}
+if (db.Notification.associate) {
+  db.Notification.associate(db);
+}
+
+// =================== CONNECT FUNCTION  =================== //
+// sync models after connecting
 const connectDB = async () => {
   try {
     console.log("🔄 Attempting to connect to database...");
     await sequelize.authenticate(); // Authenticate DB connection
     console.log("✅ Supabase PostgreSQL database connected successfully.");
+
+    // Sync all defined models
+    await sequelize.sync({ force: false }); // { force: false } won't delete data
+    console.log("✅ All models were synchronized successfully.");
+
   } catch (error) {
     console.error("❌ Error connecting to database:", error.message);
     console.error("Full error:", error);
@@ -68,5 +106,9 @@ const connectDB = async () => {
   }
 };
 
-// Export sequelize instance and connect function
-module.exports = { sequelize, connectDB };
+// Export sequelize instance, connect function, AND all your models
+module.exports = {
+  ...db,         // This exports Profile, Article, etc.
+  sequelize,     // Export the instance
+  connectDB      // Export the connect function
+};

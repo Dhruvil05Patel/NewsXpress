@@ -3,32 +3,8 @@
  * Helper functions to save and retrieve articles from the database
  */
 
-const { Sequelize } = require('sequelize');
-const { sequelize } = require('./config/db');
-
-// Import all model definitions
-const ArticleModel = require('./models/Article');
-const SourceModel = require('./models/Source');
-const UserInteractionModel = require('./models/UserInteraction');
-const ProfileModel = require('./models/Profile');
-const NotificationModel = require('./models/Notification');
-
-// Initialize all models
-const Article = ArticleModel(sequelize);
-const Source = SourceModel(sequelize);
-const UserInteraction = UserInteractionModel(sequelize);
-const Profile = ProfileModel(sequelize);
-const Notification = NotificationModel(sequelize);
-
-// Create models object for associations
-const models = { Article, Source, UserInteraction, Profile, Notification };
-
-// Set up all associations
-if (Article.associate) Article.associate(models);
-if (Source.associate) Source.associate(models);
-if (UserInteraction.associate) UserInteraction.associate(models);
-if (Profile.associate) Profile.associate(models);
-if (Notification.associate) Notification.associate(models);
+ // Importing only the models this service needs from the central db config
+const { Article, Source } = require('../config/db');
 
 /**
  * Find or create a news source

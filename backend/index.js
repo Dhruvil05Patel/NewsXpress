@@ -2,12 +2,17 @@ const express = require("express");
 const dotenv = require("dotenv");
 const { fetchNews } = require("./FetchingNews");
 const { summarizeNewsArticles } = require("./Summarizing");
+
 const { connectDB } = require("./config/db");
-const { saveArticles, getArticlesByTopic, getArticles } = require("./ArticleService");
+const { saveArticles, getArticlesByTopic, getArticles } = require("./services/ArticleService");
 const {translationController} = require("./translation-and-speech/controller/translationController")
+
 const cors = require("cors");
 const { handleTextToSpeech } = require("./translation-and-speech/controller/textToSpeechController");
 
+const { getProfileById, updateProfile } = require("./services/ProfileService");
+const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
+// ================================================================= //
 dotenv.config();
 
 const app = express();
@@ -175,9 +180,84 @@ app.get("/articles", async (req, res) => {
 app.post('/api/translation' , translationController)
 app.post('/api/tts' , handleTextToSpeech)
 
+// =================== PROFILE ROUTES =================== //
+// (These routes use new ProfileService)
+
+// GET a user's profile by their ID
+app.get('/api/profiles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const profile = await getProfileById(id);
+    if (!profile) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
+    res.status(200).json(profile);
+  } catch (error) {
+    res.status(500).json({ message: 'Error getting profile', error: error.message });
+  }
+});
+
+// UPDATE a user's profile (for preferences)
+app.put('/api/profiles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body; 
+    
+    const updatedProfile = await updateProfile(id, updateData);
+    
+    res.status(200).json(updatedProfile);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating profile', error: error.message });
+  }
+});
+
+
+// =================== (NEW) BOOKMARK ROUTES =================== //
+// (These routes use new UserInteractionService)
+
+// GET all bookmarks for a user
+app.get('/api/bookmarks/:profileId', async (req, res) => {
+  try {
+    const { profileId } = req.params;
+    const bookmarks = await getBookmarksByProfile(profileId);
+    res.status(200).json(bookmarks);
+  } catch (error) {
+    res.status(500).json({ message: 'Error getting bookmarks', error: error.message });
+  }
+});
+
+// ADD a new bookmark
+app.post('/api/bookmarks', async (req, res) => {
+  try {
+    const { profile_id, article_id, note } = req.body;
+    if (!profile_id || !article_id) {
+      return res.status(400).json({ message: 'profile_id and article_id are required' });
+    }
+    const bookmark = await addBookmark(profile_id, article_id, note);
+    res.status(201).json(bookmark);
+  } catch (error) {
+    res.status(500).json({ message: 'Error adding bookmark', error: error.message });
+  }
+});
+
+// REMOVE a bookmark
+app.delete('/api/bookmarks', async (req, res) => {
+  try {
+    const { profile_id, article_id } = req.body;
+    if (!profile_id || !article_id) {
+      return res.status(400).json({ message: 'profile_id and article_id are required' });
+    }
+    await removeBookmark(profile_id, article_id);
+    res.status(200).json({ message: 'Bookmark removed' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error removing bookmark', error: error.message });
+  }
+});
+
 // =================== SERVER START =================== //
 connectDB().then(() => {
   app.listen(port, () => {
     console.log(` Server running on http://localhost:${port}`);
   });
 });
+
