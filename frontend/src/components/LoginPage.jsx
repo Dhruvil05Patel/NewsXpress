@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "../assets/LoginPage.css";
+import { registerUser, loginUser } from "./auth/controller/authController";
+import { auth } from "./auth/firebase";
 
 function App() {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,6 +18,9 @@ function App() {
   // UI states
   const [showPassword, setShowPassword] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
+  const [showVerificationWait, setShowVerificationWait] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   // Password validation checks
   const passwordChecks = [
@@ -27,22 +32,46 @@ function App() {
   ];
 
   // Handle form submit
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
     if (isLogin) {
-      toast.success(`✅ Logged in as ${email}`);
+      // Login flow
+      const result = await loginUser(email, password);
+      setIsLoading(false);
+      
+      if (result.success && !result.emailVerified) {
+        // User logged in but email not verified
+        setVerificationEmail(result.email);
+        setShowVerificationWait(true);
+      } else if (result.success && result.emailVerified) {
+        // Success - verified user
+        setIsOpen(false);
+      }
     } else {
+      // Signup flow
       if (password !== confirmPassword) {
         toast.error("❌ Passwords do not match!");
+        setIsLoading(false);
         return;
       }
+      
       // Check if all password rules are satisfied
       const allValid = passwordChecks.every((check) => check.valid);
       if (!allValid) {
-        return; // Don't show toast here; user already sees the feedback
+        setIsLoading(false);
+        return;
       }
-      toast.success(`🎉 Welcome, ${username}!`);
+      
+      const result = await registerUser(email, password);
+      setIsLoading(false);
+      
+      if (result.success) {
+        // Show verification waiting screen
+        setVerificationEmail(result.email);
+        setShowVerificationWait(true);
+      }
     }
   };
 
@@ -56,7 +85,96 @@ function App() {
     setShowPassword(false);
   };
 
+  const handleRefreshAfterVerification = async () => {
+    setIsLoading(true);
+    await auth.currentUser?.reload();
+    
+    if (auth.currentUser?.emailVerified) {
+      toast.success('✅ Email verified! Welcome!');
+      setShowVerificationWait(false);
+      setIsOpen(false);
+    } else {
+      toast.warning('⚠️ Email not verified yet. Please check your inbox and verify first.');
+    }
+    setIsLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      const { sendEmailVerification } = await import('firebase/auth');
+      await sendEmailVerification(auth.currentUser);
+      toast.success('📧 Verification email resent!');
+    } catch (error) {
+      toast.error('Failed to resend email. Please try again later.');
+    }
+  };
+
   if (!isOpen) return null;
+
+  // Show verification waiting screen
+  if (showVerificationWait) {
+    return (
+      <>
+        <div className="overlay">
+          <div className="modal">
+            <button className="close-btn" onClick={() => {
+              setShowVerificationWait(false);
+              setIsOpen(false);
+            }}>
+              &times;
+            </button>
+            
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <h2>📧 Verify Your Email</h2>
+              <p style={{ margin: '20px 0', fontSize: '16px', lineHeight: '1.6' }}>
+                We've sent a verification email to:<br />
+                <strong>{verificationEmail}</strong>
+              </p>
+              <p style={{ color: '#666', marginBottom: '20px' }}>
+                Please check your inbox and click the verification link.
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '30px' }}>
+                <button 
+                  className="login-btn" 
+                  onClick={handleRefreshAfterVerification}
+                  disabled={isLoading}
+                  style={{ backgroundColor: '#4CAF50' }}
+                >
+                  {isLoading ? 'Checking...' : '✓ I\'ve Verified - Refresh'}
+                </button>
+                
+                <button 
+                  className="login-btn" 
+                  onClick={handleResendVerification}
+                  style={{ backgroundColor: '#2196F3' }}
+                >
+                  📧 Resend Verification Email
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    setShowVerificationWait(false);
+                    resetForm();
+                  }}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#666', 
+                    cursor: 'pointer',
+                    marginTop: '10px'
+                  }}
+                >
+                  ← Back to Login
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ToastContainer position="top-center" autoClose={3000} />
+      </>
+    );
+  }
 
   return (
     <>
@@ -100,8 +218,8 @@ function App() {
                   <label htmlFor="showPassLogin">Show Password</label>
                 </div>
 
-                <button type="submit" className="login-btn">
-                  Login
+                <button type="submit" className="login-btn" disabled={isLoading}>
+                  {isLoading ? 'Logging in...' : 'Login'}
                 </button>
               </form>
 
@@ -199,10 +317,10 @@ function App() {
                   type="submit"
                   className="login-btn"
                   disabled={
-                    confirmPassword && password !== confirmPassword
+                    (confirmPassword && password !== confirmPassword) || isLoading
                   }
                 >
-                  Sign Up
+                  {isLoading ? 'Signing up...' : 'Sign Up'}
                 </button>
               </form>
 

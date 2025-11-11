@@ -50,4 +50,6 @@ jest-test-results.json
 test-results/
 
 #google credentials
-service-account-key.jsonnode_modules/
+node_modules
+firebase-service-account-key.json
+gc-service-account-key.json

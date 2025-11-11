@@ -11,6 +11,7 @@ const cors = require("cors");
 const { handleTextToSpeech } = require("./translation-and-speech/controller/textToSpeechController");
 
 const { getProfileById, updateProfile } = require("./services/ProfileService");
+const { sync } = require('./controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
 // ================================================================= //
 dotenv.config();
@@ -209,6 +210,12 @@ app.put('/api/profiles/:id', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error updating profile', error: error.message });
   }
+});
+
+// Endpoint to sync Firebase-authenticated user to local profiles table
+app.post('/api/auth/sync', async (req, res) => {
+  // Delegates to controllers/authController.sync
+  return sync(req, res);
 });
 
 
