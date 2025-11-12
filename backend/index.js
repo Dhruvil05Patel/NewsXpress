@@ -18,10 +18,11 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 4000;
-
+const FRONTEND_URL = process.env.VERCEL_URL;
 // CORS configuration - allow multiple origins
 const corsOptions = {
   origin: [
+    FRONTEND_URL,
     "http://localhost:5173",  // Frontend Vite dev server
     "http://localhost:3000",  // Alternative React dev server
     "http://localhost:4000",  // Backend itself (for direct browser access)
