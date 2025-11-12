@@ -1,8 +1,12 @@
 // Import axios for HTTP requests
 import axios from 'axios';
+import dotenv from 'dotenv';
 
+dotenv.config();
+
+const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:4000';
 // Base URL for backend API
-const API_BASE_URL = 'http://localhost:4000';
+const API_BASE_URL = BACKEND_API_URL;
 
 // Create an axios instance with default config
 const api = axios.create({
