@@ -4,14 +4,16 @@ module.exports = (sequelize) => {
   const Profile = sequelize.define('Profile', {
     id: {
       type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
+      allowNull: false,
+      comment: 'Firebase UID converted to UUID format - serves as primary key',
+      // No defaultValue - we explicitly set it from Firebase UID
     },
     auth_id: {
       type: DataTypes.UUID,
       allowNull: true,
       unique: true,
-      comment: 'References auth.users in Supabase auth schema',
+      comment: 'Deprecated - Firebase UID now stored in id field',
     },
     full_name: {
       type: DataTypes.TEXT,

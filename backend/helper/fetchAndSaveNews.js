@@ -8,7 +8,7 @@
 const { connectDB } = require('../config/db');
 const { fetchNews } = require('../FetchingNews');
 const { summarizeNewsArticles } = require('../Summarizing');
-const { saveArticles } = require('../ArticleService');
+const { saveArticles } = require('../services/ArticleService');
 
 /**
  * Main function to fetch and save news

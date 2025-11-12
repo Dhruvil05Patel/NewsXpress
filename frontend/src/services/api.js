@@ -25,6 +25,12 @@ export const postData = async (endpoint, data) => {
 	return response.data;
 };
 
+// Sync Firebase-authenticated user to backend (verifies token server-side and creates/returns profile)
+export const syncUser = async (idToken) => {
+	const response = await api.post('/api/auth/sync', { idToken });
+	return response.data;
+};
+
 //Fetch summarized news articles from backend
 export const getSummarizedNews = async () => {
 	const response = await api.get('/get-summarized-news');

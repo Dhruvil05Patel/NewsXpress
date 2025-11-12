@@ -1,0 +1,153 @@
+/* Overlay background */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal box */
+.modal {
+  background: #fff;
+  padding: 30px;
+  border-radius: 12px;
+  width: 380px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+  text-align: left;
+}
+
+/* Close button */
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #333;
+}
+
+/* Headings */
+h2 {
+  margin-bottom: 20px;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.brand {
+  color: #d32f2f;
+  font-weight: bold;
+}
+
+/* Labels */
+label {
+  display: block;
+  margin: 10px 0 5px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Input fields */
+input[type="email"],
+input[type="password"],
+input[type="text"],
+input[type="date"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+/* Checkbox row */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.checkbox-row label {
+  font-size: 14px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+/* Buttons */
+.login-btn {
+  width: 100%;
+  background: #d32f2f;
+  color: #fff;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.login-btn:hover {
+  background: #b71c1c;
+}
+
+.login-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* Footer switch text */
+.signup-text {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.signup-text a {
+  color: #d32f2f;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.signup-text a:hover {
+  text-decoration: underline;
+}
+
+/* Error text */
+.error-text {
+  color: #d32f2f;
+  font-size: 13px;
+  margin-top: -6px;
+  margin-bottom: 10px;
+}
+
+.Toastify__toast-container {
+  margin-top: 60px;
+}
+.password-rules {
+  margin: 5px 0 10px;
+  padding-left: 15px;
+  font-size: 13px;
+  color: #d32f2f;
+}
+
+.password-rules .rule-text {
+  margin-bottom: 3px;
+}
+
+.error-text {
+  color: #d32f2f;
+  font-size: 13px;
+  margin-top: 4px;
+}
