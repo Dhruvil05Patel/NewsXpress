@@ -107,6 +107,8 @@ async function updateProfile(profileId, updateData) {
         username: profileData.username || null,
       };
 
+      // Create profile normally. Username is no longer constrained to be unique
+      // at the model level, so this should not fail due to username collisions.
       profile = await Profile.create(newProfileData);
       console.log('✅ Created new profile with id:', profileIdFromFirebase);
       return profile;

@@ -29,8 +29,12 @@ export const postData = async (endpoint, data) => {
 };
 
 // Sync Firebase-authenticated user to backend (verifies token server-side and creates/returns profile)
-export const syncUser = async (idToken) => {
-	const response = await api.post('/api/auth/sync', { idToken });
+// Sync Firebase-authenticated user to backend (verifies token server-side and creates/returns profile)
+// Accepts optional username (e.g., a user-chosen username from signup) and forwards it to backend.
+export const syncUser = async (idToken, username = null) => {
+	const payload = { idToken };
+	if (username) payload.username = username;
+	const response = await api.post('/api/auth/sync', payload);
 	return response.data;
 };
 

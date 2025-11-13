@@ -22,7 +22,6 @@ module.exports = (sequelize) => {
     username: {
       type: DataTypes.TEXT,
       allowNull: true,
-      unique: true,
     },
     avatar_url: {
       type: DataTypes.TEXT,
@@ -73,10 +72,6 @@ module.exports = (sequelize) => {
       {
         name: 'idx_profiles_auth_id',
         fields: ['auth_id'],
-      },
-      {
-        name: 'idx_profiles_username',
-        fields: ['username'],
       },
     ],
   });

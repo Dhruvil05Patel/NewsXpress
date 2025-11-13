@@ -25,9 +25,21 @@ async function sync(req, res) {
     if (!uid) return res.status(400).json({ message: 'Invalid token: missing uid' });
 
     // Extract some basic profile info from token claims if present
+    // Accept optional username from the frontend (e.g. signup form). If not
+    // provided, fall back to token displayName or the local-part of the email.
+    const requestedUsername = req.body && req.body.username ? req.body.username : null;
+
+    const fallbackUsername = (() => {
+      if (requestedUsername) return requestedUsername;
+      if (decoded.name) return decoded.name;
+      if (decoded.email) return decoded.email.split('@')[0];
+      return null;
+    })();
+
     const profileData = {
-      name: decoded.name || decoded.email || null,
-      picture: decoded.picture || null,
+      full_name: decoded.name || decoded.email || null,
+      avatar_url: decoded.picture || null,
+      username: fallbackUsername,
     };
 
     const profile = await findOrCreateProfileByAuthId(uid, profileData);
