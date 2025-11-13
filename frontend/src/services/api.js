@@ -1,9 +1,8 @@
 // Import axios for HTTP requests
 import axios from 'axios';
 
-dotenv.config();
-
-const VITE_BACKEND_API_URL = process.env.VITE_BACKEND_API_URL || 'http://localhost:4000';
+// Use Vite's env variables (exposed at build time). Do NOT use dotenv in browser code.
+const VITE_BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:4000';
 // Base URL for backend API
 const API_BASE_URL = VITE_BACKEND_API_URL;
 
