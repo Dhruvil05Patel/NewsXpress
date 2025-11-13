@@ -4,6 +4,8 @@
  */
 
 // Importing only the models this service needs from the central db config
+
+const { v4: uuidv4 } = require('uuid');
 const { Profile } = require('../config/db');
 const { v5: uuidv5 } = require('uuid');
 
@@ -118,9 +120,32 @@ async function updateProfile(profileId, updateData) {
     }
   }
 
+ /**
+ * Create a new user profile. (For Admin/Testing)
+ * @param {object} profileData - Data for the new profile.
+ * @returns {Promise<object>} The new profile.
+ */
+async function createProfile(profileData) {
+  try {
+    // Manually map the incoming keys to your database fields
+    const newProfile = await Profile.create({
+      id: uuidv4(),// Manually generate the UUID
+      full_name: profileData.fullName,
+      username: profileData.username,
+      auth_id: profileData.authId
+    });
+    
+    console.log(`✅ Profile created with ID: ${newProfile.id}`);
+    return newProfile;
+  } catch (error) {
+    console.error('Error in createProfile:', error.message);
+    throw new Error('Could not create profile.');
+  }
+}
+
 module.exports = {
   getProfileById,
   updateProfile,
-  findOrCreateProfileByAuthId
-
+  findOrCreateProfileByAuthId,
+  createProfile
 };

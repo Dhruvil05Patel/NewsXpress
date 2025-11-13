@@ -10,7 +10,7 @@ const {translationController} = require("./translation-and-speech/controller/tra
 const cors = require("cors");
 const { handleTextToSpeech } = require("./translation-and-speech/controller/textToSpeechController");
 
-const { getProfileById, updateProfile } = require("./services/ProfileService");
+const { getProfileById, updateProfile, createProfile } = require("./services/ProfileService");
 const { sync } = require('./controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
 // ================================================================= //
@@ -184,6 +184,20 @@ app.post('/api/tts' , handleTextToSpeech)
 
 // =================== PROFILE ROUTES =================== //
 // (These routes use new ProfileService)
+
+// (NEW) CREATE a new profile
+app.post('/api/profiles', async (req, res) => {
+  try {
+    const profileData = req.body; // e.g., { fullName, username, authId }
+    
+    // Call the service function we just imported
+    const newProfile = await createProfile(profileData);
+    
+    res.status(201).json(newProfile); // 201 means "Created"
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating profile', error: error.message });
+  }
+});
 
 // GET a user's profile by their ID
 app.get('/api/profiles/:id', async (req, res) => {
