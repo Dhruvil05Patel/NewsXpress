@@ -27,7 +27,7 @@ export default function CategoryNews({ category, title, subtitle }) {
 
         const loadCategory = async () => {
             try {
-                const resp = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:4000'}/get-summarized-news/${encodeURIComponent(category)}?limit=20`);
+                const resp = await fetch(`${import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:4000'}/get-summarized-news/${encodeURIComponent(category)}?limit=20`);
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const payload = await resp.json();
                 const articles = Array.isArray(payload.summarizedNews) ? payload.summarizedNews : [];
