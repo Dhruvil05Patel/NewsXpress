@@ -46,7 +46,7 @@ describe('sync() sync method', () => {
 
       // Assert
       expect(admin.auth().verifyIdToken).toHaveBeenCalledWith('validToken');
-      expect(findOrCreateProfileByAuthId).toHaveBeenCalledWith('123', { name: 'John Doe', picture: 'url' });
+     expect(findOrCreateProfileByAuthId).toHaveBeenCalledWith('123', { avatar_url: 'url', full_name: 'John Doe', username: 'John Doe' });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ message: 'Synced', profile });
     });
@@ -106,7 +106,7 @@ describe('sync() sync method', () => {
       await sync(req, res);
 
       // Assert
-      expect(findOrCreateProfileByAuthId).toHaveBeenCalledWith('123', { name: 'John Doe', picture: 'url' });
+     expect(findOrCreateProfileByAuthId).toHaveBeenCalledWith('123', { avatar_url: 'url', full_name: 'John Doe', username: 'John Doe' });
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ message: 'Internal server error' });
     });

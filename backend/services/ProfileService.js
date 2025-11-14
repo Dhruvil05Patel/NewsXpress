@@ -5,9 +5,10 @@
 
 // Importing only the models this service needs from the central db config
 
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { Profile } = require('../config/db');
-const { v5: uuidv5 } = require('uuid');
+
+
 
 /**
  * Convert Firebase UID string to a deterministic UUID v5
@@ -16,13 +17,28 @@ const { v5: uuidv5 } = require('uuid');
  * @returns {string} UUID formatted string
  */
 function firebaseUidToUuid(firebaseUid) {
-  // Use UUID v5 with a custom namespace
-  // This namespace is specifically for Firebase UIDs in this app
-  const FIREBASE_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
-  
-  // Generate deterministic UUID from Firebase UID
-  return uuidv5(firebaseUid, FIREBASE_NAMESPACE);
-} 
+  // This is a standard v5 UUID "namespace". 
+  // It's just a constant, unique UUID to ensure the same input always
+  // creates the same output.
+  const FIREBASE_NS = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; 
+
+  // Create a v5 UUID hash
+  const hash = crypto.createHash('sha1')
+    .update(FIREBASE_NS) // Use the namespace
+    .update(firebaseUid) // Use the Firebase UID
+    .digest();
+
+  // Per RFC 4122, set version to 5
+  hash[6] = (hash[6] & 0x0f) | 0x50;
+  // Per RFC 4122, set variant
+  hash[8] = (hash[8] & 0x3f) | 0x80;
+
+  // Convert buffer to UUID string format
+  const uuid = hash.toString('hex', 0, 16)
+    .replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5');
+
+  return uuid;
+}
 
 /**
  * Get a single user profile by their ID.
@@ -129,7 +145,7 @@ async function createProfile(profileData) {
   try {
     // Manually map the incoming keys to your database fields
     const newProfile = await Profile.create({
-      id: uuidv4(),// Manually generate the UUID
+      id: crypto.randomUUID(), // Manually generate the UUID
       full_name: profileData.fullName,
       username: profileData.username,
       auth_id: profileData.authId

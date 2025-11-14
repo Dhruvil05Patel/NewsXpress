@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "coverage": "jest --coverage"
   },
   "keywords": [],
   "author": "",
@@ -26,5 +27,8 @@
     "pg": "^8.16.3",
     "sequelize": "^6.37.7",
     "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }
