@@ -21,6 +21,8 @@ function App() {
   const [showVerificationWait, setShowVerificationWait] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+    // New state for age error
+    const [ageError, setAgeError] = useState('');
 
   // Password validation checks
   const passwordChecks = [
@@ -31,10 +33,24 @@ function App() {
     { id: 5, label: "1 special character (!@#$...)", valid: /[^A-Za-z0-9]/.test(password) },
   ];
 
+    // Age validation function (NEW)
+    const isOldEnough = (dobString) => {
+        if (!dobString) return false;
+        const today = new Date();
+        const birthDate = new Date(dobString);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age >= 13;
+    };
+
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setAgeError(''); // Clear previous age error
 
     if (isLogin) {
       // Login flow
@@ -51,19 +67,31 @@ function App() {
       }
     } else {
       // Signup flow
+
+        // 1. Age Validation Check (NEW)
+        if (!isOldEnough(dob)) {
+            setAgeError('❌ You must be at least 13 years old to sign up.');
+            toast.error("❌ You must be at least 13 years old!");
+            setIsLoading(false);
+            return;
+        }
+
+      // 2. Password Match Check
       if (password !== confirmPassword) {
         toast.error("❌ Passwords do not match!");
         setIsLoading(false);
         return;
       }
       
-      // Check if all password rules are satisfied
+      // 3. Password Rules Check
       const allValid = passwordChecks.every((check) => check.valid);
       if (!allValid) {
+        toast.error("❌ Please satisfy all password requirements!");
         setIsLoading(false);
         return;
       }
       
+      // 4. Registration
       const result = await registerUser(email, password);
       setIsLoading(false);
       
@@ -83,11 +111,13 @@ function App() {
     setUsername("");
     setDob("");
     setShowPassword(false);
+    setAgeError(''); // Reset age error
   };
 
   const handleRefreshAfterVerification = async () => {
     setIsLoading(true);
-    await auth.currentUser?.reload();
+    // NOTE: This Firebase Auth line remains untouched.
+    await auth.currentUser?.reload(); 
     
     if (auth.currentUser?.emailVerified) {
       toast.success('✅ Email verified! Welcome!');
@@ -102,7 +132,8 @@ function App() {
   const handleResendVerification = async () => {
     try {
       const { sendEmailVerification } = await import('firebase/auth');
-      await sendEmailVerification(auth.currentUser);
+      // NOTE: This Firebase Auth line remains untouched.
+      await sendEmailVerification(auth.currentUser); 
       toast.success('📧 Verification email resent!');
     } catch (error) {
       toast.error('Failed to resend email. Please try again later.');
@@ -249,15 +280,27 @@ function App() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
+                  // FIX: Added autocomplete="off" to stop browser autofill fighting React state
+                  autoComplete="off" 
+                  formNoValidate
                 />
 
                 <label>Date of Birth</label>
                 <input
                   type="date"
                   value={dob}
-                  onChange={(e) => setDob(e.target.value)}
+                  onChange={(e) => {
+                        setDob(e.target.value);
+                        setAgeError(''); // Clear error on change
+                    }}
                   required
                 />
+
+                {/* Age Validation Error Display (NEW) */}
+                {dob && !isOldEnough(dob) && (
+                    <p className="error-text">❌ Must be 13 years or older.</p>
+                )}
+                {ageError && <p className="error-text">{ageError}</p>}
 
                 <label>Email</label>
                 <input
@@ -317,7 +360,7 @@ function App() {
                   type="submit"
                   className="login-btn"
                   disabled={
-                    (confirmPassword && password !== confirmPassword) || isLoading
+                    (confirmPassword && password !== confirmPassword) || isLoading || !isOldEnough(dob)
                   }
                 >
                   {isLoading ? 'Signing up...' : 'Sign Up'}

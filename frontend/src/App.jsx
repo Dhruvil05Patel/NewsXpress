@@ -94,6 +94,25 @@ function App() {
     return () => unsubscribe();
   }, []);
 
+  // --- Effect Hook to Prevent Background Scrolling ---
+  // This logic is purely CSS/DOM manipulation and does NOT touch Firebase Auth.
+  useEffect(() => {
+    // Check if EITHER the Login Modal OR the Unverified User Prompt is visible
+    const isAnyModalOpen = showLogin || unverifiedUser;
+
+    if (isAnyModalOpen) {
+      document.body.classList.add('body-locked');
+    } else {
+      document.body.classList.remove('body-locked');
+    }
+    
+    // Cleanup: Ensure the class is removed when the component unmounts or state changes
+    return () => {
+      document.body.classList.remove('body-locked');
+    };
+    // Dependency array includes both state variables that trigger a modal/overlay
+  }, [showLogin, unverifiedUser]);
+
   // --- Event Handlers ---
   // Functions to toggle the login modal's visibility.
   const openLogin = () => setShowLogin(true);
