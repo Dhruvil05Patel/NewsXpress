@@ -19,7 +19,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 4000;
-const FRONTEND_URL = process.env.VERCEL_URL;
+const FRONTEND_URL = process.env.VERCEL_URL || process.env.FRONTEND_URL;
 // CORS configuration - allow multiple origins
 const corsOptions = {
   origin: [
@@ -305,10 +305,55 @@ app.delete("/api/bookmarks", async (req, res) => {
 app.get('/api/live-streams', fetchLiveStreams);
 
 // =================== SERVER START =================== //
-connectDB().then(() => {
-  app.listen(port, () => {
-    console.log(` Server running on http://localhost:${port}`);
-  });
+// === Initialize components after DB connect ===
+// Add notifier init and provide a lightweight cron endpoint for Render
+const { fetchAndSaveMultipleCategories, fetchAndSaveNews } = require("./src/cron/fetchAndSaveNews");
+const { initNotifier } = require("./src/services/notifier");
+
+async function startServer() {
+  try {
+    await connectDB();
+    console.log("DB connected at startup.");
+
+    // Initialize notifier (Firebase Admin)
+    try {
+      initNotifier();
+      console.log("Notifier initialized.");
+    } catch (e) {
+      console.warn("Notifier failed to initialize:", e.message);
+    }
+
+    // Start express server
+    app.listen(port, () => {
+      console.log(`Server running on http://localhost:${port}`);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err.message);
+  }
+}
+
+// === NEW: Cron endpoint that Render will call ===
+app.post("/cron/fetch-latest", async (req, res) => {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const provided = req.headers["x-cron-secret"] || req.query.secret;
+    if (!provided || provided !== cronSecret) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+  }
+
+  const categories = req.body?.categories || ["all"];
+  const newsCount = parseInt(req.body?.newsCount) || 15;
+  const summarizeLimit = parseInt(req.body?.summarizeLimit) || 8;
+
+  // Kick off heavy work but respond immediately
+  fetchAndSaveMultipleCategories(categories, newsCount, summarizeLimit)
+    .then(results => console.log("Cron worker completed", results))
+    .catch(err => console.error("Cron worker failed:", err.message));
+
+  res.json({ status: "accepted", categories, newsCount, summarizeLimit });
 });
 
+// Start server after establishing DB connection
+startServer();
 
