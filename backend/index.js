@@ -40,9 +40,13 @@ app.use(express.json()); // Parse JSON request bodies
 // Default route: read latest news directly from DB
 app.get("/get-summarized-news", async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 15;
-    const forceLive = req.query.live === '1'; // pass ?live=1 to force a fresh fetch
-    console.log(`\n Retrieving latest ${limit} articles from database (All). forceLive=${forceLive}`);
+    const limit = parseInt(req.query.limit) || null;
+    const forceLive = req.query.live === "1"; // pass ?live=1 to force a fresh fetch
+    console.log(
+      `\n Retrieving ${
+        limit ? limit : "all"
+      } articles from database (All). forceLive=${forceLive}`
+    );
 
     let articles = [];
     if (!forceLive) {
@@ -54,7 +58,7 @@ app.get("/get-summarized-news", async (req, res) => {
       // DB empty or forced live — fetch + summarize
       console.log("No articles in DB or live fetch requested — fetching live news...");
       const newsArticles = await fetchNews("all", 15);
-      const articlesWithContent = newsArticles.filter(a => a.title && a.link);
+      const articlesWithContent = newsArticles.filter((a) => a.title && a.link);
       if (!articlesWithContent.length) {
         return res.status(404).json({ message: "No news articles found." });
       }
@@ -93,8 +97,12 @@ app.get("/get-summarized-news", async (req, res) => {
 app.get("/get-summarized-news/:category", async (req, res) => {
   const category = req.params.category;
   try {
-    const limit = parseInt(req.query.limit) || 15;
-    console.log(`\n Retrieving up to ${limit} articles from database for category: ${category}`);
+    const limit = parseInt(req.query.limit) || null;
+    console.log(
+      `\n Retrieving ${
+        limit ? limit : "all"
+      } articles from database for category: ${category}`
+    );
 
     const articles = await getArticlesByTopic(category, limit);
 
@@ -126,8 +134,10 @@ app.post("/save-articles", async (req, res) => {
     const newsArticles = await fetchNews(category, 15);
     console.log(` Fetched ${newsArticles.length} articles from news API`);
     
-    const articlesWithContent = newsArticles.filter(a => a.title && a.link);
-    console.log(` Filtered to ${articlesWithContent.length} articles with content`);
+    const articlesWithContent = newsArticles.filter((a) => a.title && a.link);
+    console.log(
+      ` Filtered to ${articlesWithContent.length} articles with content`
+    );
 
     if (!articlesWithContent.length) {
       return res.status(404).json({ message: "No articles to save." });
@@ -180,14 +190,14 @@ app.get("/articles", async (req, res) => {
   }
 });
 
-app.post('/api/translation' , translationController)
-app.post('/api/tts' , handleTextToSpeech)
+app.post("/api/translation", translationController);
+app.post("/api/tts", handleTextToSpeech);
 
 // =================== PROFILE ROUTES =================== //
 // (These routes use new ProfileService)
 
 // (NEW) CREATE a new profile
-app.post('/api/profiles', async (req, res) => {
+app.post("/api/profiles", async (req, res) => {
   try {
     const profileData = req.body; // e.g., { fullName, username, authId }
     
@@ -206,16 +216,18 @@ app.get('/api/profiles/:id', async (req, res) => {
     const { id } = req.params;
     const profile = await getProfileById(id);
     if (!profile) {
-      return res.status(404).json({ message: 'Profile not found' });
+      return res.status(404).json({ message: "Profile not found" });
     }
     res.status(200).json(profile);
   } catch (error) {
-    res.status(500).json({ message: 'Error getting profile', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error getting profile", error: error.message });
   }
 });
 
 // UPDATE a user's profile (for preferences)
-app.put('/api/profiles/:id', async (req, res) => {
+app.put("/api/profiles/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body; 
@@ -224,12 +236,14 @@ app.put('/api/profiles/:id', async (req, res) => {
     
     res.status(200).json(updatedProfile);
   } catch (error) {
-    res.status(500).json({ message: 'Error updating profile', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating profile", error: error.message });
   }
 });
 
 // Endpoint to sync Firebase-authenticated user to local profiles table
-app.post('/api/auth/sync', async (req, res) => {
+app.post("/api/auth/sync", async (req, res) => {
   // Delegates to controllers/authController.sync
   return sync(req, res);
 });
@@ -239,41 +253,51 @@ app.post('/api/auth/sync', async (req, res) => {
 // (These routes use new UserInteractionService)
 
 // GET all bookmarks for a user
-app.get('/api/bookmarks/:profileId', async (req, res) => {
+app.get("/api/bookmarks/:profileId", async (req, res) => {
   try {
     const { profileId } = req.params;
     const bookmarks = await getBookmarksByProfile(profileId);
     res.status(200).json(bookmarks);
   } catch (error) {
-    res.status(500).json({ message: 'Error getting bookmarks', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error getting bookmarks", error: error.message });
   }
 });
 
 // ADD a new bookmark
-app.post('/api/bookmarks', async (req, res) => {
+app.post("/api/bookmarks", async (req, res) => {
   try {
     const { profile_id, article_id, note } = req.body;
     if (!profile_id || !article_id) {
-      return res.status(400).json({ message: 'profile_id and article_id are required' });
+      return res
+        .status(400)
+        .json({ message: "profile_id and article_id are required" });
     }
     const bookmark = await addBookmark(profile_id, article_id, note);
     res.status(201).json(bookmark);
   } catch (error) {
-    res.status(500).json({ message: 'Error adding bookmark', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error adding bookmark", error: error.message });
   }
 });
 
 // REMOVE a bookmark
-app.delete('/api/bookmarks', async (req, res) => {
+app.delete("/api/bookmarks", async (req, res) => {
   try {
     const { profile_id, article_id } = req.body;
     if (!profile_id || !article_id) {
-      return res.status(400).json({ message: 'profile_id and article_id are required' });
+      return res
+        .status(400)
+        .json({ message: "profile_id and article_id are required" });
     }
     await removeBookmark(profile_id, article_id);
-    res.status(200).json({ message: 'Bookmark removed' });
+    res.status(200).json({ message: "Bookmark removed" });
   } catch (error) {
-    res.status(500).json({ message: 'Error removing bookmark', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error removing bookmark", error: error.message });
   }
 });
 

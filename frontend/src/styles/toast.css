@@ -1,0 +1,62 @@
+/* Global Toastify styling to keep pop-ups clean and consistent */
+
+/* Base toast */
+.Toastify__toast {
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f5f9; /* slate-100 */
+  background: #ffffff;
+  color: #0f172a; /* slate-900 */
+}
+
+/* Close button */
+.Toastify__close-button {
+  color: #334155; /* slate-600 */
+  opacity: 0.6;
+}
+.Toastify__close-button:hover {
+  opacity: 1;
+}
+
+/* Progress bar */
+.Toastify__progress-bar {
+  height: 3px;
+}
+.Toastify__progress-bar--success {
+  background: #16a34a;
+}
+.Toastify__progress-bar--error {
+  background: #dc2626;
+}
+.Toastify__progress-bar--warning {
+  background: #f59e0b;
+}
+.Toastify__progress-bar--info {
+  background: #0284c7;
+}
+
+/* Variant accents via subtle left border + icon color */
+.Toastify__toast--success {
+  border-left: 4px solid #16a34a;
+}
+.Toastify__toast--error {
+  border-left: 4px solid #dc2626; /* brand red */
+}
+.Toastify__toast--warning {
+  border-left: 4px solid #f59e0b;
+}
+.Toastify__toast--info {
+  border-left: 4px solid #ef4444; /* red accent for brand consistency */
+}
+
+/* Body text */
+.Toastify__toast-body {
+  font-size: 0.925rem;
+  line-height: 1.35rem;
+}
+
+/* Elevate container above fixed navs */
+.Toastify__toast-container {
+  z-index: 9999;
+}

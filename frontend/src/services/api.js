@@ -1,9 +1,8 @@
 // Import axios for HTTP requests
-import axios from 'axios';
-
-dotenv.config();
-
-const VITE_BACKEND_API_URL = process.env.VITE_BACKEND_API_URL || 'http://localhost:4000';
+import axios from "axios";
+// Vite exposes env vars via `import.meta.env`. Do not use dotenv in browser code.
+const VITE_BACKEND_API_URL =
+	import.meta.env.VITE_BACKEND_API_URL || "http://localhost:4000";
 // Base URL for backend API
 const API_BASE_URL = VITE_BACKEND_API_URL;
 
@@ -12,7 +11,7 @@ const api = axios.create({
 	baseURL: API_BASE_URL,
 	withCredentials: true, // Send cookies if needed
 	headers: {
-		'Content-Type': 'application/json',
+		"Content-Type": "application/json",
 	},
 });
 
@@ -34,13 +33,13 @@ export const postData = async (endpoint, data) => {
 export const syncUser = async (idToken, username = null) => {
 	const payload = { idToken };
 	if (username) payload.username = username;
-	const response = await api.post('/api/auth/sync', payload);
+	const response = await api.post("/api/auth/sync", payload);
 	return response.data;
 };
 
 //Fetch summarized news articles from backend
 export const getSummarizedNews = async () => {
-	const response = await api.get('/get-summarized-news');
+	const response = await api.get("/get-summarized-news");
 	return response.data;
 };
 

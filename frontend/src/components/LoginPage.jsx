@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import notify from "../utils/toast";
 import "../assets/LoginPage.css";
 import { registerUser, loginUser } from "./auth/controller/authController";
 import { auth } from "./auth/firebase";
 
-function App() {
+function App({ onClose }) {
   const [isLogin, setIsLogin] = useState(true);
 
   // Form states
@@ -21,8 +20,8 @@ function App() {
   const [showVerificationWait, setShowVerificationWait] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-    // New state for age error
-    const [ageError, setAgeError] = useState('');
+  // New state for age error
+  const [ageError, setAgeError] = useState("");
 
   // Password validation checks
   const passwordChecks = [
@@ -30,33 +29,37 @@ function App() {
     { id: 2, label: "1 uppercase letter (A-Z)", valid: /[A-Z]/.test(password) },
     { id: 3, label: "1 lowercase letter (a-z)", valid: /[a-z]/.test(password) },
     { id: 4, label: "1 number (0-9)", valid: /\d/.test(password) },
-    { id: 5, label: "1 special character (!@#$...)", valid: /[^A-Za-z0-9]/.test(password) },
+    {
+      id: 5,
+      label: "1 special character (!@#$...)",
+      valid: /[^A-Za-z0-9]/.test(password),
+    },
   ];
 
-    // Age validation function (NEW)
-    const isOldEnough = (dobString) => {
-        if (!dobString) return false;
-        const today = new Date();
-        const birthDate = new Date(dobString);
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-            age--;
-        }
-        return age >= 13;
-    };
+  // Age validation function (NEW)
+  const isOldEnough = (dobString) => {
+    if (!dobString) return false;
+    const today = new Date();
+    const birthDate = new Date(dobString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age >= 13;
+  };
 
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setAgeError(''); // Clear previous age error
+    setAgeError(""); // Clear previous age error
 
     if (isLogin) {
       // Login flow
       const result = await loginUser(email, password);
       setIsLoading(false);
-      
+
       if (result.success && !result.emailVerified) {
         // User logged in but email not verified
         setVerificationEmail(result.email);
@@ -64,37 +67,42 @@ function App() {
       } else if (result.success && result.emailVerified) {
         // Success - verified user
         setIsOpen(false);
+        onClose?.();
+        // Small delay to ensure auth state has propagated
+        setTimeout(() => {
+          window.dispatchEvent(new Event("auth-state-changed"));
+        }, 100);
       }
     } else {
       // Signup flow
 
-        // 1. Age Validation Check (NEW)
-        if (!isOldEnough(dob)) {
-            setAgeError('❌ You must be at least 13 years old to sign up.');
-            toast.error("❌ You must be at least 13 years old!");
-            setIsLoading(false);
-            return;
-        }
+      // 1. Age Validation Check (NEW)
+      if (!isOldEnough(dob)) {
+        setAgeError("❌ You must be at least 13 years old to sign up.");
+        notify.error("❌ You must be at least 13 years old!");
+        setIsLoading(false);
+        return;
+      }
 
       // 2. Password Match Check
       if (password !== confirmPassword) {
-        toast.error("❌ Passwords do not match!");
+        notify.error("❌ Passwords do not match!");
         setIsLoading(false);
         return;
       }
-      
+
       // 3. Password Rules Check
       const allValid = passwordChecks.every((check) => check.valid);
       if (!allValid) {
-        toast.error("❌ Please satisfy all password requirements!");
+        notify.error("❌ Please satisfy all password requirements!");
         setIsLoading(false);
         return;
       }
-      
+
       // 4. Registration
       const result = await registerUser(email, password);
       setIsLoading(false);
-      
+
       if (result.success) {
         // Show verification waiting screen
         setVerificationEmail(result.email);
@@ -111,32 +119,37 @@ function App() {
     setUsername("");
     setDob("");
     setShowPassword(false);
-    setAgeError(''); // Reset age error
+    setAgeError(""); // Reset age error
   };
 
   const handleRefreshAfterVerification = async () => {
     setIsLoading(true);
     // NOTE: This Firebase Auth line remains untouched.
-    await auth.currentUser?.reload(); 
-    
+    await auth.currentUser?.reload();
+
     if (auth.currentUser?.emailVerified) {
-      toast.success('✅ Email verified! Welcome!');
+      notify.success("✅ Email verified! Welcome!");
       setShowVerificationWait(false);
       setIsOpen(false);
+      onClose?.();
+      // Small delay to ensure auth state has propagated
+      setTimeout(() => {
+        window.dispatchEvent(new Event("auth-state-changed"));
+      }, 100);
     } else {
-      toast.warning('⚠️ Email not verified yet. Please check your inbox and verify first.');
+      notify.warn("⚠️ Email not verified yet. Please check your inbox.");
     }
     setIsLoading(false);
   };
 
   const handleResendVerification = async () => {
     try {
-      const { sendEmailVerification } = await import('firebase/auth');
+      const { sendEmailVerification } = await import("firebase/auth");
       // NOTE: This Firebase Auth line remains untouched.
-      await sendEmailVerification(auth.currentUser); 
-      toast.success('📧 Verification email resent!');
+      await sendEmailVerification(auth.currentUser);
+      notify.success("📧 Verification email resent!");
     } catch (error) {
-      toast.error('Failed to resend email. Please try again later.');
+      notify.error("❌ Failed to resend email. Please try again.");
     }
   };
 
@@ -148,52 +161,71 @@ function App() {
       <>
         <div className="overlay">
           <div className="modal">
-            <button className="close-btn" onClick={() => {
-              setShowVerificationWait(false);
-              setIsOpen(false);
-            }}>
+            <button
+              className="close-btn"
+              onClick={() => {
+                setShowVerificationWait(false);
+                setIsOpen(false);
+                onClose?.();
+              }}
+            >
               &times;
             </button>
-            
-            <div style={{ textAlign: 'center', padding: '20px' }}>
+
+            <div style={{ textAlign: "center", padding: "20px" }}>
               <h2>📧 Verify Your Email</h2>
-              <p style={{ margin: '20px 0', fontSize: '16px', lineHeight: '1.6' }}>
-                We've sent a verification email to:<br />
+              <p
+                style={{
+                  margin: "20px 0",
+                  fontSize: "16px",
+                  lineHeight: "1.6",
+                }}
+              >
+                We've sent a verification email to:
+                <br />
                 <strong>{verificationEmail}</strong>
               </p>
-              <p style={{ color: '#666', marginBottom: '20px' }}>
+              <p style={{ color: "#666", marginBottom: "20px" }}>
                 Please check your inbox and click the verification link.
               </p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '30px' }}>
-                <button 
-                  className="login-btn" 
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                  marginTop: "30px",
+                }}
+              >
+                <button
+                  className="login-btn"
                   onClick={handleRefreshAfterVerification}
                   disabled={isLoading}
-                  style={{ backgroundColor: '#4CAF50' }}
+                  style={{ backgroundColor: "#4CAF50" }}
                 >
-                  {isLoading ? 'Checking...' : '✓ I\'ve Verified - Refresh'}
+                  {isLoading ? "Checking..." : "✓ I've Verified - Refresh"}
                 </button>
-                
-                <button 
-                  className="login-btn" 
+
+                <button
+                  className="login-btn"
                   onClick={handleResendVerification}
-                  style={{ backgroundColor: '#2196F3' }}
+                  style={{ backgroundColor: "#2196F3" }}
                 >
                   📧 Resend Verification Email
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => {
                     setShowVerificationWait(false);
                     resetForm();
+                    setIsLogin(true);
                   }}
-                  style={{ 
-                    background: 'none', 
-                    border: 'none', 
-                    color: '#666', 
-                    cursor: 'pointer',
-                    marginTop: '10px'
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#666",
+                    cursor: "pointer",
+                    marginTop: "10px",
                   }}
                 >
                   ← Back to Login
@@ -202,7 +234,7 @@ function App() {
             </div>
           </div>
         </div>
-        <ToastContainer position="top-center" autoClose={3000} />
+        {/* Toast container is provided globally in App.jsx */}
       </>
     );
   }
@@ -211,7 +243,13 @@ function App() {
     <>
       <div className="overlay">
         <div className="modal">
-          <button className="close-btn" onClick={() => setIsOpen(false)}>
+          <button
+            className="close-btn"
+            onClick={() => {
+              setIsOpen(false);
+              onClose?.();
+            }}
+          >
             &times;
           </button>
 
@@ -249,8 +287,12 @@ function App() {
                   <label htmlFor="showPassLogin">Show Password</label>
                 </div>
 
-                <button type="submit" className="login-btn" disabled={isLoading}>
-                  {isLoading ? 'Logging in...' : 'Login'}
+                <button
+                  type="submit"
+                  className="login-btn"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Logging in..." : "Login"}
                 </button>
               </form>
 
@@ -281,7 +323,7 @@ function App() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   // FIX: Added autocomplete="off" to stop browser autofill fighting React state
-                  autoComplete="off" 
+                  autoComplete="off"
                   formNoValidate
                 />
 
@@ -290,15 +332,15 @@ function App() {
                   type="date"
                   value={dob}
                   onChange={(e) => {
-                        setDob(e.target.value);
-                        setAgeError(''); // Clear error on change
-                    }}
+                    setDob(e.target.value);
+                    setAgeError(""); // Clear error on change
+                  }}
                   required
                 />
 
                 {/* Age Validation Error Display (NEW) */}
                 {dob && !isOldEnough(dob) && (
-                    <p className="error-text">❌ Must be 13 years or older.</p>
+                  <p className="error-text">❌ Must be 13 years or older.</p>
                 )}
                 {ageError && <p className="error-text">{ageError}</p>}
 
@@ -360,10 +402,12 @@ function App() {
                   type="submit"
                   className="login-btn"
                   disabled={
-                    (confirmPassword && password !== confirmPassword) || isLoading || !isOldEnough(dob)
+                    (confirmPassword && password !== confirmPassword) ||
+                    isLoading ||
+                    !isOldEnough(dob)
                   }
                 >
-                  {isLoading ? 'Signing up...' : 'Sign Up'}
+                  {isLoading ? "Signing up..." : "Sign Up"}
                 </button>
               </form>
 
@@ -384,7 +428,7 @@ function App() {
         </div>
       </div>
 
-      <ToastContainer position="top-center" autoClose={3000} />
+      {/* Toast container is provided globally in App.jsx */}
     </>
   );
 }

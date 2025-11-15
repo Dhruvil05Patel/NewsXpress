@@ -7,8 +7,9 @@ import AllNews from "./components/AllNews";
 import CategoryNews from "./components/CategoryNews";
 import LoginPage from "./components/LoginPage";
 import Bookmarks from "./components/Bookmarks";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import notify from "./utils/toast";
 import { initAuthListener } from "./components/auth/controller/authController";
 
 // --- Category Configuration ---
@@ -47,10 +48,6 @@ const categories = {
     title: "Entertainment News",
     subtitle: "The latest on movies, TV shows, and celebrity news.",
   },
-  world: {
-    title: "World News",
-    subtitle: "Global headlines from around the world.",
-  },
   crime: {
     title: "Crime News",
     subtitle: "The latest crime and justice news.",
@@ -64,10 +61,10 @@ function App() {
   // --- State Management ---
   // State to control the visibility of the login modal.
   const [showLogin, setShowLogin] = useState(false);
-  
+
   // State to store the current user profile (synced from backend)
   const [userProfile, setUserProfile] = useState(null);
-  
+
   // State to track unverified user
   const [unverifiedUser, setUnverifiedUser] = useState(null);
 
@@ -75,23 +72,42 @@ function App() {
   // Set up Firebase auth state listener on component mount
   useEffect(() => {
     const unsubscribe = initAuthListener((profile, user) => {
+      console.log(
+        "🔄 Auth state changed - Profile:",
+        profile,
+        "User:",
+        user?.email
+      );
       if (user && !user.emailVerified) {
         // User logged in but not verified
+        console.log("⚠️ Setting unverified user");
         setUnverifiedUser(user);
         setUserProfile(null);
       } else if (profile) {
         // User verified and synced
+        console.log("✅ Setting user profile:", profile);
         setUserProfile(profile);
         setUnverifiedUser(null);
       } else {
         // User logged out
+        console.log("🚪 Clearing user profile");
         setUserProfile(null);
         setUnverifiedUser(null);
       }
     });
-    
+
+    // Listen for custom auth state change events to force UI update
+    const handleAuthStateChange = () => {
+      console.log("Force checking auth state...");
+      // The auth listener will automatically trigger with the current state
+    };
+    window.addEventListener("auth-state-changed", handleAuthStateChange);
+
     // Cleanup: unsubscribe when component unmounts
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      window.removeEventListener("auth-state-changed", handleAuthStateChange);
+    };
   }, []);
 
   // --- Effect Hook to Prevent Background Scrolling ---
@@ -101,14 +117,14 @@ function App() {
     const isAnyModalOpen = showLogin || unverifiedUser;
 
     if (isAnyModalOpen) {
-      document.body.classList.add('body-locked');
+      document.body.classList.add("body-locked");
     } else {
-      document.body.classList.remove('body-locked');
+      document.body.classList.remove("body-locked");
     }
-    
+
     // Cleanup: Ensure the class is removed when the component unmounts or state changes
     return () => {
-      document.body.classList.remove('body-locked');
+      document.body.classList.remove("body-locked");
     };
     // Dependency array includes both state variables that trigger a modal/overlay
   }, [showLogin, unverifiedUser]);
@@ -139,6 +155,8 @@ function App() {
               <AllNews
                 title="Latest News"
                 subtitle="Stay updated with global headlines"
+                userProfile={userProfile}
+                onLoginClick={openLogin}
               />
             }
           />
@@ -151,24 +169,46 @@ function App() {
           <Route
             path="/technology"
             element={
-              <CategoryNews category="Technology" {...categories.technology} />
+              <CategoryNews
+                category="Technology"
+                {...categories.technology}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
+              />
             }
           />
           <Route
             path="/business"
             element={
-              <CategoryNews category="Business" {...categories.business} />
+              <CategoryNews
+                category="Business"
+                {...categories.business}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
+              />
             }
           />
           <Route
             path="/science"
             element={
-              <CategoryNews category="Science" {...categories.science} />
+              <CategoryNews
+                category="Science"
+                {...categories.science}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
+              />
             }
           />
           <Route
             path="/sports"
-            element={<CategoryNews category="Sports" {...categories.sports} />}
+            element={
+              <CategoryNews
+                category="Sports"
+                {...categories.sports}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
+              />
+            }
           />
           <Route
             path="/environment"
@@ -176,18 +216,32 @@ function App() {
               <CategoryNews
                 category="Environment"
                 {...categories.environment}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
               />
             }
           />
           <Route
             path="/politics"
             element={
-              <CategoryNews category="Politics" {...categories.politics} />
+              <CategoryNews
+                category="Politics"
+                {...categories.politics}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
+              />
             }
           />
           <Route
             path="/health"
-            element={<CategoryNews category="Health" {...categories.health} />}
+            element={
+              <CategoryNews
+                category="Health"
+                {...categories.health}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
+              />
+            }
           />
           <Route
             path="/entertainment"
@@ -195,16 +249,23 @@ function App() {
               <CategoryNews
                 category="Entertainment"
                 {...categories.entertainment}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
               />
             }
           />
-          <Route
-            path="/world-news"
-            element={<CategoryNews category="World" {...categories.world} />}
-          />
+          {/* Legacy redirect to maintain old links */}
+          <Route path="/world-news" element={<Navigate to="/all" replace />} />
           <Route
             path="/crime"
-            element={<CategoryNews category="Crime" {...categories.crime} />}
+            element={
+              <CategoryNews
+                category="Crime"
+                {...categories.crime}
+                userProfile={userProfile}
+                onLoginClick={openLogin}
+              />
+            }
           />
           <Route path="/bookmarks" element={<Bookmarks />} />
         </Routes>
@@ -212,92 +273,115 @@ function App() {
         {/* --- Modals --- */}
         {/* The LoginPage is rendered conditionally based on the `showLogin` state. */}
         {showLogin && <LoginPage onClose={closeLogin} />}
-        
+
         {/* Verification prompt for unverified users */}
         {unverifiedUser && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              padding: '30px',
-              borderRadius: '10px',
-              maxWidth: '500px',
-              textAlign: 'center',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-            }}>
-              <h2 style={{ color: '#ff9800', marginBottom: '20px' }}>⚠️ Email Not Verified</h2>
-              <p style={{ fontSize: '16px', marginBottom: '15px', lineHeight: '1.6' }}>
-                Your email <strong>{unverifiedUser.email}</strong> is not verified yet.
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "white",
+                padding: "30px",
+                borderRadius: "10px",
+                maxWidth: "500px",
+                textAlign: "center",
+                boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              }}
+            >
+              <h2 style={{ color: "#ff9800", marginBottom: "20px" }}>
+                ⚠️ Email Not Verified
+              </h2>
+              <p
+                style={{
+                  fontSize: "16px",
+                  marginBottom: "15px",
+                  lineHeight: "1.6",
+                }}
+              >
+                Your email <strong>{unverifiedUser.email}</strong> is not
+                verified yet.
               </p>
-              <p style={{ color: '#666', marginBottom: '25px' }}>
-                Please check your inbox and click the verification link, then refresh this page.
+              <p style={{ color: "#666", marginBottom: "25px" }}>
+                Please check your inbox and click the verification link, then
+                refresh this page.
               </p>
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "center",
+                  flexWrap: "wrap",
+                }}
+              >
                 <button
                   onClick={async () => {
                     await unverifiedUser.reload();
                     if (unverifiedUser.emailVerified) {
-                      toast.success('✅ Email verified!');
+                      notify.success("✅ Email verified!");
                       window.location.reload();
                     } else {
-                      toast.warning('⚠️ Please verify your email first');
+                      notify.warn("⚠️ Please verify your email first");
                     }
                   }}
                   style={{
-                    padding: '12px 24px',
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                    fontSize: '16px'
+                    padding: "12px 24px",
+                    backgroundColor: "#4CAF50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    cursor: "pointer",
+                    fontSize: "16px",
                   }}
                 >
                   ✓ I've Verified - Refresh
                 </button>
                 <button
                   onClick={async () => {
-                    const { sendEmailVerification } = await import('firebase/auth');
+                    const { sendEmailVerification } = await import(
+                      "firebase/auth"
+                    );
                     await sendEmailVerification(unverifiedUser);
-                    toast.success('📧 Verification email resent!');
+                    notify.success("📧 Verification email resent!");
                   }}
                   style={{
-                    padding: '12px 24px',
-                    backgroundColor: '#2196F3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                    fontSize: '16px'
+                    padding: "12px 24px",
+                    backgroundColor: "#2196F3",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    cursor: "pointer",
+                    fontSize: "16px",
                   }}
                 >
                   📧 Resend Email
                 </button>
                 <button
                   onClick={async () => {
-                    const { signOut } = await import('firebase/auth');
-                    const { auth } = await import('./components/auth/firebase');
+                    const { signOut } = await import("firebase/auth");
+                    const { auth } = await import("./components/auth/firebase");
                     await signOut(auth);
-                    toast.info('Logged out');
+                    notify.info("👋 Logged out");
                   }}
                   style={{
-                    padding: '12px 24px',
-                    backgroundColor: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                    fontSize: '16px'
+                    padding: "12px 24px",
+                    backgroundColor: "#f44336",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    cursor: "pointer",
+                    fontSize: "16px",
                   }}
                 >
                   Logout
@@ -309,14 +393,15 @@ function App() {
       </div>
       <ToastContainer
         position="top-right"
-        autoClose={3000} // duration in ms
+        autoClose={2800}
         hideProgressBar={false}
-        newestOnTop={false}
+        newestOnTop
         closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
         draggable
         pauseOnHover
+        pauseOnFocusLoss={false}
+        theme="light"
+        limit={2}
       />
     </BrowserRouter>
   );
