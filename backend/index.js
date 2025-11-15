@@ -13,6 +13,7 @@ const { handleTextToSpeech } = require("./translation-and-speech/controller/text
 const { getProfileById, updateProfile, createProfile } = require("./services/ProfileService");
 const { sync } = require('./controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
+const { fetchLiveStreams } = require("./services/youtube-service/youtubeController");
 // ================================================================= //
 dotenv.config();
 
@@ -276,10 +277,14 @@ app.delete('/api/bookmarks', async (req, res) => {
   }
 });
 
+
+app.get('/api/live-streams', fetchLiveStreams);
+
 // =================== SERVER START =================== //
 connectDB().then(() => {
   app.listen(port, () => {
     console.log(` Server running on http://localhost:${port}`);
   });
 });
+
 
