@@ -119,7 +119,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
   };
 
   const handleNotificationToggle = (enabled) => {
-    console.log(Notifications ${enabled ? "enabled" : "disabled"});
+    console.log(`Notifications ${enabled ? "enabled" : "disabled"}`);
     setNotifications(enabled);
   };
 

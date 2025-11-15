@@ -11,9 +11,10 @@ const cors = require("cors");
 const { handleTextToSpeech } = require("./translation-and-speech/controller/textToSpeechController");
 
 const { getProfileById, updateProfile, createProfile } = require("./services/ProfileService");
-const { sync } = require('./controllers/authController');
+const { sync } = require('./auth/controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
 const { fetchLiveStreams } = require("./services/youtube-service/youtubeController");
+const { sendVerification } = require("./auth/controllers/emailController");
 // ================================================================= //
 dotenv.config();
 
@@ -247,6 +248,9 @@ app.post("/api/auth/sync", async (req, res) => {
   // Delegates to controllers/authController.sync
   return sync(req, res);
 });
+
+// Endpoint to send verification email
+app.post("/api/send-verification-email", sendVerification);
 
 
 // =================== (NEW) BOOKMARK ROUTES =================== //

@@ -1,5 +1,5 @@
-const admin = require('../config/firebaseAdmin');
-const { findOrCreateProfileByAuthId } = require('../services/ProfileService');
+const admin = require('../../config/firebaseAdmin');
+const { findOrCreateProfileByAuthId } = require('../../services/ProfileService');
 
 /**
  * POST /api/auth/sync
