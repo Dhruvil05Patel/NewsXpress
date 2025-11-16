@@ -40,6 +40,7 @@ async function sync(req, res) {
       full_name: decoded.name || decoded.email || null,
       avatar_url: decoded.picture || null,
       username: fallbackUsername,
+      email: decoded.email || null,
     };
 
     const profile = await findOrCreateProfileByAuthId(uid, profileData);

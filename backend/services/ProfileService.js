@@ -161,6 +161,7 @@ async function updateProfile(profileId, updateData) {
         full_name: profileData.full_name || profileData.name || null,
         avatar_url: profileData.avatar_url || profileData.picture || null,
         username: profileData.username || null,
+        email: profileData.email || null,  // Required field for database constraint
         // Optional initial values
         fcm_token: profileData.fcm_token || null,
         categories: Array.isArray(profileData.categories) ? profileData.categories : null,
