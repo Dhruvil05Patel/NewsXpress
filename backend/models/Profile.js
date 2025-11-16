@@ -23,6 +23,12 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    email: {
+     type: DataTypes.TEXT,
+     allowNull: false,
+     unique: true,
+      comment: "User email stored in profiles table",
+    },
     avatar_url: {
       type: DataTypes.TEXT,
       allowNull: true,
