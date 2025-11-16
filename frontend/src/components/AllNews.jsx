@@ -23,28 +23,80 @@ const getFormattedDate = () => {
  * The AllNews component fetches and displays a list of all news articles.
  * It also manages the state for opening a full-screen "reel" view.
  */
-import notify from "../utils/toast";
+export default function AllNews() {
+    // --- State Management ---
+    const [news, setNews] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-export default function AllNews({ userProfile, onLoginClick }) {
-  // --- State Management ---
-  const [news, setNews] = useState([]);
-  const [loading, setLoading] = useState(true);
+    // State to manage the reel view modal.
+    // `isOpen` toggles visibility, `index` tracks the starting article.
+    const [reelState, setReelState] = useState({ isOpen: false, index: 0 });
 
-  // State to manage the reel view modal.
-  // `isOpen` toggles visibility, `index` tracks the starting article.
-  const [reelState, setReelState] = useState({ isOpen: false, index: 0 });
+    // --- Data Fetching ---
+    // Fetches news data from backend DB when the component mounts.
+    useEffect(() => {
+        const fetchNewsFromApi = async () => {
+            setLoading(true);
+            try {
+                // Fetch summarized news from backend (DB-first endpoint)
+                const resp = await fetch(`${import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:4000'}/get-summarized-news?limit=20`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const payload = await resp.json();
 
-  // --- Data Fetching ---
-  // Fetches news data from backend DB when the component mounts.
-  useEffect(() => {
-    const fetchNewsFromApi = async () => {
-      setLoading(true);
-      try {
-        // Fetch summarized news from backend (DB-first endpoint)
-        const resp = await fetch(
-          `${
-            import.meta.env.VITE_API_BASE || "http://localhost:4000"
-          }/get-summarized-news`
+                // backend returns { summarizedNews: [...] }
+                const articles = Array.isArray(payload.summarizedNews) ? payload.summarizedNews : [];
+
+                // Normalize fields for NewsCard component
+                const normalized = articles.map((a) => ({
+                    id: a.id || a.original_url || a.newsUrl || a.title,
+                    title: a.title,
+                    summary: a.summary || a.content_text || "",
+                    imageUrl: a.imageUrl || a.image_url || a.thumbnail || null,
+                    newsUrl: a.newsUrl || a.original_url || a.link || "",
+                    source: (typeof a.source === 'string') ? a.source : (a.source?.name || "Unknown"),
+                    timestamp: a.timestamp || (a.published_at ? new Date(a.published_at).toLocaleString() : "Recently"),
+                    category: a.category || a.topic || "General",
+                }));
+
+                setNews(normalized);
+            } catch (err) {
+                console.error("Error fetching news from API:", err);
+                setNews([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchNewsFromApi();
+    }, []); // Empty dependency array ensures this runs only once on mount.
+
+    // --- Event Handlers ---
+    /**
+     * Opens the ReelView, starting at the article that was clicked.
+     * @param {number} index - The index of the clicked news card.
+     */
+    const handleCardClick = (index) => {
+        setReelState({ isOpen: true, index: index });
+    };
+
+    /**
+     * Closes the ReelView and resets its state.
+     */
+    const handleCloseReel = () => {
+        setReelState({ isOpen: false, index: 0 });
+    };
+
+    // --- Conditional Rendering: Loading State ---
+    // Display a loading message while data is being fetched.
+    if (loading) {
+        return (
+            <main className="bg-newspaper min-h-screen lg:ml-64 xl:mr-80 pt-24">
+                <div className="flex justify-center items-center h-full">
+                    <div className="font-serif text-lg text-stone-600">
+                        Loading Headlines...
+                    </div>
+                </div>
+            </main>
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const payload = await resp.json();

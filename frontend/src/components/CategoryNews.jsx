@@ -31,18 +31,32 @@ export default function CategoryNews({
   useEffect(() => {
     setLoading(true);
 
-    const loadCategory = async () => {
-      try {
-        const resp = await fetch(
-          `${
-            import.meta.env.VITE_API_BASE || "http://localhost:4000"
-          }/get-summarized-news/${encodeURIComponent(category)}`
-        );
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const payload = await resp.json();
-        const articles = Array.isArray(payload.summarizedNews)
-          ? payload.summarizedNews
-          : [];
+        const loadCategory = async () => {
+            try {
+                const resp = await fetch(`${import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:4000'}/get-summarized-news/${encodeURIComponent(category)}?limit=20`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const payload = await resp.json();
+                const articles = Array.isArray(payload.summarizedNews) ? payload.summarizedNews : [];
+
+                const normalized = articles.map((a) => ({
+                    id: a.id || a.original_url || a.newsUrl || a.title,
+                    title: a.title,
+                    summary: a.summary || a.content_text || "",
+                    imageUrl: a.imageUrl || a.image_url || a.thumbnail || null,
+                    newsUrl: a.newsUrl || a.original_url || a.link || "",
+                    source: (typeof a.source === 'string') ? a.source : (a.source?.name || "Unknown"),
+                    timestamp: a.timestamp || (a.published_at ? new Date(a.published_at).toLocaleString() : "Recently"),
+                    category: a.category || a.topic || category,
+                }));
+
+                setNews(normalized);
+            } catch (err) {
+                console.error("Error loading category news:", err);
+                setNews([]);
+            } finally {
+                setLoading(false);
+            }
+        };
 
         const normalized = articles.map((a) => ({
           id: a.id || a.original_url || a.newsUrl || a.title,

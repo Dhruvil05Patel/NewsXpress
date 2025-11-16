@@ -1,4 +1,4 @@
-const backEndPoint = 'http://localhost:4000/api/tts';
+const backEndPoint = `${import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:4000'}/api/tts`;
 
 export const textToSpeech = async (
   text,
