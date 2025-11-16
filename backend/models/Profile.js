@@ -12,7 +12,7 @@ module.exports = (sequelize) => {
     auth_id: {
       type: DataTypes.UUID,
       allowNull: true,
-      unique: true,
+      // unique: true, // Removed - causes ALTER TABLE syntax errors
       comment: 'Deprecated - Firebase UID now stored in id field',
     },
     full_name: {
@@ -22,7 +22,12 @@ module.exports = (sequelize) => {
     username: {
       type: DataTypes.TEXT,
       allowNull: true,
-      unique: true,
+    },
+    email: {
+     type: DataTypes.TEXT,
+     allowNull: false,
+     unique: true,
+      comment: "User email stored in profiles table",
     },
     avatar_url: {
       type: DataTypes.TEXT,
@@ -53,6 +58,17 @@ module.exports = (sequelize) => {
       allowNull: true,
     },
 
+    // New fields per database schema
+    fcm_token: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    categories: {
+      type: DataTypes.ARRAY(DataTypes.TEXT), // Corresponds to text[]
+      allowNull: true,
+      defaultValue: [],
+    },
+
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -73,10 +89,6 @@ module.exports = (sequelize) => {
       {
         name: 'idx_profiles_auth_id',
         fields: ['auth_id'],
-      },
-      {
-        name: 'idx_profiles_username',
-        fields: ['username'],
       },
     ],
   });

@@ -3,8 +3,8 @@
  * Helper functions to save and retrieve articles from the database
  */
 
- // Importing only the models this service needs from the central db config
-const { Article, Source } = require('../config/db');
+// Importing only the models this service needs from the central db config
+const { Article, Source } = require("../config/db");
 
 /**
  * Find or create a news source
@@ -29,7 +29,10 @@ async function findOrCreateSource(sourceName) {
 
     return source.id;
   } catch (error) {
-    console.error(`Error finding/creating source ${sourceName}:`, error.message);
+    console.error(
+      `Error finding/creating source ${sourceName}:`,
+      error.message
+    );
     return null;
   }
 }
@@ -60,7 +63,7 @@ async function saveArticle(articleData) {
       source_id: sourceId,
       published_at: articleData.published_at,
       content_text: articleData.content_text,
-      language_code: articleData.language_code || 'en-IN',
+      language_code: articleData.language_code || "en-IN",
       image_url: articleData.image_url,
       actors: articleData.actors || [],
       place: articleData.place,
@@ -70,7 +73,10 @@ async function saveArticle(articleData) {
     console.log(`✅ Saved article: ${article.title}`);
     return article;
   } catch (error) {
-    console.error(`Error saving article "${articleData.title}":`, error.message);
+    console.error(
+      `Error saving article "${articleData.title}":`,
+      error.message
+    );
     return null;
   }
 }
@@ -98,8 +104,8 @@ async function saveArticles(articlesArray) {
   console.log(`  ❌ Failed: ${errors.length} articles`);
 
   if (errors.length > 0) {
-    console.log('\n❌ Errors:');
-    errors.forEach(err => console.log(`  - ${err.article}: ${err.error}`));
+    console.log("\n❌ Errors:");
+    errors.forEach((err) => console.log(`  - ${err.article}: ${err.error}`));
   }
 
   return {
@@ -133,17 +139,17 @@ async function getArticles(filters = {}) {
       include: [
         {
           model: Source,
-          as: 'source',
-          attributes: ['name', 'website_url'],
+          as: "source",
+          attributes: ["name", "website_url"],
         },
       ],
-      order: [['published_at', 'DESC']],
-      limit: filters.limit || 50,
+      order: [["published_at", "DESC"]],
+      limit: filters.limit || null,
     });
 
     return articles;
   } catch (error) {
-    console.error('Error fetching articles from DB:', error.message);
+    console.error("Error fetching articles from DB:", error.message);
     return [];
   }
 }
@@ -151,7 +157,7 @@ async function getArticles(filters = {}) {
 /**
  * Get articles by topic/category
  */
-async function getArticlesByTopic(topic, limit = 20) {
+async function getArticlesByTopic(topic, limit = null) {
   return getArticles({ topic, limit });
 }
 
@@ -179,16 +185,16 @@ async function searchArticles(keyword, limit = 20) {
       include: [
         {
           model: Source,
-          as: 'source',
+          as: "source",
         },
       ],
-      order: [['published_at', 'DESC']],
+      order: [["published_at", "DESC"]],
       limit,
     });
 
     return articles;
   } catch (error) {
-    console.error('Error searching articles:', error.message);
+    console.error("Error searching articles:", error.message);
     return [];
   }
 }

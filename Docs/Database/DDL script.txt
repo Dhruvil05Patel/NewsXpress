@@ -19,7 +19,11 @@ create table if not exists profiles (
   auth_id uuid references auth.users(id) on delete cascade, 
   full_name text,
   username text unique,
+  email text unique not null,
   avatar_url text,
+
+   fcm_token text,                    
+    categories text[],   
 
   -- NEW PASSWORD FIELDS
   password text,                     -- hashed password
