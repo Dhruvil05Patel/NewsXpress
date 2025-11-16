@@ -45,6 +45,7 @@ export default function AllNews({ userProfile, onLoginClick }) {
           `${
             import.meta.env.VITE_API_BASE || "http://localhost:4000"
           }/get-summarized-news`
+      
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const payload = await resp.json();

@@ -2,6 +2,7 @@ import axios from "axios";
 // Vite exposes env vars via `import.meta.env`. Do not use dotenv in browser code.
 const VITE_BACKEND_API_URL =
 	import.meta.env.VITE_BACKEND_API_URL || "http://localhost:4000";
+
 // Base URL for backend API
 const API_BASE_URL = VITE_BACKEND_API_URL;
 

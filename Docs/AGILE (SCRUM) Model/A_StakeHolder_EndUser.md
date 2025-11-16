@@ -51,8 +51,6 @@
 
 1. User  
 2. Surfer  
-3. Developers  
-4. Test Engineers  
 
 ---
 
