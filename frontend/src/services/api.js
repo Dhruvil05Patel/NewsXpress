@@ -43,6 +43,19 @@ export const getSummarizedNews = async () => {
 	return response.data;
 };
 
+// Profile helpers (match backend Profile schema)
+export const getProfile = async (profileId) => {
+  const { data } = await api.get(`/api/profiles/${profileId}`);
+  return data; // Sequelize model JSON with fields: id, full_name, username, avatar_url, actor, place, topic, categories, fcm_token
+};
+
+export const updateProfile = async (profileId, updateData) => {
+  // Allowed keys include: full_name, username, avatar_url, actor, place, topic,
+  // categories (array of strings), fcm_token (string)
+  const { data } = await api.put(`/api/profiles/${profileId}`, updateData);
+  return data;
+};
+
 export const sendVerificationEmail = async (email, name) => {
 	const response = await api.post("/api/auth/send-verification-email", {
 		email,

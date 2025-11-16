@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import api from "../services/api";
+import { updateProfile } from "../services/api";
 import { getFCMToken } from "../utils/getFCMToken";
 
 const DEFAULT_CATEGORIES = [
@@ -63,7 +63,7 @@ export default function CategoryOnboarding({
         const token = await getFCMToken();
         if (token) payload.fcm_token = token;
       } catch {}
-      await api.put(`/api/profiles/${profile.id}`, payload);
+      await updateProfile(profile.id, payload);
       onClose && onClose(selected);
     } catch (e) {
       console.error("Failed to save categories:", e?.message || e);

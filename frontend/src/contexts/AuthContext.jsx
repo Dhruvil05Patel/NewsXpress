@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { initAuthListener } from "../components/auth/controller/authController";
 import { getFCMToken } from "../utils/getFCMToken";
-import api from "../services/api";
+import { updateProfile } from "../services/api";
 
 const AuthContext = createContext({ user: null, profile: null, loading: true });
 
@@ -17,9 +17,13 @@ async function syncUserFCM(profileId, selectedCategories = []) {
 		const cacheKey = `fcm_token_${profileId}`;
 		if (localStorage.getItem(cacheKey) === token) return;
 
-		await api.put(`/api/profiles/${profileId}`, {
+		// Always send lowercase categories and only the intended fields
+		const lcCategories = Array.isArray(selectedCategories)
+			? selectedCategories.map((c) => (typeof c === "string" ? c.toLowerCase() : c))
+			: [];
+		await updateProfile(profileId, {
 			fcm_token: token,
-			categories: selectedCategories,
+			categories: lcCategories,
 		});
 
 		localStorage.setItem(cacheKey, token);
