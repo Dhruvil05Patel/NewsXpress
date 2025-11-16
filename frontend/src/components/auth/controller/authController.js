@@ -1,15 +1,16 @@
-import notify from "../../../utils/toast";
-import { app, auth } from "../firebase";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  signInWithPopup,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-} from "firebase/auth";
-import { syncUser } from "../../../services/api";
-import { sendVerificationEmail, sendResetPasswordEmail } from "../../../services/api";
+import { ToastContainer, toast } from 'react-toastify';
+import {app, auth} from '../firebase'
+import{
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    sendEmailVerification,
+    sendPasswordResetEmail,
+    signInWithPopup,
+    GoogleAuthProvider,
+    onAuthStateChanged
+} from 'firebase/auth'
+import { syncUser } from '../../../services/api'
 
 /**
  * Central auth state listener - syncs Firebase user to backend whenever auth state changes.
@@ -19,153 +20,137 @@ import { sendVerificationEmail, sendResetPasswordEmail } from "../../../services
 export const initAuthListener = (onUserSynced) => {
   return onAuthStateChanged(auth, async (user) => {
     try {
-      if (!user) {
-        console.log("🚪 User logged out");
-        onUserSynced(null, null);
-        return;
+      if (user) {
+        // User is signed in - check if email is verified
+        if (!user.emailVerified) {
+          console.log('⚠️ User email not verified:', user.email);
+          if (onUserSynced) onUserSynced(null, user); // Pass user but with null profile
+          return;
+        }
+        
+        // User is signed in and verified - sync to backend
+        try {
+          const idToken = await user.getIdToken();
+          const result = await syncUser(idToken);
+          console.log('✅ User synced to backend:', result.profile?.id);
+          if (onUserSynced) onUserSynced(result.profile, user);
+        } catch (err) {
+          console.error('❌ Backend sync failed:', err.message || err);
+          // Still call callback even if sync fails - allow app to render
+          if (onUserSynced) onUserSynced(null, user);
+        }
+      } else {
+        // User is signed out
+        console.log('🚪 User signed out');
+        if (onUserSynced) onUserSynced(null, null);
       }
-
-      if (!user.emailVerified) {
-        console.log("⚠️ Email not verified — skipping backend sync");
-        onUserSynced(null, user);
-        return;
-      }
-
-      // Force token refresh to avoid stale tokens
-      const idToken = await user.getIdToken(true).catch(err => {
-        console.warn("⚠️ Token refresh failed, trying cached token:", err.message);
-        return user.getIdToken(false); // Fallback to cached token
-      });
-
-      const backendProfile = await syncUser(idToken); // returns correct UUID profile
-
-      if (!backendProfile) {
-        console.warn("⚠️ No backend profile returned");
-        onUserSynced(null, user);
-        return;
-      }
-
-      console.log("🟢 Synced backend profile:", backendProfile.id);
-
-      onUserSynced(backendProfile, user);
-    } catch (err) {
-      console.error("❌ initAuthListener error:", err);
-      // Still pass user if we have it, even if sync failed
-      onUserSynced(null, user || null);
+    } catch (error) {
+      console.error('❌ Auth listener error:', error);
+      // Ensure callback is always called to prevent app from hanging
+      if (onUserSynced) onUserSynced(null, null);
     }
   });
 };
 
 export const registerUser = async (email, password) => {
-  if (!email || !password) {
-    notify.error("❌ Email and Password Required!");
-    return { success: false };
-  }
-
-  try {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    await sendVerificationEmail(auth.currentUser.email, auth.currentUser.displayName || "User");
-    // Return success with unverified status
-    return { success: true, emailVerified: false, email };
-  } catch (error) {
-    switch (error.code) {
-      case "auth/email-already-in-use":
-        notify.error("❌ Email already in use. Try another or login.");
-        break;
-      case "auth/too-many-requests":
-        notify.error("⌛ Server is busy. Please try again later!");
-        break;
-      default:
-        notify.error(`❌ Error: ${error.code}`);
-    }
-    console.error(error);
-    return { success: false };
-  }
-};
-
-export const loginUser = async (email, password) => {
-  if (!email || !password) {
-    notify.error("❌ Both Email and Password are required");
-    return { success: false };
-  }
-
-  try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-
-    // Check if email is verified
-    if (!userCredential.user.emailVerified) {
-      return {
-        success: true,
-        emailVerified: false,
-        email: userCredential.user.email,
-      };
+    if (!email || !password) {
+        toast.error("Email and Password Required!")
+        return { success: false };
     }
 
-    // Email is verified
-    notify.success(`✅ Logged in as ${email}`);
-    return { success: true, emailVerified: true };
-  } catch (error) {
-    switch (error.code) {
-      case "auth/user-not-found":
-      case "auth/invalid-credential":
-        notify.error("❌ Please enter email or password correctly.");
-        break;
-      case "auth/wrong-password":
-        notify.error("❌ Incorrect Password! Please Try Again");
-        break;
-      case "auth/too-many-requests":
-        notify.error("⌛ Server is busy. Please try again later");
-        break;
-      default:
-        notify.error(`❌ Error: ${error.code}`);
-    }
-    console.error(error);
-    return { success: false };
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(auth.currentUser);
+      // Return success with unverified status
+      return { success: true, emailVerified: false, email };
+    } catch (error) {
+        switch(error.code){
+            case 'auth/email-already-in-use':
+              toast.error('Email Already in use, use another email to create account or Login.')
+              break;
+            case 'auth/too-many-requests':
+              toast.error('The server seems to busy, please try again later!')
+              break;
+            default:
+              toast.error(`Encountered error : ${error.code}`)
+        }
+        console.error(error);   
+        return { success: false };
+      }
   }
-};
+
+export const loginUser = async  (email, password) => {
+    if (!email || !password){
+      toast.error('Both Email and Password are required');
+      return { success: false };
+    }
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if email is verified
+      if (!userCredential.user.emailVerified) {
+        return { success: true, emailVerified: false, email: userCredential.user.email };
+      }
+      
+      // Email is verified
+      toast.success(`Logged in as ${email}`)
+      return { success: true, emailVerified: true }
+    } catch (error) {
+        switch(error.code){
+            case 'auth/user-not-found':
+            case 'auth/invalid-credential':
+              toast.error('Please enter email or password correctly.')
+                break;
+            case 'auth/wrong-password':
+              toast.error('Incorrect Password! Please Try Again')
+              break;
+            case 'auth/too-many-requests':
+              toast.error('Server is busy at the moment, please try again later')
+              break;
+            default:
+              toast.error(`Encounter Error : ${error.code}`)
+        }
+      console.error(error);
+      return { success: false };
+    }
+  }
 
 export const logoutUser = async () => {
-  try {
-    await signOut(auth);
-    notify.success("✅ Logged out successfully");
-    return true;
-  } catch (error) {
-    notify.error("❌ Unable to logout. Please try again.");
-    return false;
+    try {
+      await signOut(auth);
+      toast.success("User logged out successfully")
+      return true;
+    } catch (error) {
+      toast.error('Internal Server Error! Unable to Logout.')
+      return false;
+    }
   }
-};
 
 export const resetPassword = async (email) => {
-  if (!email) {
-    notify.error("❌ Email Required!");
-    return false;
-  }
+    if (!email) {
+      toast.error('Email Required!')
+      return false;
+    }
 
-  try {
-    await sendResetPasswordEmail(email, "User");
-    return true;
-  } catch (error) {
-    notify.error(`❌ Server error. Please try again later!`);
-    console.error(error);
-    return false;
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success('Password email sent successfully!')
+      return true;
+    } catch (error) {
+      toast.error(`Internal Server Error , please try again later!`)
+      console.error(error);
+      return false;
+    }
   }
-};
 
 // Initialize Firebase Auth provider
 const provider = new GoogleAuthProvider();
 
 // whenever a user interacts with the provider, we force them to select an account
 provider.setCustomParameters({
-  prompt: "select_account",
-});
+  prompt : "select_account"
+})
 
 export const signInWithGoogle = async () => {
   try {
@@ -173,8 +158,10 @@ export const signInWithGoogle = async () => {
     // No manual sync needed - onAuthStateChanged will handle it
     return result;
   } catch (err) {
-    console.error("Google sign-in failed:", err);
-    notify.error("❌ Google sign-in failed");
+    console.error('Google sign-in failed:', err);
+    toast.error('Google sign-in failed');
     throw err;
   }
-};
+}
+
+

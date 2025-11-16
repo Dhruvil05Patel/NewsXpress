@@ -1,6 +1,6 @@
 import {initializeApp} from 'firebase/app'
 import { getAuth} from "firebase/auth";
-import { getMessaging, isSupported } from "firebase/messaging";
+
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_AUTH_API_KEY || '',
@@ -15,16 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Initialize messaging only if supported (avoids errors in some browsers)
-let messaging = null;
-if (typeof window !== 'undefined') {
-  isSupported().then(supported => {
-    if (supported) {
-      messaging = getMessaging(app);
-    }
-  }).catch(err => {
-    console.warn('Firebase Messaging not supported:', err);
-  });
-}
 
-export { app, auth, messaging };
+
+
+export {app , auth};

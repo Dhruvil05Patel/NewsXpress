@@ -83,5 +83,4 @@ async function fetchNews(category = "all", newsCount = 15) {
   }
 }
 
-module.exports = { fetchNewsBySerpAPI, fetchNews };
-
+module.exports = { fetchNews };

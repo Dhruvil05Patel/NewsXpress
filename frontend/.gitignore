@@ -53,5 +53,3 @@ Desktop.ini
 jest-test-results.json
 test-results/
 
-#Firebase Config
-firebase-config.js
