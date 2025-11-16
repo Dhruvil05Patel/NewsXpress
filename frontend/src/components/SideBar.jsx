@@ -1,5 +1,5 @@
 // --- Imports ---
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Laptop,
@@ -17,13 +17,7 @@ import {
   User,
   Search,
   Home,
-  Settings,
   Bell,
-  Key, // Import for Change Password
-  Image, // Import for Change Profile Photo
-  HelpCircle, // Import for Help
-  MapPin, // Import for Location
-  ChevronDown,
 } from "lucide-react";
 import { logoutUser } from "./auth/controller/authController";
 import notify from "../utils/toast";
@@ -54,26 +48,12 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     Crime: "/crime",
   };
 
-  // --- Location Options ---
-  const availableLocations = [
-    "Global",
-    "New York, NY",
-    "London, UK",
-    "Tokyo, JP",
-    "New Delhi, IN",
-    "Sydney, AU",
-    "Local (Current Location)",
-  ];
-
   // --- State Management ---
   const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSettings, setShowSettings] = useState(false);
   const [notifications, setNotifications] = useState(true);
-
-  const [hoveredCategory, setHoveredCategory] = useState(null);
 
   const categories = [
     { name: "All", icon: null },
@@ -99,17 +79,6 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     if (onLoginClick) {
       onLoginClick();
     }
-  };
-
-  // Placeholder handlers for new features
-  const handleChangePassword = () => {
-    notify.info("🔑 Opening change password settings...");
-    setIsProfileSidebarOpen(false);
-  };
-
-  const handleChangeProfilePhoto = () => {
-    notify.info("📸 Opening photo upload dialog...");
-    // In a real app, this would trigger a file upload input
   };
 
   const handleHelpClick = () => {
@@ -158,29 +127,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     </div>
   );
 
-  // SelectPreference (Existing, used for Font Size and Location)
-  const SelectPreference = ({ label, value, onChange, options, Icon }) => (
-    <div className="flex flex-col space-y-2">
-      <div className="flex items-center space-x-3">
-        {Icon && <Icon className="w-5 h-5 text-gray-600" />}
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-      </div>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={onChange}
-          className="appearance-none block w-full bg-white border border-gray-300 text-gray-900 py-2 px-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 text-sm transition-all duration-200 cursor-pointer"
-        >
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-      </div>
-    </div>
-  );
+  // (Removed unused SelectPreference component)
 
   // ProfileActionButton (Existing)
   const ProfileActionButton = ({ label, Icon, onClick }) => {
@@ -204,19 +151,19 @@ const SideBar = ({ onLoginClick, userProfile }) => {
   };
 
   const ProfileSection = () => {
-    const isBookmarksActive = location.pathname === "/bookmarks";
-
     // Local UI state for settings forms inside profile panel
     const [showSettingsPanel, setShowSettingsPanel] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [newName, setNewName] = useState(userProfile?.full_name || "");
     const [uploadPreview, setUploadPreview] = useState(null);
-    const [passwords, setPasswords] = useState({
-      current: "",
-      next: "",
-      verify: "",
-    });
+    const [selectedFileName, setSelectedFileName] = useState(null);
+    const fileInputRef = useRef(null);
     const [saving, setSaving] = useState(false);
+
+    // Sync displayed name with latest profile as soon as it changes
+    useEffect(() => {
+      setNewName(userProfile?.full_name || "");
+    }, [userProfile?.full_name]);
 
     const handleSaveName = () => {
       setSaving(true);
@@ -233,26 +180,9 @@ const SideBar = ({ onLoginClick, userProfile }) => {
       if (!file) return;
       const url = URL.createObjectURL(file);
       setUploadPreview(url);
+      setSelectedFileName(file.name);
       // In a real app, you would upload the file to backend / storage here.
       notify.info("Selected profile picture (preview)");
-    };
-
-    const handleChangePasswordSubmit = () => {
-      if (!passwords.current || !passwords.next || !passwords.verify) {
-        notify.error("Please fill all password fields");
-        return;
-      }
-      if (passwords.next !== passwords.verify) {
-        notify.error("New password and verify password do not match");
-        return;
-      }
-      setSaving(true);
-      // Mock API call
-      setTimeout(() => {
-        setSaving(false);
-        setPasswords({ current: "", next: "", verify: "" });
-        notify.success("Password changed (mock)");
-      }, 1000);
     };
 
     return (
@@ -291,6 +221,26 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           </div>
         </div>
 
+        {/* Quick Actions (Bookmarks & Personalized Feed) - visible only when logged in */}
+        {userProfile && (
+          <div className="space-y-2">
+            <ProfileActionButton
+              label="Bookmarks"
+              Icon={Bookmark}
+              onClick={() => {
+                navigate("/bookmarks");
+              }}
+            />
+            <ProfileActionButton
+              label="Personalized Feed"
+              Icon={TrendingUp}
+              onClick={() => {
+                navigate("/feed/personalized");
+              }}
+            />
+          </div>
+        )}
+
         {/* Settings Section with dropdown */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -298,7 +248,10 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               Profile Settings
             </h4>
             <button
-              onClick={() => setShowSettingsPanel((s) => !s)}
+              onClick={() => {
+                if (!userProfile) return handleLoginClick();
+                setShowSettingsPanel((s) => !s);
+              }}
               className="text-sm text-red-600 font-semibold"
             >
               {showSettingsPanel ? "Close" : "Open"}
@@ -306,11 +259,11 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           </div>
 
           {showSettingsPanel && (
-            <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200">
+            <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200 shadow-sm">
               {/* Edit Username */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium">Edit Username</div>
+                  <div className="text-sm font-medium">Username</div>
                   <button
                     onClick={() => setEditingName((v) => !v)}
                     className="text-xs text-gray-600"
@@ -318,86 +271,100 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                     {editingName ? "Cancel" : "Edit"}
                   </button>
                 </div>
+
                 {editingName ? (
                   <div className="flex gap-2">
                     <input
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="flex-1 px-3 py-2 border rounded"
+                      className="flex-1 px-3 py-2 border rounded-md text-sm"
+                      aria-label="Edit username"
                     />
                     <button
                       onClick={handleSaveName}
-                      className="px-3 py-2 bg-red-600 text-white rounded disabled:opacity-60"
+                      className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
                       disabled={saving}
                     >
                       Save
                     </button>
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-gray-700">
                     {userProfile?.full_name || "Not set"}
                   </div>
                 )}
               </div>
 
-              {/* Upload Profile Picture */}
+              {/* Upload Profile Picture (improved) */}
               <div>
                 <div className="text-sm font-medium mb-2">Profile Picture</div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleUploadChange}
+                    className="hidden"
+                    aria-label="Choose profile photo"
                   />
-                  {uploadPreview && (
-                    <img
-                      src={uploadPreview}
-                      alt="preview"
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  )}
-                </div>
-              </div>
 
-              {/* Change Password */}
-              <div>
-                <div className="text-sm font-medium mb-2">Change Password</div>
-                <div className="space-y-2">
-                  <input
-                    type="password"
-                    placeholder="Current password"
-                    value={passwords.current}
-                    onChange={(e) =>
-                      setPasswords({ ...passwords, current: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                  <input
-                    type="password"
-                    placeholder="New password"
-                    value={passwords.next}
-                    onChange={(e) =>
-                      setPasswords({ ...passwords, next: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Verify new password"
-                    value={passwords.verify}
-                    onChange={(e) =>
-                      setPasswords({ ...passwords, verify: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handleChangePasswordSubmit}
-                      className="px-4 py-2 bg-red-600 text-white rounded"
-                      disabled={saving}
-                    >
-                      Change
-                    </button>
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                    {uploadPreview ? (
+                      <img
+                        src={uploadPreview}
+                        alt="preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : userProfile?.avatar_url ? (
+                      <img
+                        src={userProfile.avatar_url}
+                        alt="profile"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-white font-semibold bg-gradient-to-br from-red-400 to-pink-500 w-full h-full flex items-center justify-center">
+                        {(userProfile?.full_name || "G")
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="text-sm text-gray-700">
+                      {selectedFileName ||
+                        (userProfile?.avatar_url
+                          ? "Current photo"
+                          : "No photo uploaded")}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          fileInputRef.current && fileInputRef.current.click()
+                        }
+                        className="px-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm"
+                      >
+                        Choose image
+                      </button>
+                      {uploadPreview && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadPreview(null);
+                            setSelectedFileName(null);
+                            if (fileInputRef.current)
+                              fileInputRef.current.value = null;
+                          }}
+                          className="px-3 py-1.5 text-sm text-gray-500"
+                        >
+                          Remove
+                        </button>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        Accepted: PNG, JPG. Max 5MB
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -406,7 +373,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               <div>
                 <button
                   onClick={handleHelpClick}
-                  className="w-full text-left px-3 py-2 rounded hover:bg-white/30"
+                  className="w-full px-4 py-2 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 font-medium shadow-sm hover:bg-red-100 transition"
                 >
                   Help & Support
                 </button>
@@ -548,57 +515,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
         </div>
       </nav>
 
-      {/* Desktop-only Left Sidebar (hidden; replaced by top bar) */}
-      <aside className="hidden">
-        <div className="p-6">
-          <h3 className="text-base font-bold text-gray-900 mb-6 tracking-tight">
-            Categories
-          </h3>
-          <nav className="space-y-2">
-            {categories.map((category) => {
-              const IconComponent = category.icon;
-              const route = categoryRoutes[category.name] || "/all";
-              const isActive = location.pathname === route;
-              const isHovered = hoveredCategory === category.name;
-
-              return (
-                <button
-                  key={category.name}
-                  onClick={() => handleCategoryClick(category.name)}
-                  onMouseEnter={() => setHoveredCategory(category.name)}
-                  onMouseLeave={() => setHoveredCategory(null)}
-                  style={{
-                    transform:
-                      isHovered && !isActive
-                        ? "translateX(4px)"
-                        : "translateX(0)",
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    isActive
-                      ? "bg-red-50 text-red-600 border-l-4 border-red-500 shadow-sm"
-                      : "text-gray-700 hover:text-red-600 hover:bg-red-50"
-                  }`}
-                >
-                  {IconComponent ? (
-                    <IconComponent
-                      className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
-                        isActive ? "text-red-500" : "text-gray-500"
-                      }`}
-                    />
-                  ) : (
-                    <div
-                      className={`w-5 h-5 rounded-full flex-shrink-0 transition-colors duration-200 ${
-                        isActive ? "bg-red-500" : "bg-gray-400"
-                      }`}
-                    />
-                  )}
-                  <span className="text-left">{category.name}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </aside>
+      {/* Desktop-only Left Sidebar removed as redundant */}
 
       {/* Mobile-only Left Sidebar (for Categories) */}
       {isSidebarVisible && (

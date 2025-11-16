@@ -8,6 +8,7 @@ import AllNews from "./components/AllNews";
 import CategoryNews from "./components/CategoryNews";
 import LoginPage from "./components/LoginPage";
 import Bookmarks from "./components/Bookmarks";
+import PersonalizedFeed from "./components/PersonalizedFeed";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import notify from "./utils/toast";
@@ -70,12 +71,15 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Determine if we have an unverified user
-  const unverifiedUser = firebaseUser && !firebaseUser.emailVerified ? firebaseUser : null;
+  const unverifiedUser =
+    firebaseUser && !firebaseUser.emailVerified ? firebaseUser : null;
 
   // --- Show onboarding if user has no categories ---
   useEffect(() => {
     if (userProfile?.id && !unverifiedUser) {
-      const hasCategories = Array.isArray(userProfile.categories) && userProfile.categories.length > 0;
+      const hasCategories =
+        Array.isArray(userProfile.categories) &&
+        userProfile.categories.length > 0;
       if (!hasCategories) {
         setShowOnboarding(true);
       }
@@ -240,6 +244,10 @@ function AppContent() {
             }
           />
           <Route path="/bookmarks" element={<Bookmarks />} />
+          <Route
+            path="/feed/personalized"
+            element={<PersonalizedFeed userProfile={userProfile} />}
+          />
         </Routes>
 
         {/* --- Modals --- */}
@@ -250,7 +258,11 @@ function AppContent() {
         {showOnboarding && userProfile?.id && !unverifiedUser && (
           <CategoryOnboarding
             profile={userProfile}
-            initialSelected={Array.isArray(userProfile.categories) ? userProfile.categories : []}
+            initialSelected={
+              Array.isArray(userProfile.categories)
+                ? userProfile.categories
+                : []
+            }
             onClose={(saved) => {
               setShowOnboarding(false);
               // Categories are now synced via AuthContext
@@ -337,7 +349,9 @@ function AppContent() {
                       "firebase/auth"
                     );
                     // Use custom backend-powered verification email instead of Firebase default template
-                    const { sendVerificationEmail } = await import("./services/api");
+                    const { sendVerificationEmail } = await import(
+                      "./services/api"
+                    );
                     await sendVerificationEmail(
                       unverifiedUser.email,
                       unverifiedUser.displayName || "User"

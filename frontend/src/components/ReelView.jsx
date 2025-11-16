@@ -17,7 +17,7 @@ export default function ReelView({
   onRequireLogin,
 }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0);
-  const containerRef = useRef(null);
+  // Removed unused containerRef (no direct DOM operations needed)
   const scrollTimeout = useRef(null);
   const audioPlayersRef = useRef([]);
 
@@ -110,7 +110,6 @@ export default function ReelView({
           </button>
 
           <div
-            ref={containerRef}
             className="h-full w-full snap-y snap-mandatory overflow-hidden"
             onWheel={handleWheel}
             onTouchStart={handleTouchStart}

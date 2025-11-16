@@ -1,14 +1,5 @@
-import React, { useState } from "react";
-import {
-  SquareArrowOutUpRight,
-  Languages,
-  Volume2,
-  VolumeX,
-  LoaderCircle,
-} from "lucide-react";
-import LanguageSelector from "./LanguageSelector";
-import { useTextToSpeech } from "../hooks/useTextToSpeech";
-import { useTranslation } from "../hooks/useTranslation";
+import React from "react";
+import { SquareArrowOutUpRight } from "lucide-react";
 
 export default function NewsCard({
   title,
@@ -19,48 +10,19 @@ export default function NewsCard({
   timestamp,
   category,
   onCardClick,
-  userProfile,
 }) {
-  // Local state for image error handling
-  const [imgError, setImgError] = useState(false);
-
-  // Use custom hooks
-  const {
-    isTranslated,
-    translatedContent,
-    isTranslating,
-    selectedLanguage,
-    isLangSelectorOpen,
-    setIsLangSelectorOpen,
-    handleTranslateClick,
-    performTranslation,
-  } = useTranslation();
-
-  const { isSpeaking, isFetchingAudio, handleListen } =
-    useTextToSpeech(selectedLanguage);
-
-  // Image error handler
+  const [imgError, setImgError] = React.useState(false);
   const handleImageError = () => setImgError(true);
 
-  // Wrapper function to handle translate click event
-  const onTranslateClick = (e) => {
-    e.stopPropagation();
-    handleTranslateClick();
+  const truncateWords = (text, count) => {
+    if (!text) return "";
+    const words = String(text).trim().split(/\s+/);
+    if (words.length <= count) return text;
+    return words.slice(0, count).join(" ") + "…";
   };
 
-  // Wrapper for performTranslation with current title/summary
-  const onSelectLanguage = (targetLanguage) => {
-    performTranslation(title, summary, targetLanguage);
-  };
-
-  // Wrapper for handleListen with appropriate text
-  const onListenClick = async (e) => {
-    e.stopPropagation();
-    const textToSpeak =
-      (isTranslated ? translatedContent.summary : summary) ||
-      (isTranslated ? translatedContent.title : title);
-    await handleListen(textToSpeak);
-  };
+  const titleShort = truncateWords(title, 9);
+  const summaryShort = truncateWords(summary, 20);
 
   return (
     <article
@@ -93,12 +55,12 @@ export default function NewsCard({
       {/* Container for the text content and action buttons at the bottom. */}
       <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
         {/* Display translated or original title. */}
-        <h2 className="font-serif text-xl sm:text-2xl mb-2 leading-tight line-clamp-3">
-          {isTranslated ? translatedContent.title : title}
+        <h2 className="font-serif text-xl sm:text-2xl mb-2 leading-tight">
+          {titleShort}
         </h2>
         {/* Display translated or original summary. */}
-        <p className="font-sans text-gray-300 text-sm md:text-base line-clamp-2 mb-4">
-          {isTranslated ? translatedContent.summary : summary}
+        <p className="font-sans text-gray-300 text-sm md:text-base mb-4">
+          {summaryShort}
         </p>
         {/* News source and timestamp. */}
         <div className="font-sans text-xs text-gray-400 mb-3">
@@ -108,37 +70,7 @@ export default function NewsCard({
 
         {/* Container for action buttons. */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Translate Button
-                    <button
-                        onClick={onTranslateClick}
-                        disabled={isTranslating}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-50"
-                    >
-                        {isTranslating ? 'Translating...' : (isTranslated ? 'Show Original' : 'Translate')}
-                        <Languages size={16} />
-                    </button> */}
-
-          {/* Listen Button
-                    <button
-                        onClick={onListenClick}
-                        disabled={isFetchingAudio && !isSpeaking}
-                        className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all backdrop-blur-sm disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking ? "bg-red-500/50 hover:bg-red-500/60" : "bg-white/10 hover:bg-white/20"}`}
-                    >
-                        {isFetchingAudio ? (
-                            <>
-                                <LoaderCircle size={16} className="animate-spin" />
-                                Loading Audio...
-                            </>
-                        ) : isSpeaking ? (
-                            <>
-                                Stop Listening <VolumeX size={16} />
-                            </>
-                        ) : (
-                            <>
-                                Listen News <Volume2 size={16} />
-                            </>
-                        )}
-                    </button> */}
+          {/* (Removed translate & listen features as unused) */}
 
           {/* Read More Link */}
           <a
@@ -153,13 +85,7 @@ export default function NewsCard({
         </div>
       </div>
 
-      {/* Conditionally render the Language Selector modal when needed. */}
-      {isLangSelectorOpen && (
-        <LanguageSelector
-          onSelectLanguage={onSelectLanguage}
-          onClose={() => setIsLangSelectorOpen(false)}
-        />
-      )}
+      {/* Translation modal removed */}
     </article>
   );
 }

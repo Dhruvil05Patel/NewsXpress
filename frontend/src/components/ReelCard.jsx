@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   SquareArrowOutUpRight,
   Languages,
   Volume2,
   VolumeX,
   LoaderCircle,
+  Bookmark,
 } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
@@ -38,6 +39,31 @@ export default function ReelCard({
 
   const { isSpeaking, isFetchingAudio, handleListen, audioPlayer } =
     useTextToSpeech(selectedLanguage);
+
+  // Bookmark local state
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkNote, setBookmarkNote] = useState("");
+  const [showBookmarkModal, setShowBookmarkModal] = useState(false);
+  const [bookmarkNoteDraft, setBookmarkNoteDraft] = useState("");
+
+  // Load existing bookmarks from localStorage to reflect state
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("bookmarks");
+      if (raw) {
+        const arr = JSON.parse(raw);
+        const found = arr.find(
+          (b) => b.title === title || (b.id && b.id === title)
+        );
+        if (found) {
+          setIsBookmarked(true);
+          if (found.note) setBookmarkNote(found.note);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [title]);
 
   // Register this card's audio player in the parent ref array
   useEffect(() => {
@@ -83,6 +109,58 @@ export default function ReelCard({
     await handleListen(textToSpeak);
   };
 
+  const onBookmarkClick = (e) => {
+    e.stopPropagation();
+    if (!userProfile) {
+      notify.warn("🔒 Please login to bookmark articles");
+      return;
+    }
+
+    // If already bookmarked, remove
+    const raw = localStorage.getItem("bookmarks");
+    const existing = raw ? JSON.parse(raw) : [];
+    if (isBookmarked) {
+      const next = existing.filter((b) => b.title !== title);
+      localStorage.setItem("bookmarks", JSON.stringify(next));
+      setIsBookmarked(false);
+      setBookmarkNote("");
+      notify.success("✅ Bookmark removed");
+      return;
+    }
+    // Open themed modal for note entry
+    setBookmarkNoteDraft(bookmarkNote || "");
+    setShowBookmarkModal(true);
+  };
+
+  const finalizeBookmark = () => {
+    const raw = localStorage.getItem("bookmarks");
+    const existing = raw ? JSON.parse(raw) : [];
+    const entry = {
+      title,
+      summary,
+      imageUrl,
+      newsUrl,
+      source,
+      timestamp,
+      category,
+      note: bookmarkNoteDraft.trim(),
+      savedAt: Date.now(),
+    };
+    existing.push(entry);
+    localStorage.setItem("bookmarks", JSON.stringify(existing));
+    setIsBookmarked(true);
+    setBookmarkNote(bookmarkNoteDraft.trim());
+    setShowBookmarkModal(false);
+    notify.success(
+      "🔖 Added to bookmarks" + (bookmarkNoteDraft.trim() ? " with note" : "")
+    );
+  };
+
+  const cancelBookmarkModal = () => {
+    setShowBookmarkModal(false);
+    setBookmarkNoteDraft("");
+  };
+
   // --- RENDER ---
   // This JSX is restored to the full-screen layout
   return (
@@ -101,10 +179,10 @@ export default function ReelCard({
       </span>
 
       <div className="absolute bottom-0 left-0 right-0 p-6 pb-12 sm:pb-8 flex flex-col justify-end">
-        <h2 className="font-serif text-2xl sm:text-3xl mb-2 leading-tight line-clamp-3">
+        <h2 className="font-serif mb-3 leading-snug text-[clamp(1.9rem,5vw,3rem)]">
           {isTranslated ? translatedContent.title : title}
         </h2>
-        <p className="font-sans text-gray-300 text-sm line-clamp-2 mb-4">
+        <p className="font-sans text-gray-200 text-base sm:text-lg mb-5">
           {isTranslated ? translatedContent.summary : summary}
         </p>
 
@@ -115,6 +193,20 @@ export default function ReelCard({
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={onBookmarkClick}
+              className={`flex items-center gap-2 p-2.5 rounded-full backdrop-blur-sm transition-colors ${
+                isBookmarked
+                  ? "bg-red-500/70 hover:bg-red-500/80"
+                  : "bg-white/10 hover:bg-white/20"
+              }`}
+              aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
+            >
+              <Bookmark
+                size={18}
+                className={isBookmarked ? "fill-white" : ""}
+              />
+            </button>
             <button
               onClick={onTranslateClick}
               disabled={isTranslating}
@@ -161,6 +253,56 @@ export default function ReelCard({
           onSelectLanguage={onSelectLanguage}
           onClose={() => setIsLangSelectorOpen(false)}
         />
+      )}
+
+      {showBookmarkModal && (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={cancelBookmarkModal}
+        >
+          <div
+            className="relative w-full max-w-md mx-4 bg-gray-900 border border-red-600/40 rounded-xl p-6 shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Bookmark size={18} /> Save Bookmark
+              </h3>
+              <button
+                onClick={cancelBookmarkModal}
+                className="text-gray-400 hover:text-red-400 transition"
+                aria-label="Close bookmark modal"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-sm text-gray-300 mb-3">
+              Optional note (why you saved this):
+            </p>
+            <textarea
+              value={bookmarkNoteDraft}
+              onChange={(e) => setBookmarkNoteDraft(e.target.value)}
+              rows={3}
+              placeholder="e.g. Great insight on AI trends"
+              className="w-full rounded-md bg-gray-800 border border-gray-700 focus:border-red-500 focus:ring-red-500 text-sm p-2 text-gray-200 placeholder-gray-500 resize-none"
+              autoFocus
+            />
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                onClick={cancelBookmarkModal}
+                className="px-4 py-2 text-sm rounded-md bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={finalizeBookmark}
+                className="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-500 transition"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </article>
   );
