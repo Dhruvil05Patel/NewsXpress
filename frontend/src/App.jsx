@@ -2,6 +2,7 @@
 // Import necessary components and hooks from their respective libraries.
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import CategoryOnboarding from "./components/CategoryOnboarding";
 import SideBar from "./components/SideBar";
 import AllNews from "./components/AllNews";
 import CategoryNews from "./components/CategoryNews";
@@ -10,7 +11,7 @@ import Bookmarks from "./components/Bookmarks";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import notify from "./utils/toast";
-import { initAuthListener } from "./components/auth/controller/authController";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // --- Category Configuration ---
 // A centralized object to store titles and subtitles for each news category.
@@ -57,58 +58,29 @@ const categories = {
 /**
  * The main App component that sets up the application layout and routing.
  */
-function App() {
+function AppContent() {
   // --- State Management ---
   // State to control the visibility of the login modal.
   const [showLogin, setShowLogin] = useState(false);
 
-  // State to store the current user profile (synced from backend)
-  const [userProfile, setUserProfile] = useState(null);
+  // Get auth state from AuthContext
+  const { user: firebaseUser, profile: userProfile, loading } = useAuth();
 
   // State to track unverified user
-  const [unverifiedUser, setUnverifiedUser] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // --- Auth Listener Setup ---
-  // Set up Firebase auth state listener on component mount
+  // Determine if we have an unverified user
+  const unverifiedUser = firebaseUser && !firebaseUser.emailVerified ? firebaseUser : null;
+
+  // --- Show onboarding if user has no categories ---
   useEffect(() => {
-    const unsubscribe = initAuthListener((profile, user) => {
-      console.log(
-        "🔄 Auth state changed - Profile:",
-        profile,
-        "User:",
-        user?.email
-      );
-      if (user && !user.emailVerified) {
-        // User logged in but not verified
-        console.log("⚠️ Setting unverified user");
-        setUnverifiedUser(user);
-        setUserProfile(null);
-      } else if (profile) {
-        // User verified and synced
-        console.log("✅ Setting user profile:", profile);
-        setUserProfile(profile);
-        setUnverifiedUser(null);
-      } else {
-        // User logged out
-        console.log("🚪 Clearing user profile");
-        setUserProfile(null);
-        setUnverifiedUser(null);
+    if (userProfile?.id && !unverifiedUser) {
+      const hasCategories = Array.isArray(userProfile.categories) && userProfile.categories.length > 0;
+      if (!hasCategories) {
+        setShowOnboarding(true);
       }
-    });
-
-    // Listen for custom auth state change events to force UI update
-    const handleAuthStateChange = () => {
-      console.log("Force checking auth state...");
-      // The auth listener will automatically trigger with the current state
-    };
-    window.addEventListener("auth-state-changed", handleAuthStateChange);
-
-    // Cleanup: unsubscribe when component unmounts
-    return () => {
-      unsubscribe();
-      window.removeEventListener("auth-state-changed", handleAuthStateChange);
-    };
-  }, []);
+    }
+  }, [userProfile, unverifiedUser]);
 
   // --- Effect Hook to Prevent Background Scrolling ---
   // This logic is purely CSS/DOM manipulation and does NOT touch Firebase Auth.
@@ -274,6 +246,18 @@ function App() {
         {/* The LoginPage is rendered conditionally based on the `showLogin` state. */}
         {showLogin && <LoginPage onClose={closeLogin} />}
 
+        {/* Onboarding modal for category preferences */}
+        {showOnboarding && userProfile?.id && !unverifiedUser && (
+          <CategoryOnboarding
+            profile={userProfile}
+            initialSelected={Array.isArray(userProfile.categories) ? userProfile.categories : []}
+            onClose={(saved) => {
+              setShowOnboarding(false);
+              // Categories are now synced via AuthContext
+            }}
+          />
+        )}
+
         {/* Verification prompt for unverified users */}
         {unverifiedUser && (
           <div
@@ -404,6 +388,15 @@ function App() {
         limit={2}
       />
     </BrowserRouter>
+  );
+}
+
+// Wrap AppContent with AuthProvider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

@@ -33,8 +33,9 @@ export const postData = async (endpoint, data) => {
 export const syncUser = async (idToken, username = null) => {
 	const payload = { idToken };
 	if (username) payload.username = username;
-	const response = await api.post("/api/auth/sync", payload);
-	return response.data;
+	const { data } = await api.post("/api/auth/sync", payload);
+	// Always return the backend profile object with UUID id
+	return data && data.profile ? data.profile : null;
 };
 
 //Fetch summarized news articles from backend

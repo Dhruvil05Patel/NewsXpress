@@ -20,42 +20,39 @@ import { syncUser } from "../../../services/api";
 export const initAuthListener = (onUserSynced) => {
   return onAuthStateChanged(auth, async (user) => {
     try {
-      if (user) {
-        // User is signed in - check if email is verified
-        if (!user.emailVerified) {
-          console.log("⚠️ User email not verified:", user.email);
-          if (onUserSynced) onUserSynced(null, user); // Pass user but with null profile
-          return;
-        }
-
-        // User is signed in and verified - sync to backend
-        // Immediately show basic user info from Firebase while backend syncs
-        const tempProfile = {
-          full_name: user.displayName || user.email?.split("@")[0] || "User",
-          email: user.email,
-          avatar_url: user.photoURL || null,
-        };
-        if (onUserSynced) onUserSynced(tempProfile, user);
-
-        try {
-          const idToken = await user.getIdToken();
-          const result = await syncUser(idToken);
-          console.log("✅ User synced to backend:", result.profile?.id);
-          // Update with full backend profile
-          if (onUserSynced) onUserSynced(result.profile, user);
-        } catch (err) {
-          console.error("❌ Backend sync failed:", err.message || err);
-          // Keep showing Firebase profile if backend sync fails
-        }
-      } else {
-        // User is signed out
-        console.log("🚪 User signed out");
-        if (onUserSynced) onUserSynced(null, null);
+      if (!user) {
+        console.log("🚪 User logged out");
+        onUserSynced(null, null);
+        return;
       }
-    } catch (error) {
-      console.error("❌ Auth listener error:", error);
-      // Ensure callback is always called to prevent app from hanging
-      if (onUserSynced) onUserSynced(null, null);
+
+      if (!user.emailVerified) {
+        console.log("⚠️ Email not verified — skipping backend sync");
+        onUserSynced(null, user);
+        return;
+      }
+
+      // Force token refresh to avoid stale tokens
+      const idToken = await user.getIdToken(true).catch(err => {
+        console.warn("⚠️ Token refresh failed, trying cached token:", err.message);
+        return user.getIdToken(false); // Fallback to cached token
+      });
+
+      const backendProfile = await syncUser(idToken); // returns correct UUID profile
+
+      if (!backendProfile) {
+        console.warn("⚠️ No backend profile returned");
+        onUserSynced(null, user);
+        return;
+      }
+
+      console.log("🟢 Synced backend profile:", backendProfile.id);
+
+      onUserSynced(backendProfile, user);
+    } catch (err) {
+      console.error("❌ initAuthListener error:", err);
+      // Still pass user if we have it, even if sync failed
+      onUserSynced(null, user || null);
     }
   });
 };

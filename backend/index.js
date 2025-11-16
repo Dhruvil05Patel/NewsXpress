@@ -231,12 +231,21 @@ app.get('/api/profiles/:id', async (req, res) => {
 app.put("/api/profiles/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body; 
+    const updateData = req.body;
+    
+    console.log(`PUT /api/profiles/${id} - Received update:`, JSON.stringify(updateData, null, 2));
     
     const updatedProfile = await updateProfile(id, updateData);
     
+    console.log(`Profile updated successfully:`, {
+      id: updatedProfile.id,
+      categories: updatedProfile.categories,
+      fcm_token: updatedProfile.fcm_token ? `${updatedProfile.fcm_token.substring(0, 20)}...` : null
+    });
+    
     res.status(200).json(updatedProfile);
   } catch (error) {
+    console.error(`❌ Error updating profile ${id}:`, error.message);
     res
       .status(500)
       .json({ message: "Error updating profile", error: error.message });
@@ -308,11 +317,23 @@ app.delete("/api/bookmarks", async (req, res) => {
 
 app.get('/api/live-streams', fetchLiveStreams);
 
+// =================== DEBUG NOTIFICATION ENDPOINTS =================== //
+// List subscriber token stats for a category
+app.get('/api/debug/subscribers/:category', async (req, res) => {
+  try {
+    const category = String(req.params.category || '').toLowerCase();
+    const tokens = await fetchSubscriberTokens(category);
+    res.json({ category, tokenCount: tokens.length, sample: tokens.slice(0, 3) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // =================== SERVER START =================== //
 // === Initialize components after DB connect ===
 // Add notifier init and provide a lightweight cron endpoint for Render
 const { fetchAndSaveMultipleCategories, fetchAndSaveNews } = require("./src/cron/fetchAndSaveNews");
-const { initNotifier } = require("./src/services/notifier");
+const { initNotifier, fetchSubscriberTokens } = require("./src/services/notifier");
 
 async function startServer() {
   try {

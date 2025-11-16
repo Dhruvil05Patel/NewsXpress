@@ -12,7 +12,7 @@ module.exports = (sequelize) => {
     auth_id: {
       type: DataTypes.UUID,
       allowNull: true,
-      unique: true,
+      // unique: true, // Removed - causes ALTER TABLE syntax errors
       comment: 'Deprecated - Firebase UID now stored in id field',
     },
     full_name: {
@@ -50,6 +50,17 @@ module.exports = (sequelize) => {
     topic: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+
+    // New fields per database schema
+    fcm_token: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    categories: {
+      type: DataTypes.ARRAY(DataTypes.TEXT), // Corresponds to text[]
+      allowNull: true,
+      defaultValue: [],
     },
 
     created_at: {

@@ -63,10 +63,21 @@ async function getProfileById(profileId) {
  */
 async function updateProfile(profileId, updateData) {
   try {
+    console.log(`🔍 ProfileService.updateProfile called with ID: ${profileId}`);
+    console.log(`📦 Update data received:`, JSON.stringify(updateData, null, 2));
+    
     const profile = await Profile.findByPk(profileId);
     if (!profile) {
+      console.error(`❌ Profile not found for ID: ${profileId}`);
       throw new Error('Profile not found.');
     }
+
+    console.log(`✅ Found profile:`, {
+      id: profile.id,
+      full_name: profile.full_name,
+      current_categories: profile.categories,
+      current_fcm_token: profile.fcm_token ? `${profile.fcm_token.substring(0, 20)}...` : null
+    });
 
     // Update fields only if they are provided
     if (updateData.full_name !== undefined) {
@@ -90,14 +101,41 @@ async function updateProfile(profileId, updateData) {
       profile.topic = updateData.topic;
     }
 
+    // Update FCM token if provided
+    if (updateData.fcm_token !== undefined) {
+      console.log(`🔔 Setting fcm_token: ${updateData.fcm_token.substring(0, 20)}...`);
+      profile.fcm_token = updateData.fcm_token;
+    }
+
+    // Update categories (expects array of strings; tolerates comma-separated string)
+    if (updateData.categories !== undefined) {
+      const cats = Array.isArray(updateData.categories)
+        ? updateData.categories
+        : typeof updateData.categories === 'string'
+          ? updateData.categories
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [];
+      // Normalize categories to lowercase to keep DB consistent
+      const normalized = cats.map((c) => (typeof c === 'string' ? c.toLowerCase() : c)).filter(Boolean);
+      console.log(`📂 Setting categories (normalized):`, normalized);
+      profile.categories = normalized;
+    }
+
     // Save the changes back to the database
+    console.log(`💾 Saving profile changes...`);
     await profile.save();
     
-    console.log(`✅ Profile updated for ID: ${profileId}`);
+    console.log(`✅ Profile updated successfully for ID: ${profileId}`, {
+      new_categories: profile.categories,
+      new_fcm_token: profile.fcm_token ? `${profile.fcm_token.substring(0, 20)}...` : null
+    });
     return profile;
 
   } catch (error) {
-    console.error('Error in updateProfile:', error.message);
+    console.error('❌ Error in updateProfile:', error.message);
+    console.error('Stack:', error.stack);
     throw new Error('Could not update profile.');
   }
 }
@@ -123,6 +161,9 @@ async function updateProfile(profileId, updateData) {
         full_name: profileData.full_name || profileData.name || null,
         avatar_url: profileData.avatar_url || profileData.picture || null,
         username: profileData.username || null,
+        // Optional initial values
+        fcm_token: profileData.fcm_token || null,
+        categories: Array.isArray(profileData.categories) ? profileData.categories : null,
       };
 
       // Create profile normally. Username is no longer constrained to be unique

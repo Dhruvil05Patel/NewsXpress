@@ -15,13 +15,21 @@ function initNotifier() {
   }
   try {
     const credentials = JSON.parse(saJson);
+    
+    // Check if app already exists, use it instead of creating new one
+    if (admin.apps.length > 0) {
+      console.log("Firebase Admin app already exists, reusing existing instance.");
+      initialized = true;
+      return;
+    }
+    
     admin.initializeApp({
       credential: admin.credential.cert(credentials),
     });
     initialized = true;
     console.log("Firebase Admin initialized for notifier.");
   } catch (err) {
-    console.error("Failed to parse FIREBASE_SA_JSON:", err.message);
+    console.error("Failed to initialize Firebase Admin:", err.message);
   }
 }
 
@@ -65,13 +73,14 @@ async function fetchSubscriberTokens(category) {
 
     // Determine how subscriptions are stored on Profile
     // Common patterns: a single `topic` text column, or an array column like `actor`, `topics`, `categories`.
-    const arrayFields = ['actor', 'topics', 'categories', 'subscriptions', 'device_topics'];
+    const arrayFields = ['categories', 'topics', 'actor', 'subscriptions', 'device_topics'];
     const foundArrayField = arrayFields.find((f) => !!attrs[f]);
     const where = {};
 
     if (foundArrayField) {
-      // Postgres array contains
-      where[foundArrayField] = { [Op.contains]: [category] };
+      // Postgres array overlap (check if category is in the array)
+      // Use Op.overlap with array OR raw SQL @> operator
+      where[foundArrayField] = { [Op.overlap]: [category] };
     } else if (attrs.topic) {
       where.topic = category;
     } else if (attrs.topic_pref || attrs.topic_preference) {
@@ -83,8 +92,9 @@ async function fetchSubscriberTokens(category) {
     }
 
     // Query matching profiles and pluck token values
-    const rows = await db.Profile.findAll({ where, attributes: [tokenField] });
+    const rows = await db.Profile.findAll({ where, attributes: ['id', tokenField] });
     const tokens = [];
+    let withToken = 0;
     for (const r of rows) {
       const val = r.get(tokenField);
       if (!val) continue;
@@ -93,10 +103,13 @@ async function fetchSubscriberTokens(category) {
       } else if (typeof val === 'string') {
         tokens.push(val);
       }
+      withToken += 1;
     }
 
     // Deduplicate
-    return Array.from(new Set(tokens));
+    const uniq = Array.from(new Set(tokens));
+    console.log(`fetchSubscriberTokens: matched profiles=${rows.length}, withToken=${withToken}, tokensAfterDedup=${uniq.length} for category=${category}`);
+    return uniq;
   } catch (err) {
     console.error('fetchSubscriberTokens error:', err.message);
     return [];
@@ -115,28 +128,30 @@ async function sendNotificationToTokens(tokens = [], payload = {}) {
     return { success: true, sent: 0 };
   }
 
-  // FCM supports up to 500 tokens per multicast call
-  const CHUNK = 400;
-  let totalSent = 0;
-  for (let i = 0; i < tokens.length; i += CHUNK) {
-    const chunk = tokens.slice(i, i + CHUNK);
+  const messaging = admin.messaging();
+  let successCount = 0;
+  let failCount = 0;
+
+  // Send to each token individually (more reliable than sendMulticast with reused app)
+  for (const token of tokens) {
     try {
-      const resp = await admin.messaging().sendMulticast({
-        tokens: chunk,
+      await messaging.send({
+        token: token,
         notification: {
           title: payload.title || "NewsXpress: new article",
           body: payload.body || "Tap to read",
         },
         data: payload.data || {},
       });
-      totalSent += chunk.length;
-      console.log(`FCM: sendMulticast success: ${resp.successCount}/${chunk.length}`);
+      successCount++;
     } catch (err) {
-      console.error("FCM send error:", err.message);
+      failCount++;
+      console.error(`FCM send error for token ${token.substring(0, 20)}...:`, err.message);
     }
   }
 
-  return { success: true, sent: totalSent };
+  console.log(`FCM: sent ${successCount}/${tokens.length} notifications (${failCount} failed)`);
+  return { success: true, sent: successCount, failed: failCount };
 }
 
 /**
