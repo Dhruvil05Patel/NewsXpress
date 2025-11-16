@@ -336,7 +336,12 @@ function AppContent() {
                     const { sendEmailVerification } = await import(
                       "firebase/auth"
                     );
-                    await sendEmailVerification(unverifiedUser);
+                    // Use custom backend-powered verification email instead of Firebase default template
+                    const { sendVerificationEmail } = await import("./services/api");
+                    await sendVerificationEmail(
+                      unverifiedUser.email,
+                      unverifiedUser.displayName || "User"
+                    );
                     notify.success("📧 Verification email resent!");
                   }}
                   style={{

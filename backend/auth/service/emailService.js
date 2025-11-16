@@ -1,23 +1,38 @@
-const { brevo, sender, replyTo } = require("../config/email");
-const { generateVerificationLink } = require("./firebaseService");
-const { getVerificationEmailHtml } = require("../template/emailTemplate"); // or same file
+// backend/auth/service/emailService.js
+const { brevo, sender, replyTo } = require("../email/config/email");
+const { renderEmail } = require("../email/emailRenderer");
 
-exports.sendVerificationEmail = async (email, name = "User") => {
-  if (!email) throw new Error("Email is required.");
+const { verificationEmailContent } = require("../email/templates/verificationTemplate");
+const { resetPasswordContent } = require("../email/templates/resetPasswordTemplate");
 
-  const link = await generateVerificationLink(email);
-
-  const html = getVerificationEmailHtml({
-    name,
-    verificationUrl: link,
-    supportEmail: "news10express@gmail.com"
-  });
+exports.sendVerificationEmail = async (email, name, link) => {
+  const html = renderEmail(
+    verificationEmailContent({
+      name,
+      verificationUrl: link,
+      expirationHours: 24,
+    })
+  );
 
   await brevo.sendTransacEmail({
     sender,
     replyTo,
     to: [{ email, name }],
-    subject: "Verify your email for NewsXpress",
+    subject: "Verify your email",
+    htmlContent: html,
+  });
+};
+
+exports.sendResetPasswordEmail = async (email, name, resetUrl) => {
+  const html = renderEmail(
+    resetPasswordContent({ name, resetUrl })
+  );
+
+  await brevo.sendTransacEmail({
+    sender,
+    replyTo,
+    to: [{ email, name }],
+    subject: "Reset your password",
     htmlContent: html,
   });
 };

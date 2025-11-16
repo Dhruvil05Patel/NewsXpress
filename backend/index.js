@@ -14,7 +14,7 @@ const { getProfileById, updateProfile, createProfile } = require("./services/Pro
 const { sync } = require('./auth/controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
 const { fetchLiveStreams } = require("./services/youtube-service/youtubeController");
-const { sendVerification } = require("./auth/controllers/emailController");
+const { sendVerification, sendPasswordReset } = require("./auth/controllers/emailController");
 // ================================================================= //
 dotenv.config();
 
@@ -258,8 +258,9 @@ app.post("/api/auth/sync", async (req, res) => {
   return sync(req, res);
 });
 
-// Endpoint to send verification email
-app.post("/api/send-verification-email", sendVerification);
+// =================== EMAIL ROUTES =================== //
+app.post("/api/auth/send-verification-email", sendVerification);
+app.post("/api/auth/send-password-reset-email", sendPasswordReset);
 
 
 // =================== (NEW) BOOKMARK ROUTES =================== //

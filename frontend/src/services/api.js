@@ -1,4 +1,3 @@
-// Import axios for HTTP requests
 import axios from "axios";
 // Vite exposes env vars via `import.meta.env`. Do not use dotenv in browser code.
 const VITE_BACKEND_API_URL =
@@ -43,6 +42,24 @@ export const getSummarizedNews = async () => {
 	const response = await api.get("/get-summarized-news");
 	return response.data;
 };
+
+export const sendVerificationEmail = async (email, name) => {
+	const response = await api.post("/api/auth/send-verification-email", {
+		email,
+		name,
+	});
+	return response.data;
+}
+
+export const sendResetPasswordEmail = async (email, name, resetUrl) => {
+	const response = await api.post("/api/auth/send-password-reset-email", {
+		email,
+		name,
+	});
+	return response.data;
+}
+
+
 
 // Export axios instance for custom requests
 export default api;

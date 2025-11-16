@@ -4,13 +4,12 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  sendEmailVerification,
-  sendPasswordResetEmail,
   signInWithPopup,
   GoogleAuthProvider,
   onAuthStateChanged,
 } from "firebase/auth";
 import { syncUser } from "../../../services/api";
+import { sendVerificationEmail, sendResetPasswordEmail } from "../../../services/api";
 
 /**
  * Central auth state listener - syncs Firebase user to backend whenever auth state changes.
@@ -69,7 +68,7 @@ export const registerUser = async (email, password) => {
       email,
       password
     );
-    await sendEmailVerification(auth.currentUser);
+    await sendVerificationEmail(auth.currentUser.email, auth.currentUser.displayName || "User");
     // Return success with unverified status
     return { success: true, emailVerified: false, email };
   } catch (error) {
@@ -151,8 +150,7 @@ export const resetPassword = async (email) => {
   }
 
   try {
-    await sendPasswordResetEmail(auth, email);
-    notify.success("📧 Password reset email sent successfully!");
+    await sendResetPasswordEmail(email, "User");
     return true;
   } catch (error) {
     notify.error(`❌ Server error. Please try again later!`);

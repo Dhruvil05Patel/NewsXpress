@@ -7,7 +7,17 @@ exports.generateVerificationLink = async (email) => {
   return await admin
     .auth()
     .generateEmailVerificationLink(email, {
-      url: "http://localhost:4000/send-verification-email", // Redirect URL after verification
+      url: "http://localhost:5173/all", // Redirect URL after verification
       handleCodeInApp: true,
     });
 };
+
+
+exports.generatePasswordResetLink = async (email) => {
+  return await admin
+    .auth()
+    .generatePasswordResetLink(email, {
+      url: "http://localhost:5173/all", // Redirect URL after password reset
+      handleCodeInApp: true,
+    });
+}

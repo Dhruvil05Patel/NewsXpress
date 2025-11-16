@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import notify from "../utils/toast";
 import "../assets/LoginPage.css";
-import { registerUser, loginUser } from "./auth/controller/authController";
+import { registerUser, loginUser, resetPassword } from "./auth/controller/authController";
 import { auth } from "./auth/firebase";
 
 function App({ onClose }) {
@@ -144,9 +144,9 @@ function App({ onClose }) {
 
   const handleResendVerification = async () => {
     try {
-      const { sendEmailVerification } = await import("firebase/auth");
-      // NOTE: This Firebase Auth line remains untouched.
-      await sendEmailVerification(auth.currentUser);
+      const { sendVerificationEmail } = await import("../services/api");
+      console.log("Resending verification email to:", auth.currentUser.email);
+      await sendVerificationEmail(auth.currentUser.email, auth.currentUser.displayName || "User");
       notify.success("📧 Verification email resent!");
     } catch (error) {
       notify.error("❌ Failed to resend email. Please try again.");
@@ -277,15 +277,57 @@ function App({ onClose }) {
                   required
                 />
 
-                <div className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    id="showPassLogin"
-                    checked={showPassword}
-                    onChange={() => setShowPassword(!showPassword)}
-                  />
-                  <label htmlFor="showPassLogin">Show Password</label>
+               <div
+                  className="checkbox-row"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <input
+                      type="checkbox"
+                      id="showPassLogin"
+                      checked={showPassword}
+                      onChange={() => setShowPassword(!showPassword)}
+                    />
+                    <label htmlFor="showPassLogin">Show Password</label>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="forgot-password-btn"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#2196F3",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      fontSize: "0.9rem",
+                    }}
+                    onClick={async () => {
+                      if (!email) {
+                        notify.error("❌ Enter your email above first");
+                        return;
+                      }
+                      if (isLoading) return;
+
+                      setIsLoading(true);
+                      try {
+                        const success = await resetPassword(email);
+                        if (success) {
+                          notify.info("📧 If the email exists, a reset mail was sent.");
+                        }
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                  >
+                    Forgot Password?
+                  </button>
                 </div>
+
 
                 <button
                   type="submit"
