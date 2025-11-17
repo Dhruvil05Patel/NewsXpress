@@ -1,5 +1,11 @@
 import React from "react";
+import defaultImg from "./Default.png"; // Fallback image
+// NewsCard: compact article preview used in grid feeds.
+// Props: title, summary (truncated intentionally), imageUrl, newsUrl (external),
+// source + timestamp meta, category tag, and optional onCardClick handler.
+// Images gracefully fallback; text overlay uses gradient for readability.
 import { SquareArrowOutUpRight } from "lucide-react";
+import { isBadImage, markBadImage } from "../utils/badImageCache";
 
 export default function NewsCard({
   title,
@@ -12,8 +18,12 @@ export default function NewsCard({
   onCardClick,
 }) {
   const [imgError, setImgError] = React.useState(false);
-  const handleImageError = () => setImgError(true);
+  const handleImageError = () => {
+    setImgError(true);
+    if (imageUrl) markBadImage(imageUrl);
+  };
 
+  // Truncate helper: limits by word count and appends an ellipsis.
   const truncateWords = (text, count) => {
     if (!text) return "";
     const words = String(text).trim().split(/\s+/);
@@ -21,6 +31,7 @@ export default function NewsCard({
     return words.slice(0, count).join(" ") + "…";
   };
 
+  // Adjusted word counts chosen for concise scanning without losing context.
   const titleShort = truncateWords(title, 9);
   const summaryShort = truncateWords(summary, 20);
 
@@ -31,18 +42,15 @@ export default function NewsCard({
     >
       {/* Per-card profile header removed (profile shown in SideBar instead) */}
       {/* Conditionally render the image or a fallback UI if the image fails to load. */}
-      {imageUrl && !imgError ? (
-        <img
-          src={imageUrl}
-          alt={title}
-          className="w-full h-[70vh] max-h-[600px] object-cover"
-          onError={handleImageError}
-        />
-      ) : (
-        <div className="w-full h-[70vh] max-h-[600px] bg-gradient-to-r from-blue-900 to-blue-700 flex items-center justify-center">
-          <span className="text-gray-300 text-sm">Image Not Found</span>
-        </div>
-      )}
+      <img
+        src={
+          imageUrl && !imgError && !isBadImage(imageUrl) ? imageUrl : defaultImg
+        }
+        alt={title || "Article"}
+        className="w-full h-[70vh] max-h-[600px] object-cover"
+        onError={handleImageError}
+        referrerPolicy="no-referrer"
+      />
 
       {/* A dark gradient overlay to make the text readable over the image. */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent"></div>

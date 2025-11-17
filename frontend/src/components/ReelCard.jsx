@@ -1,4 +1,10 @@
 import React, { useEffect, useState } from "react";
+import defaultImg from "./Default.png"; // Fallback image for missing/failed loads
+// ReelCard: full-screen immersive article representation for vertical reel view.
+// Features: translation (language selector), text-to-speech playback, bookmarking with note modal,
+// active state coordination (pauses audio when swiped away), and gradient overlay for readability.
+// Props include: isActive (current viewport card), audioPlayersRef (parent-managed for global pause),
+// userProfile for gating advanced actions, and cardIndex for registration.
 import {
   SquareArrowOutUpRight,
   Languages,
@@ -11,6 +17,7 @@ import LanguageSelector from "./LanguageSelector";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useTranslation } from "../hooks/useTranslation";
 import notify from "../utils/toast";
+import { isBadImage, markBadImage } from "../utils/badImageCache";
 
 export default function ReelCard({
   title,
@@ -24,8 +31,9 @@ export default function ReelCard({
   isActive,
   audioPlayersRef,
   cardIndex,
+  onOverlayChange,
 }) {
-  // Use custom hooks
+  // Use custom hooks for translation + TTS.
   const {
     isTranslated,
     translatedContent,
@@ -40,13 +48,13 @@ export default function ReelCard({
   const { isSpeaking, isFetchingAudio, handleListen, audioPlayer } =
     useTextToSpeech(selectedLanguage);
 
-  // Bookmark local state
+  // Bookmark local state + note modal.
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [bookmarkNote, setBookmarkNote] = useState("");
   const [showBookmarkModal, setShowBookmarkModal] = useState(false);
   const [bookmarkNoteDraft, setBookmarkNoteDraft] = useState("");
 
-  // Load existing bookmarks from localStorage to reflect state
+  // Load existing bookmarks from localStorage to reflect state on mount.
   useEffect(() => {
     try {
       const raw = localStorage.getItem("bookmarks");
@@ -65,14 +73,14 @@ export default function ReelCard({
     }
   }, [title]);
 
-  // Register this card's audio player in the parent ref array
+  // Register this card's audio player in the parent ref array (for coordinated stop).
   useEffect(() => {
     if (audioPlayersRef && audioPlayer) {
       audioPlayersRef.current[cardIndex] = audioPlayer;
     }
   }, [audioPlayersRef, audioPlayer, cardIndex]);
 
-  // Stop TTS when card becomes inactive
+  // Stop TTS playback when card leaves active viewport.
   useEffect(() => {
     if (!isActive && isSpeaking && audioPlayer.current) {
       audioPlayer.current.pause();
@@ -81,7 +89,7 @@ export default function ReelCard({
     }
   }, [isActive, isSpeaking, audioPlayer, handleListen]);
 
-  // Wrapper function to handle click event
+  // Translation click handler: auth gate + toggle language selector.
   const onTranslateClick = (e) => {
     e.stopPropagation();
     if (!userProfile) {
@@ -91,12 +99,17 @@ export default function ReelCard({
     handleTranslateClick();
   };
 
-  // Wrapper for performTranslation with current title/summary
+  // Inform parent (ReelView) when the language selector overlay opens/closes
+  useEffect(() => {
+    if (onOverlayChange) onOverlayChange(!!isLangSelectorOpen);
+  }, [isLangSelectorOpen, onOverlayChange]);
+
+  // Perform translation for selected language using current title/summary.
   const onSelectLanguage = (targetLanguage) => {
     performTranslation(title, summary, targetLanguage);
   };
 
-  // Wrapper for handleListen with appropriate text
+  // TTS initiation using translated summary if available, else fallback order.
   const onListenClick = async (e) => {
     e.stopPropagation();
     if (!userProfile) {
@@ -116,7 +129,7 @@ export default function ReelCard({
       return;
     }
 
-    // If already bookmarked, remove
+    // If already bookmarked, remove it.
     const raw = localStorage.getItem("bookmarks");
     const existing = raw ? JSON.parse(raw) : [];
     if (isBookmarked) {
@@ -127,7 +140,7 @@ export default function ReelCard({
       notify.success("✅ Bookmark removed");
       return;
     }
-    // Open themed modal for note entry
+    // Open themed modal for note entry when adding.
     setBookmarkNoteDraft(bookmarkNote || "");
     setShowBookmarkModal(true);
   };
@@ -161,18 +174,25 @@ export default function ReelCard({
     setBookmarkNoteDraft("");
   };
 
-  // --- RENDER ---
-  // This JSX is restored to the full-screen layout
+  // --- RENDER --- Full-screen layout with overlay meta + action ribbon.
+  const [imgError, setImgError] = useState(false);
+
+  const resolvedImage =
+    imageUrl && !imgError && !isBadImage(imageUrl) ? imageUrl : defaultImg;
+
   return (
     <article className="relative h-full w-full bg-gray-900 text-white flex items-center justify-center">
-      {/* Per-card profile header removed (profile shown in SideBar instead) */}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={title}
-          className="w-full h-full object-cover"
-        />
-      )}
+      {/* Background image (with fallback) */}
+      <img
+        src={resolvedImage}
+        alt={title || "Article"}
+        onError={() => {
+          setImgError(true);
+          if (imageUrl) markBadImage(imageUrl);
+        }}
+        className="w-full h-full object-cover"
+        referrerPolicy="no-referrer"
+      />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
       <span className="absolute top-20 left-6 bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
         {category}
@@ -195,11 +215,10 @@ export default function ReelCard({
           <div className="flex items-center gap-3">
             <button
               onClick={onBookmarkClick}
-              className={`flex items-center gap-2 p-2.5 rounded-full backdrop-blur-sm transition-colors ${
-                isBookmarked
+              className={`flex items-center gap-2 p-2.5 rounded-full backdrop-blur-sm transition-colors ${isBookmarked
                   ? "bg-red-500/70 hover:bg-red-500/80"
                   : "bg-white/10 hover:bg-white/20"
-              }`}
+                }`}
               aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
             >
               <Bookmark
@@ -219,11 +238,10 @@ export default function ReelCard({
             <button
               onClick={onListenClick}
               disabled={isFetchingAudio}
-              className={`p-2.5 rounded-full backdrop-blur-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${
-                isSpeaking
+              className={`p-2.5 rounded-full backdrop-blur-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking
                   ? "bg-red-500/50 hover:bg-red-500/60"
                   : "bg-white/10 hover:bg-white/20"
-              }`}
+                }`}
               aria-label="Listen to news summary"
             >
               {isFetchingAudio ? (

@@ -1,6 +1,12 @@
 // --- Imports ---
 // Import necessary components and hooks from their respective libraries.
 import { useState, useEffect } from "react";
+// App.jsx: Root application shell.
+// Responsibilities:
+// 1. Provides routing map and lazy auth gating for protected pages.
+// 2. Wraps content with global providers (Auth + Toast).
+// 3. Manages transient UI state: login modal, onboarding, email verification.
+// 4. Applies body scroll lock when overlays/modal are open.
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import CategoryOnboarding from "./components/CategoryOnboarding";
 import SideBar from "./components/SideBar";
@@ -9,10 +15,12 @@ import CategoryNews from "./components/CategoryNews";
 import LoginPage from "./components/LoginPage";
 import Bookmarks from "./components/Bookmarks";
 import PersonalizedFeed from "./components/PersonalizedFeed";
+import HelpSupport from "./components/HelpSupport";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import notify from "./utils/toast";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { Lock } from "lucide-react";
 
 // --- Category Configuration ---
 // A centralized object to store titles and subtitles for each news category.
@@ -56,25 +64,23 @@ const categories = {
   },
 };
 
-/**
- * The main App component that sets up the application layout and routing.
- */
+// AppContent: inner component separated so <AuthProvider> only wraps once at root.
+// Contains all runtime logic; extracted from default export for clarity/testing.
 function AppContent() {
-  // --- State Management ---
-  // State to control the visibility of the login modal.
+  // --- State --- Login modal visibility.
   const [showLogin, setShowLogin] = useState(false);
 
-  // Get auth state from AuthContext
+  // Auth context: firebaseUser = raw auth user, userProfile = enriched profile doc.
   const { user: firebaseUser, profile: userProfile, loading } = useAuth();
 
-  // State to track unverified user
+  // Track onboarding panel visibility (shown if profile has no categories).
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Determine if we have an unverified user
+  // Determine if current user still needs email verification.
   const unverifiedUser =
     firebaseUser && !firebaseUser.emailVerified ? firebaseUser : null;
 
-  // --- Show onboarding if user has no categories ---
+  // Show onboarding if profile exists but has no chosen categories.
   useEffect(() => {
     if (userProfile?.id && !unverifiedUser) {
       const hasCategories =
@@ -86,8 +92,7 @@ function AppContent() {
     }
   }, [userProfile, unverifiedUser]);
 
-  // --- Effect Hook to Prevent Background Scrolling ---
-  // This logic is purely CSS/DOM manipulation and does NOT touch Firebase Auth.
+  // Lock body scroll whenever a blocking modal (login / verify) is active.
   useEffect(() => {
     // Check if EITHER the Login Modal OR the Unverified User Prompt is visible
     const isAnyModalOpen = showLogin || unverifiedUser;
@@ -105,12 +110,35 @@ function AppContent() {
     // Dependency array includes both state variables that trigger a modal/overlay
   }, [showLogin, unverifiedUser]);
 
-  // --- Event Handlers ---
-  // Functions to toggle the login modal's visibility.
+  // Modal open/close handlers.
   const openLogin = () => setShowLogin(true);
   const closeLogin = () => setShowLogin(false);
 
-  // --- Render ---
+  // Auth gate component: lightweight inline guard for protected routes.
+  const LoginRequired = ({
+    title = "Login Required",
+    description = "Please log in to continue.",
+  }) => (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center">
+        <div className="flex justify-center mb-3">
+          <div className="p-2 rounded-lg bg-red-50 border border-red-100">
+            <Lock className="w-6 h-6 text-red-600" />
+          </div>
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">{title}</h2>
+        <p className="text-sm text-gray-600 mb-4">{description}</p>
+        <button
+          onClick={openLogin}
+          className="inline-flex items-center justify-center w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-lg transition-colors"
+        >
+          Log in to continue
+        </button>
+      </div>
+    </div>
+  );
+
+  // --- Render --- Main router + conditional overlays.
   return (
     <BrowserRouter>
       {/* Main application container */}
@@ -243,10 +271,44 @@ function AppContent() {
               />
             }
           />
-          <Route path="/bookmarks" element={<Bookmarks />} />
+          <Route
+            path="/bookmarks"
+            element={
+              userProfile ? (
+                <Bookmarks />
+              ) : (
+                <LoginRequired
+                  title="Bookmarks"
+                  description="Log in to view and manage your saved articles."
+                />
+              )
+            }
+          />
           <Route
             path="/feed/personalized"
-            element={<PersonalizedFeed userProfile={userProfile} />}
+            element={
+              userProfile ? (
+                <PersonalizedFeed userProfile={userProfile} />
+              ) : (
+                <LoginRequired
+                  title="Personalized Feed"
+                  description="Log in to see recommendations tailored to your interests."
+                />
+              )
+            }
+          />
+          <Route
+            path="/help"
+            element={
+              userProfile ? (
+                <HelpSupport />
+              ) : (
+                <LoginRequired
+                  title="Help & Support"
+                  description="Log in to contact support and access help resources."
+                />
+              )
+            }
           />
         </Routes>
 

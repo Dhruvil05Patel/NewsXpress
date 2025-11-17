@@ -1,7 +1,11 @@
 import React, { useState } from "react";
 import notify from "../utils/toast";
 import "../assets/LoginPage.css";
-import { registerUser, loginUser, resetPassword } from "./auth/controller/authController";
+import {
+  registerUser,
+  loginUser,
+  resetPassword,
+} from "./auth/controller/authController";
 import { auth } from "./auth/firebase";
 
 function App({ onClose }) {
@@ -12,6 +16,7 @@ function App({ onClose }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [dob, setDob] = useState("");
 
   // UI states
@@ -35,6 +40,48 @@ function App({ onClose }) {
       valid: /[^A-Za-z0-9]/.test(password),
     },
   ];
+
+  // Instagram-like username rules:
+  // - Allowed: letters, numbers, underscores, periods
+  // - No spaces or other special characters
+  // - Cannot start/end with a period
+  // - No consecutive periods
+  // - Max length: 30
+  const usernameChecks = [
+    {
+      id: 1,
+      label: "Only letters, numbers, underscores, periods",
+      valid: username ? /^[A-Za-z0-9._]+$/.test(username) : false,
+    },
+    {
+      id: 2,
+      label: "No spaces",
+      valid: username ? !/\s/.test(username) : false,
+    },
+    {
+      id: 3,
+      label: "Does not start or end with a period",
+      valid: username
+        ? !username.startsWith(".") && !username.endsWith(".")
+        : false,
+    },
+    {
+      id: 4,
+      label: "No consecutive periods",
+      valid: username ? !/\.{2,}/.test(username) : false,
+    },
+    {
+      id: 5,
+      label: "Max 30 characters",
+      valid: username ? username.length <= 30 : false,
+    },
+    {
+      id: 6,
+      label: "Starts with letter or number",
+      valid: username ? /^[A-Za-z0-9]/.test(username) : false,
+    },
+  ];
+  const usernameValid = username && usernameChecks.every((c) => c.valid);
 
   // Age validation function (NEW)
   const isOldEnough = (dobString) => {
@@ -117,6 +164,7 @@ function App({ onClose }) {
     setPassword("");
     setConfirmPassword("");
     setUsername("");
+    setFullName("");
     setDob("");
     setShowPassword(false);
     setAgeError(""); // Reset age error
@@ -146,7 +194,10 @@ function App({ onClose }) {
     try {
       const { sendVerificationEmail } = await import("../services/api");
       console.log("Resending verification email to:", auth.currentUser.email);
-      await sendVerificationEmail(auth.currentUser.email, auth.currentUser.displayName || "User");
+      await sendVerificationEmail(
+        auth.currentUser.email,
+        auth.currentUser.displayName || "User"
+      );
       notify.success("📧 Verification email resent!");
     } catch (error) {
       notify.error("❌ Failed to resend email. Please try again.");
@@ -277,7 +328,7 @@ function App({ onClose }) {
                   required
                 />
 
-               <div
+                <div
                   className="checkbox-row"
                   style={{
                     display: "flex",
@@ -285,7 +336,13 @@ function App({ onClose }) {
                     alignItems: "center",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
                     <input
                       type="checkbox"
                       id="showPassLogin"
@@ -317,7 +374,9 @@ function App({ onClose }) {
                       try {
                         const success = await resetPassword(email);
                         if (success) {
-                          notify.info("📧 If the email exists, a reset mail was sent.");
+                          notify.info(
+                            "📧 If the email exists, a reset mail was sent."
+                          );
                         }
                       } finally {
                         setIsLoading(false);
@@ -327,7 +386,6 @@ function App({ onClose }) {
                     Forgot Password?
                   </button>
                 </div>
-
 
                 <button
                   type="submit"
@@ -357,17 +415,44 @@ function App({ onClose }) {
                 Create an <span className="brand">Account</span>
               </h2>
               <form onSubmit={handleSubmit}>
-                <label>Username</label>
+                <label>Full Name</label>
                 <input
                   type="text"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your Full Name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   required
-                  // FIX: Added autocomplete="off" to stop browser autofill fighting React state
                   autoComplete="off"
                   formNoValidate
                 />
+
+                <label>Username</label>
+                <input
+                  type="text"
+                  placeholder="Choose a username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.trim())}
+                  required
+                  autoComplete="off"
+                  formNoValidate
+                  maxLength={30}
+                />
+                {username && (
+                  <ul className="password-rules" style={{ marginTop: "6px" }}>
+                    {usernameChecks
+                      .filter((check) => !check.valid)
+                      .map((check) => (
+                        <li key={check.id} className="rule-text">
+                          ❌ {check.label}
+                        </li>
+                      ))}
+                    {usernameValid && (
+                      <li className="rule-text" style={{ color: "#16a34a" }}>
+                        ✅ Username looks good
+                      </li>
+                    )}
+                  </ul>
+                )}
 
                 <label>Date of Birth</label>
                 <input
@@ -446,7 +531,8 @@ function App({ onClose }) {
                   disabled={
                     (confirmPassword && password !== confirmPassword) ||
                     isLoading ||
-                    !isOldEnough(dob)
+                    !isOldEnough(dob) ||
+                    !usernameValid
                   }
                 >
                   {isLoading ? "Signing up..." : "Sign Up"}

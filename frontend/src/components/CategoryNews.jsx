@@ -1,4 +1,6 @@
-// src/components/categories/CategoryNews.jsx
+// CategoryNews.jsx
+// Category-scoped feed. Fetches summarized articles for a single category on change,
+// normalizes structure, limits guest visibility, and integrates ReelView overlay.
 
 // --- Imports ---
 import { useState, useEffect } from "react";
@@ -6,13 +8,10 @@ import NewsCard from "./NewsCard";
 import ReelView from "./ReelView";
 
 // --- Component Definition ---
-/**
- * A reusable component to display news articles for a specific category.
- * It receives the category details via props to dynamically render content.
- * @param {object} props - The component's properties.
- * @param {string} props.category - The category name to filter news by (e.g., "Technology").
- * @param {string} props.title - The title to display on the page header.
- * @param {string} props.subtitle - The subtitle to display below the title.
+/** CategoryNews props:
+ *  - category: backend category key for fetch
+ *  - title/subtitle: display metadata
+ *  - userProfile/onLoginClick: auth gating + login trigger
  */
 export default function CategoryNews({
   category,
@@ -34,8 +33,7 @@ export default function CategoryNews({
     const loadCategory = async () => {
       try {
         const resp = await fetch(
-          `${
-            import.meta.env.VITE_API_BASE || "http://localhost:4000"
+          `${import.meta.env.VITE_API_BASE || "http://localhost:4000"
           }/get-summarized-news/${encodeURIComponent(category)}`
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
