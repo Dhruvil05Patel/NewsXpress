@@ -30,11 +30,23 @@ export const postData = async (endpoint, data) => {
 // Sync Firebase-authenticated user to backend (verifies token server-side and creates/returns profile)
 // Sync Firebase-authenticated user to backend (verifies token server-side and creates/returns profile)
 // Accepts optional username (e.g., a user-chosen username from signup) and forwards it to backend.
-export const syncUser = async (idToken, username = null) => {
+export const syncUser = async (idToken, profileData = null) => {
+	// `profileData` may be null (legacy), a username string, or an object
+	// containing fields like: { username, full_name, email, fcm_token, categories }
 	const payload = { idToken };
-	if (username) payload.username = username;
-	const { data } = await api.post("/api/auth/sync", payload);
-	// Always return the backend profile object with UUID id
+
+	if (profileData) {
+		if (typeof profileData === 'string') {
+			// legacy behavior: profileData was a username string
+			payload.username = profileData;
+		} else if (typeof profileData === 'object') {
+			// merge provided profile fields into the payload
+			Object.assign(payload, profileData);
+		}
+	}
+
+	const { data } = await api.post('/api/auth/sync', payload);
+	// Always return the backend profile object (Sequelize/UUID) or null
 	return data && data.profile ? data.profile : null;
 };
 

@@ -25,19 +25,22 @@ async function sync(req, res) {
     if (!uid) return res.status(400).json({ message: 'Invalid token: missing uid' });
 
     // Extract some basic profile info from token claims if present
-    // Accept optional username from the frontend (e.g. signup form). If not
-    // provided, fall back to token displayName or the local-part of the email.
+    // Accept optional fields from the frontend (e.g. signup form): username, full_name
+    // Prefer values provided by the frontend over token claims. IMPORTANT: do NOT
+    // fall back to the email for `full_name` (avoid storing email as the user's name).
     const requestedUsername = req.body && req.body.username ? req.body.username : null;
+    const requestedFullName = req.body && req.body.full_name ? req.body.full_name : null;
 
     const fallbackUsername = (() => {
       if (requestedUsername) return requestedUsername;
-      if (decoded.name) return decoded.name;
+      if (decoded.name) return decoded.name.split(' ').join(''); // keep username compact
       if (decoded.email) return decoded.email.split('@')[0];
       return null;
     })();
 
     const profileData = {
-      full_name: decoded.name || decoded.email || null,
+      // Prefer frontend-provided full_name; otherwise use token name; do NOT use email as full_name
+      full_name: requestedFullName || decoded.name || null,
       avatar_url: decoded.picture || null,
       username: fallbackUsername,
       email: decoded.email || null,

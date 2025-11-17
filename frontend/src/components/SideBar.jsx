@@ -20,6 +20,7 @@ import {
   Bell,
 } from "lucide-react";
 import { logoutUser } from "./auth/controller/authController";
+import { updateProfile as apiUpdateProfile } from "../services/api";
 import notify from "../utils/toast";
 
 /**
@@ -113,15 +114,13 @@ const SideBar = ({ onLoginClick, userProfile }) => {
       </div>
       <button
         onClick={() => setEnabled(!enabled)}
-        className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
-          enabled ? "bg-red-500" : "bg-gray-200"
-        }`}
+        className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${enabled ? "bg-red-500" : "bg-gray-200"
+          }`}
       >
         <span
           aria-hidden="true"
-          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-            enabled ? "translate-x-5" : "translate-x-0"
-          }`}
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${enabled ? "translate-x-5" : "translate-x-0"
+            }`}
         />
       </button>
     </div>
@@ -165,14 +164,31 @@ const SideBar = ({ onLoginClick, userProfile }) => {
       setNewName(userProfile?.full_name || "");
     }, [userProfile?.full_name]);
 
-    const handleSaveName = () => {
+    const handleSaveName = async () => {
+      if (!userProfile?.id) {
+        notify.error("No profile found. Please login again.");
+        return;
+      }
       setSaving(true);
-      // In real app, call API to update username. Here we mock the behavior.
-      setTimeout(() => {
-        setSaving(false);
+      try {
+        // Save both full_name and username (if you allow editing username)
+        const payload = {
+          full_name: newName,
+          username: userProfile.username, // if username editing allowed include the new value
+        };
+
+        const updated = await apiUpdateProfile(userProfile.id, payload);
+
+        notify.success("Profile updated");
+        // Notify other parts of the app to refresh profile data
+        window.dispatchEvent(new Event("profile-updated"));
         setEditingName(false);
-        notify.success("Username updated (mock)");
-      }, 800);
+      } catch (err) {
+        console.error("Failed to update profile:", err);
+        notify.error("Failed to save profile");
+      } finally {
+        setSaving(false);
+      }
     };
 
     const handleUploadChange = (e) => {
@@ -213,6 +229,12 @@ const SideBar = ({ onLoginClick, userProfile }) => {
             <div>
               <p className="font-semibold text-gray-900 text-sm">
                 {userProfile?.full_name || "Guest User"}
+              </p>
+              <p className="text-xs text-gray-600">
+                {userProfile?.email || ""}
+              </p>
+              <p className="text-xs text-gray-600">
+                @{userProfile?.username || "unknown"}
               </p>
               <p className="text-xs text-gray-600">
                 {userProfile?.email || ""}
@@ -349,23 +371,20 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                 <button
                   key={category.name}
                   onClick={() => handleCategoryClick(category.name)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full border transition-all whitespace-nowrap ${
-                    isActive
+                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full border transition-all whitespace-nowrap ${isActive
                       ? "bg-red-50 text-red-600 border-red-200"
                       : "text-gray-700 border-gray-200 hover:text-red-600 hover:border-red-200 hover:bg-red-50"
-                  }`}
+                    }`}
                 >
                   {IconComponent ? (
                     <IconComponent
-                      className={`w-4 h-4 ${
-                        isActive ? "text-red-500" : "text-gray-500"
-                      }`}
+                      className={`w-4 h-4 ${isActive ? "text-red-500" : "text-gray-500"
+                        }`}
                     />
                   ) : (
                     <span
-                      className={`inline-block w-2 h-2 rounded-full ${
-                        isActive ? "bg-red-500" : "bg-gray-400"
-                      }`}
+                      className={`inline-block w-2 h-2 rounded-full ${isActive ? "bg-red-500" : "bg-gray-400"
+                        }`}
                     />
                   )}
                   <span>{category.name}</span>
@@ -448,16 +467,14 @@ const SideBar = ({ onLoginClick, userProfile }) => {
         <div className="lg:hidden fixed inset-0 z-40 flex">
           {/* Overlay */}
           <div
-            className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${
-              sidebarOpen ? "bg-opacity-40" : "bg-opacity-0"
-            }`}
+            className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${sidebarOpen ? "bg-opacity-40" : "bg-opacity-0"
+              }`}
             onClick={() => setSidebarOpen(false)}
           />
           {/* Sidebar Panel */}
           <div
-            className={`relative w-64 bg-white shadow-xl h-full p-4 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
-              sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
+            className={`relative w-64 bg-white shadow-xl h-full p-4 flex flex-col z-50 transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+              }`}
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-bold text-gray-900">Categories</h3>
@@ -477,23 +494,20 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                   <button
                     key={category.name}
                     onClick={() => handleCategoryClick(category.name)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                      isActive
+                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
                         ? "bg-red-50 text-red-600"
                         : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-                    }`}
+                      }`}
                   >
                     {IconComponent ? (
                       <IconComponent
-                        className={`w-4 h-4 flex-shrink-0 ${
-                          isActive ? "text-red-500" : "text-gray-600"
-                        }`}
+                        className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-red-500" : "text-gray-600"
+                          }`}
                       />
                     ) : (
                       <div
-                        className={`w-4 h-4 rounded-full flex-shrink-0 ${
-                          isActive ? "bg-red-500" : "bg-gray-400"
-                        }`}
+                        className={`w-4 h-4 rounded-full flex-shrink-0 ${isActive ? "bg-red-500" : "bg-gray-400"
+                          }`}
                       />
                     )}
                     <span className="text-left">{category.name}</span>
@@ -507,24 +521,21 @@ const SideBar = ({ onLoginClick, userProfile }) => {
 
       {/* Mobile-only Right Sidebar (for Profile) */}
       <div
-        className={`lg:hidden fixed inset-0 z-60 flex justify-end ${
-          isProfileSidebarOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
+        className={`lg:hidden fixed inset-0 z-60 flex justify-end ${isProfileSidebarOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
       >
         {/* Overlay */}
         <div
-          className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${
-            isProfileSidebarOpen
+          className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${isProfileSidebarOpen
               ? "bg-opacity-40"
               : "bg-opacity-0 pointer-events-none"
-          }`}
+            }`}
           onClick={() => setIsProfileSidebarOpen(false)}
         />
         {/* Profile Panel */}
         <div
-          className={`relative w-[30rem] bg-white shadow-xl h-full flex flex-col z-70 transition-transform duration-300 ease-in-out ${
-            isProfileSidebarOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+          className={`relative w-[30rem] bg-white shadow-xl h-full flex flex-col z-70 transition-transform duration-300 ease-in-out ${isProfileSidebarOpen ? "translate-x-0" : "translate-x-full"
+            }`}
         >
           <div className="flex justify-between items-center p-4 border-b">
             <h3 className="text-base font-bold text-gray-900">
@@ -687,9 +698,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           {/* Categories Button */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${
-              sidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
-            }`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${sidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
+              }`}
           >
             <Menu className="w-6 h-6" />
             <span className="text-xs font-medium">Categories</span>
@@ -702,11 +712,10 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               if (sidebarOpen) setSidebarOpen(false);
               if (isProfileSidebarOpen) setIsProfileSidebarOpen(false);
             }}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${
-              location.pathname === "/"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${location.pathname === "/"
                 ? "text-red-600 scale-105"
                 : "text-gray-600"
-            }`}
+              }`}
           >
             <Home className="w-6 h-6" />
             <span className="text-xs font-medium">Home</span>
@@ -715,9 +724,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           {/* Profile Button */}
           <button
             onClick={() => setIsProfileSidebarOpen((prev) => !prev)}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${
-              isProfileSidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
-            }`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${isProfileSidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
+              }`}
           >
             <User className="w-6 h-6" />
             <span className="text-xs font-medium">Profile</span>

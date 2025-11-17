@@ -147,7 +147,10 @@ function App({ onClose }) {
       }
 
       // 4. Registration
-      const result = await registerUser(email, password);
+      const result = await registerUser(email, password, {
+        username: username,
+        full_name: fullName,
+      });
       setIsLoading(false);
 
       if (result.success) {
