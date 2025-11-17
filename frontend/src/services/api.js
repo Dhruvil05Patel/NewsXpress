@@ -69,6 +69,27 @@ export const updateProfile = async (profileId, updateData) => {
   return data;
 };
 
+// Get bookmarks for a profile
+export const getBookmarksForProfile = async (profileId) => {
+	const { data } = await api.get(`/api/profiles/${profileId}/bookmarks`);
+	// server returns { bookmarks: [...] }
+	return data.bookmarks || [];
+};
+
+// Add a bookmark (or update note)
+export const addBookmark = async (profileId, articleId, note = null, articleData = null) => {
+	const payload = { article_id: articleId, note };
+	if (articleData) payload.articleData = articleData; // optional article metadata
+	const { data } = await api.post(`/api/profiles/${profileId}/bookmarks`, payload);
+	return data;
+};
+
+// Remove bookmark
+export const removeBookmarkApi = async (profileId, articleId) => {
+	const { data } = await api.delete(`/api/profiles/${profileId}/bookmarks/${articleId}`);
+	return data;
+};
+
 export const sendVerificationEmail = async (email, name) => {
 	const response = await api.post("/api/auth/send-verification-email", {
 		email,
