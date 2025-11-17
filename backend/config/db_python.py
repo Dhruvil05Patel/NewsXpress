@@ -14,6 +14,7 @@ def get_db_connection():
     """
     Create and return a PostgreSQL database connection
     Supports both DATABASE_URL and individual credentials
+    Uses SSL for Supabase in production
     """
     try:
         # First try DATABASE_URL (Supabase/Heroku style)
@@ -22,12 +23,19 @@ def get_db_connection():
         if database_url:
             # Parse the DATABASE_URL
             result = urlparse(database_url)
+            
+            # Supabase requires SSL in production
+            ssl_config = None
+            if os.getenv('NODE_ENV') == 'production':
+                ssl_config = {'sslmode': 'require'}
+            
             connection = psycopg2.connect(
                 host=result.hostname,
                 port=result.port or 5432,
                 database=result.path[1:],  # Remove leading slash
                 user=result.username,
-                password=result.password
+                password=result.password,
+                sslmode='require' if os.getenv('NODE_ENV') == 'production' else 'prefer'
             )
         else:
             # Fall back to individual environment variables
@@ -36,7 +44,8 @@ def get_db_connection():
                 port=os.getenv('DB_PORT', '5432'),
                 database=os.getenv('DB_NAME'),
                 user=os.getenv('DB_USER'),
-                password=os.getenv('DB_PASSWORD')
+                password=os.getenv('DB_PASSWORD'),
+                sslmode='prefer'
             )
         
         return connection

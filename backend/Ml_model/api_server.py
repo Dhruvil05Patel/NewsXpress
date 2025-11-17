@@ -48,264 +48,273 @@ def create_app(config: dict = None):
 
 
 def register_routes(app):
-    recommendation_service = app.recommendation_service
-    cache_manager = app.cache_manager
+    from flask import current_app
+    
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        """Health check endpoint"""
+        svc = current_app.recommendation_service
+        cache = current_app.cache_manager
+        return jsonify({
+            "status": "healthy",
+            "service": "NewsXpress ML Recommendation API",
+            "models_loaded": svc.models_loaded,
+            "cache_enabled": cache.enabled
+        })
 
 
-# Create default app instance for running the server directly or for WSGI servers
-app = create_app()
-
-# Expose services at module level for route functions that reference them
-recommendation_service = app.recommendation_service
-cache_manager = app.cache_manager
-
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        "status": "healthy",
-        "service": "NewsXpress ML Recommendation API",
-        "models_loaded": recommendation_service.models_loaded,
-        "cache_enabled": cache_manager.enabled
-    })
-
-
-@app.route('/api/recommendations/similar/<article_id>', methods=['GET'])
-def get_similar_articles(article_id):
-    """
-    Get articles similar to the specified article
-    Query params: top_n (default: 10)
-    """
-    try:
-        top_n = int(request.args.get('top_n', 10))
-        exclude_ids = request.args.getlist('exclude')
-        
-        # Check cache first
-        cache_key = f"rec:similar:{article_id}:n={top_n}"
-        cached_result = cache_manager.get(cache_key)
-        
-        if cached_result:
-            logger.info(f"Cache hit for similar articles: {article_id}")
+    @app.route('/api/recommendations/similar/<article_id>', methods=['GET'])
+    def get_similar_articles(article_id):
+        """
+        Get articles similar to the specified article
+        Query params: top_n (default: 10)
+        """
+        try:
+            svc = current_app.recommendation_service
+            cache = current_app.cache_manager
+            
+            top_n = int(request.args.get('top_n', 10))
+            exclude_ids = request.args.getlist('exclude')
+            
+            # Check cache first
+            cache_key = f"rec:similar:{article_id}:n={top_n}"
+            cached_result = cache.get(cache_key)
+            
+            if cached_result:
+                logger.info(f"Cache hit for similar articles: {article_id}")
+                return jsonify({
+                    "success": True,
+                    "article_id": article_id,
+                    "recommendations": cached_result,
+                    "from_cache": True
+                })
+            
+            # Get recommendations
+            recommendations = svc.get_similar_articles(
+                article_id=article_id,
+                top_n=top_n,
+                exclude_ids=exclude_ids
+            )
+            
+            # Cache for 30 minutes
+            cache.set(cache_key, recommendations, ttl_seconds=1800)
+            
             return jsonify({
                 "success": True,
                 "article_id": article_id,
-                "recommendations": cached_result,
-                "from_cache": True
+                "recommendations": recommendations,
+                "from_cache": False
             })
-        
-        # Get recommendations
-        recommendations = recommendation_service.get_similar_articles(
-            article_id=article_id,
-            top_n=top_n,
-            exclude_ids=exclude_ids
-        )
-        
-        # Cache for 30 minutes
-        cache_manager.set(cache_key, recommendations, ttl_seconds=1800)
-        
-        return jsonify({
-            "success": True,
-            "article_id": article_id,
-            "recommendations": recommendations,
-            "from_cache": False
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in get_similar_articles: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+            
+        except Exception as e:
+            logger.error(f"Error in get_similar_articles: {e}")
+            return jsonify({
+                "success": False,
+                "error": str(e)
+            }), 500
 
 
-@app.route('/api/recommendations/personalized/<user_id>', methods=['GET'])
-def get_personalized_recommendations(user_id):
-    """
-    Get personalized recommendations for user
-    Query params: top_n (default: 10), method (collaborative/hybrid)
-    """
-    try:
-        top_n = int(request.args.get('top_n', 10))
-        method = request.args.get('method', 'hybrid')  # collaborative, hybrid
-        exclude_ids = request.args.getlist('exclude')
-        
-        # Check cache
-        cache_key = f"rec:{method}:{user_id}:n={top_n}"
-        cached_result = cache_manager.get(cache_key)
-        
-        if cached_result:
-            logger.info(f"Cache hit for personalized recs: {user_id}")
+    @app.route('/api/recommendations/personalized/<user_id>', methods=['GET', 'POST'])
+    def get_personalized_recommendations(user_id):
+        """
+        Get personalized recommendations for user
+        Query params: top_n (default: 10), method (collaborative/hybrid)
+        """
+        try:
+            svc = current_app.recommendation_service
+            cache = current_app.cache_manager
+            
+            top_n = int(request.args.get('top_n', 10))
+            method = request.args.get('method', 'hybrid')  # collaborative, hybrid
+            exclude_ids = request.args.getlist('exclude')
+            
+            # Check cache
+            cache_key = f"rec:{method}:{user_id}:n={top_n}"
+            cached_result = cache.get(cache_key)
+            
+            if cached_result:
+                logger.info(f"Cache hit for personalized recs: {user_id}")
+                return jsonify({
+                    "success": True,
+                    "user_id": user_id,
+                    "method": method,
+                    "recommendations": cached_result,
+                    "from_cache": True
+                })
+            
+            # Get recommendations based on method
+            if method == 'collaborative':
+                recommendations = svc.get_collaborative_recommendations(
+                    user_id=user_id,
+                    top_n=top_n,
+                    exclude_ids=exclude_ids
+                )
+            else:  # hybrid
+                # Get recent articles from request body if provided
+                recent_articles = request.json.get('recent_articles', []) if request.json else []
+                recommendations = svc.get_hybrid_recommendations(
+                    user_id=user_id,
+                    recent_article_ids=recent_articles,
+                    top_n=top_n,
+                    exclude_ids=exclude_ids
+                )
+            
+            # Cache for 15 minutes (shorter for personalized)
+            cache.set(cache_key, recommendations, ttl_seconds=900)
+            
             return jsonify({
                 "success": True,
                 "user_id": user_id,
                 "method": method,
-                "recommendations": cached_result,
-                "from_cache": True
+                "recommendations": recommendations,
+                "from_cache": False
             })
-        
-        # Get recommendations based on method
-        if method == 'collaborative':
-            recommendations = recommendation_service.get_collaborative_recommendations(
-                user_id=user_id,
+            
+        except Exception as e:
+            logger.error(f"Error in get_personalized_recommendations: {e}")
+            return jsonify({
+                "success": False,
+                "error": str(e)
+            }), 500
+
+
+    @app.route('/api/recommendations/trending', methods=['GET'])
+    def get_trending():
+        """
+        Get trending articles
+        Query params: top_n (default: 10), days (default: 7)
+        """
+        try:
+            svc = current_app.recommendation_service
+            cache = current_app.cache_manager
+            
+            top_n = int(request.args.get('top_n', 10))
+            days = int(request.args.get('days', 7))
+            
+            # Check cache
+            cache_key = f"rec:trending:n={top_n}:days={days}"
+            cached_result = cache.get(cache_key)
+            
+            if cached_result:
+                return jsonify({
+                    "success": True,
+                    "recommendations": cached_result,
+                    "from_cache": True
+                })
+            
+            recommendations = svc.get_trending_articles(
                 top_n=top_n,
-                exclude_ids=exclude_ids
+                time_window_days=days
             )
-        else:  # hybrid
-            # Get recent articles from request body if provided
-            recent_articles = request.json.get('recent_articles', []) if request.json else []
-            recommendations = recommendation_service.get_hybrid_recommendations(
-                user_id=user_id,
-                recent_article_ids=recent_articles,
-                top_n=top_n,
-                exclude_ids=exclude_ids
-            )
-        
-        # Cache for 15 minutes (shorter for personalized)
-        cache_manager.set(cache_key, recommendations, ttl_seconds=900)
-        
-        return jsonify({
-            "success": True,
-            "user_id": user_id,
-            "method": method,
-            "recommendations": recommendations,
-            "from_cache": False
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in get_personalized_recommendations: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-
-@app.route('/api/recommendations/trending', methods=['GET'])
-def get_trending():
-    """
-    Get trending articles
-    Query params: top_n (default: 10), days (default: 7)
-    """
-    try:
-        top_n = int(request.args.get('top_n', 10))
-        days = int(request.args.get('days', 7))
-        
-        # Check cache
-        cache_key = f"rec:trending:n={top_n}:days={days}"
-        cached_result = cache_manager.get(cache_key)
-        
-        if cached_result:
+            
+            # Cache for 5 minutes
+            cache.set(cache_key, recommendations, ttl_seconds=300)
+            
             return jsonify({
                 "success": True,
-                "recommendations": cached_result,
-                "from_cache": True
+                "recommendations": recommendations,
+                "from_cache": False
             })
-        
-        recommendations = recommendation_service.get_trending_articles(
-            top_n=top_n,
-            time_window_days=days
-        )
-        
-        # Cache for 5 minutes
-        cache_manager.set(cache_key, recommendations, ttl_seconds=300)
-        
-        return jsonify({
-            "success": True,
-            "recommendations": recommendations,
-            "from_cache": False
-        })
-        
-    except Exception as e:
-        logger.error(f"Error in get_trending: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+            
+        except Exception as e:
+            logger.error(f"Error in get_trending: {e}")
+            return jsonify({
+                "success": False,
+                "error": str(e)
+            }), 500
 
 
-@app.route('/api/cache/clear', methods=['POST'])
-def clear_cache():
-    """Clear cache for specific user or article"""
-    try:
-        data = request.json
-        user_id = data.get('user_id')
-        article_id = data.get('article_id')
-        
-        if user_id:
-            cache_manager.clear_user_cache(user_id)
+    @app.route('/api/cache/clear', methods=['POST'])
+    def clear_cache():
+        """Clear cache for specific user or article"""
+        try:
+            cache = current_app.cache_manager
+            
+            data = request.json
+            user_id = data.get('user_id')
+            article_id = data.get('article_id')
+            
+            if user_id:
+                cache.clear_user_cache(user_id)
+                return jsonify({
+                    "success": True,
+                    "message": f"Cache cleared for user {user_id}"
+                })
+            
+            if article_id:
+                cache.clear_article_cache(article_id)
+                return jsonify({
+                    "success": True,
+                    "message": f"Cache cleared for article {article_id}"
+                })
+            
+            return jsonify({
+                "success": False,
+                "error": "Please provide user_id or article_id"
+            }), 400
+            
+        except Exception as e:
+            logger.error(f"Error clearing cache: {e}")
+            return jsonify({
+                "success": False,
+                "error": str(e)
+            }), 500
+
+
+    @app.route('/api/cache/stats', methods=['GET'])
+    def get_cache_stats():
+        """Get cache statistics"""
+        try:
+            cache = current_app.cache_manager
+            stats = cache.get_cache_stats()
             return jsonify({
                 "success": True,
-                "message": f"Cache cleared for user {user_id}"
+                "stats": stats
             })
-        
-        if article_id:
-            cache_manager.clear_article_cache(article_id)
+        except Exception as e:
+            logger.error(f"Error getting cache stats: {e}")
+            return jsonify({
+                "success": False,
+                "error": str(e)
+            }), 500
+
+
+    @app.route('/api/models/info', methods=['GET'])
+    def get_models_info():
+        """Get information about loaded models"""
+        try:
+            svc = current_app.recommendation_service
+            metadata_path = Path(__file__).resolve().parent / 'models' / 'training_metadata.csv'
+            
+            info = {
+                "models_loaded": svc.models_loaded,
+                "content_based_available": svc.sig_matrix is not None,
+                "collaborative_available": svc.user_sim_matrix is not None,
+            }
+            
+            if metadata_path.exists():
+                try:
+                    import pandas as pd
+                    metadata = pd.read_csv(metadata_path).iloc[0].to_dict()
+                    info.update(metadata)
+                except Exception as e:
+                    logger.warning(f"Could not read models metadata: {e}")
+            
             return jsonify({
                 "success": True,
-                "message": f"Cache cleared for article {article_id}"
+                "info": info
             })
-        
-        return jsonify({
-            "success": False,
-            "error": "Please provide user_id or article_id"
-        }), 400
-        
-    except Exception as e:
-        logger.error(f"Error clearing cache: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+            
+        except Exception as e:
+            logger.error(f"Error getting models info: {e}")
+            return jsonify({
+                "success": False,
+                "error": str(e)
+            }), 500
 
 
-@app.route('/api/cache/stats', methods=['GET'])
-def get_cache_stats():
-    """Get cache statistics"""
-    try:
-        stats = cache_manager.get_cache_stats()
-        return jsonify({
-            "success": True,
-            "stats": stats
-        })
-    except Exception as e:
-        logger.error(f"Error getting cache stats: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-
-@app.route('/api/models/info', methods=['GET'])
-def get_models_info():
-    """Get information about loaded models"""
-    try:
-        metadata_path = Path(__file__).resolve().parent / 'models' / 'training_metadata.csv'
-        
-        info = {
-            "models_loaded": recommendation_service.models_loaded,
-            "content_based_available": recommendation_service.sig_matrix is not None,
-            "collaborative_available": recommendation_service.user_sim_matrix is not None,
-        }
-        
-        if metadata_path.exists():
-            try:
-                import pandas as pd
-                metadata = pd.read_csv(metadata_path).iloc[0].to_dict()
-                info.update(metadata)
-            except Exception as e:
-                logger.warning(f"Could not read models metadata: {e}")
-        
-        return jsonify({
-            "success": True,
-            "info": info
-        })
-        
-    except Exception as e:
-        logger.error(f"Error getting models info: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+# Create default app instance for running the server directly or for WSGI servers
+app = create_app()
 
 
 if __name__ == '__main__':

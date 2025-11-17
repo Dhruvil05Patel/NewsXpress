@@ -53,3 +53,13 @@ test-results/
 node_modules
 firebase-service-account-key.json
 gc-service-account-key.json
+
+Ml_model/models/
+Ml_model/data/
+Ml_model/venv/
+
+#Python cache
+__pycache__/
+
+# IDE files
+.vscode/
