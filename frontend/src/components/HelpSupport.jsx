@@ -1,7 +1,6 @@
-import React, { useState } from "react";
-// HelpSupport: user assistance hub with FAQs + contact form.
-// Form currently logs submission to console (demo mode) then shows success state.
-// Expandable <details> blocks provide quick answers; contact methods list alternatives.
+// HelpSupport: user assistance hub with locked profile autofill and countdown
+import React, { useEffect, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import {
     HelpCircle,
     CheckCircle2,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 
 const HelpSupport = () => {
+    const { user: firebaseUser, profile } = useAuth();
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -18,15 +18,57 @@ const HelpSupport = () => {
     });
 
     const [submitted, setSubmitted] = useState(false);
+    const [countdown, setCountdown] = useState(0);
+
+    // After showing success, display countdown and return to form
+    useEffect(() => {
+        if (!submitted) return;
+        setCountdown(10);
+
+        const intervalId = setInterval(() => {
+            setCountdown((prev) => {
+                if (prev <= 1) {
+                    clearInterval(intervalId);
+                    setSubmitted(false);
+                    setFormData((p) => ({ ...p, message: "" }));
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(intervalId);
+    }, [submitted]);
+
+    // Sync locked fields (name, email) from authenticated profile
+    useEffect(() => {
+        const lockedName = profile?.full_name || firebaseUser?.displayName || "";
+        const lockedEmail = profile?.email || firebaseUser?.email || "";
+        setFormData((prev) => ({ ...prev, name: lockedName, email: lockedEmail }));
+    }, [
+        profile?.full_name,
+        profile?.email,
+        firebaseUser?.displayName,
+        firebaseUser?.email,
+    ]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        // Only allow changing message; name/email are locked from profile
+        if (name === "message") {
+            setFormData((prev) => ({ ...prev, message: value }));
+        }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log("📩 Form Submitted Data:", formData);
+        // Ensure submission uses the locked profile values
+        const payload = {
+            name: profile?.full_name || firebaseUser?.displayName || formData.name,
+            email: profile?.email || firebaseUser?.email || formData.email,
+            message: formData.message,
+        };
+        console.log("📩 Form Submitted Data:", payload);
         setSubmitted(true);
     };
 
@@ -70,9 +112,11 @@ const HelpSupport = () => {
                                         name="name"
                                         placeholder="Enter your name"
                                         value={formData.name}
-                                        onChange={handleChange}
+                                        readOnly
+                                        disabled
+                                        aria-readonly="true"
                                         required
-                                        className="w-full px-3 py-3 rounded-lg border border-gray-200 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        className="w-full px-3 py-3 rounded-lg border border-gray-200 bg-gray-100 text-gray-900 outline-none"
                                     />
                                 </div>
 
@@ -85,9 +129,11 @@ const HelpSupport = () => {
                                         name="email"
                                         placeholder="Enter your email"
                                         value={formData.email}
-                                        onChange={handleChange}
+                                        readOnly
+                                        disabled
+                                        aria-readonly="true"
                                         required
-                                        className="w-full px-3 py-3 rounded-lg border border-gray-200 bg-white text-gray-900 outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                                        className="w-full px-3 py-3 rounded-lg border border-gray-200 bg-gray-100 text-gray-900 outline-none"
                                     />
                                 </div>
 
@@ -132,6 +178,9 @@ const HelpSupport = () => {
                             <p className="text-base text-gray-600">
                                 Thanks for reaching out! Your message has been printed in the
                                 console for this demo. We’ll get back to you shortly.
+                            </p>
+                            <p className="text-sm text-gray-500 mt-3">
+                                Returning to the form in {countdown} sec.
                             </p>
                         </div>
                     </div>

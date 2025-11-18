@@ -20,22 +20,19 @@ import {
   Bell,
 } from "lucide-react";
 import { logoutUser } from "./auth/controller/authController";
-import { updateProfile as apiUpdateProfile, checkUsernameAvailability } from "../services/api";
+import {
+  updateProfile as apiUpdateProfile,
+  checkUsernameAvailability,
+} from "../services/api";
 import notify from "../utils/toast";
 
-/**
- * A responsive component that renders a top navbar, a desktop sidebar,
- * and a mobile bottom navigation bar for category and profile management.
- * @param {object} props - The component's props.
- * @param {Function} props.onLoginClick - Function to call when the login button is clicked.
- * @param {object} props.userProfile - The logged-in user's profile (null if not logged in).
- */
+// SideBar: responsive navigation, category links, profile overlay
 const SideBar = ({ onLoginClick, userProfile }) => {
-  // --- Hooks ---
+  // Hooks
   const location = useLocation();
   const navigate = useNavigate();
 
-  // --- Data & Configuration ---
+  // Category routes
   const categoryRoutes = {
     All: "/all",
     Technology: "/technology",
@@ -49,7 +46,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     Crime: "/crime",
   };
 
-  // --- State Management ---
+  // State
   const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
@@ -102,6 +99,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
       return () => clearTimeout(timer);
     }
   }, [sidebarOpen]);
+
+  // Overlay remains open for guests as well; no auto-close on logout
 
   // --- Reusable UI Component ---
 
@@ -194,18 +193,18 @@ const SideBar = ({ onLoginClick, userProfile }) => {
         notify.error("No profile found. Please login again.");
         return;
       }
-      
+
       // Check username availability first
       if (!usernameAvailable) {
         notify.error("This username is already taken. Please choose another.");
         return;
       }
-      
+
       if (!newUsername || newUsername.trim() === "") {
         notify.error("Username cannot be empty.");
         return;
       }
-      
+
       setSaving(true);
       try {
         const payload = { username: newUsername.trim() };
@@ -215,7 +214,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
         setEditingUsername(false);
       } catch (err) {
         console.error("Failed to update username:", err);
-        const errorMsg = err.response?.data?.error || err.message || "Failed to save username";
+        const errorMsg =
+          err.response?.data?.error || err.message || "Failed to save username";
         notify.error(errorMsg);
       } finally {
         setSaving(false);
@@ -224,20 +224,27 @@ const SideBar = ({ onLoginClick, userProfile }) => {
 
     // Check username availability with debounce
     useEffect(() => {
-      if (!editingUsername || !newUsername || newUsername === userProfile?.username) {
+      if (
+        !editingUsername ||
+        !newUsername ||
+        newUsername === userProfile?.username
+      ) {
         setUsernameAvailable(true);
         return;
       }
-      
+
       const timeoutId = setTimeout(async () => {
         if (newUsername.trim() === "") {
           setUsernameAvailable(false);
           return;
         }
-        
+
         setCheckingUsername(true);
         try {
-          const result = await checkUsernameAvailability(newUsername.trim(), userProfile?.id);
+          const result = await checkUsernameAvailability(
+            newUsername.trim(),
+            userProfile?.id
+          );
           setUsernameAvailable(result.available);
         } catch (err) {
           console.error("Error checking username:", err);
@@ -246,7 +253,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           setCheckingUsername(false);
         }
       }, 500); // 500ms debounce
-      
+
       return () => clearTimeout(timeoutId);
     }, [newUsername, editingUsername, userProfile?.username, userProfile?.id]);
 
@@ -392,34 +399,52 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                       <input
                         value={newUsername}
                         onChange={(e) => setNewUsername(e.target.value)}
-                        className={`flex-1 px-3 py-2 border rounded-md text-sm ${
-                          checkingUsername 
-                            ? 'border-gray-300' 
-                            : newUsername && newUsername !== userProfile?.username
-                            ? usernameAvailable 
-                              ? 'border-green-500 focus:ring-green-500' 
-                              : 'border-red-500 focus:ring-red-500'
-                            : 'border-gray-300'
-                        }`}
+                        className={`flex-1 px-3 py-2 border rounded-md text-sm ${checkingUsername
+                          ? "border-gray-300"
+                          : newUsername &&
+                            newUsername !== userProfile?.username
+                            ? usernameAvailable
+                              ? "border-green-500 focus:ring-green-500"
+                              : "border-red-500 focus:ring-red-500"
+                            : "border-gray-300"
+                          }`}
                         aria-label="Edit username"
                         placeholder="Enter your username"
                       />
                       <button
                         onClick={handleSaveUsername}
                         className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
-                        disabled={saving || !usernameAvailable || checkingUsername || !newUsername.trim()}
+                        disabled={
+                          saving ||
+                          !usernameAvailable ||
+                          checkingUsername ||
+                          !newUsername.trim()
+                        }
                       >
                         Save
                       </button>
                     </div>
-                    {checkingUsername && newUsername && newUsername !== userProfile?.username && (
-                      <p className="text-xs text-gray-500">Checking availability...</p>
-                    )}
-                    {!checkingUsername && newUsername && newUsername !== userProfile?.username && (
-                      <p className={`text-xs ${usernameAvailable ? 'text-green-600' : 'text-red-600'}`}>
-                        {usernameAvailable ? '✓ Username is available' : '✗ Username is already taken'}
-                      </p>
-                    )}
+                    {checkingUsername &&
+                      newUsername &&
+                      newUsername !== userProfile?.username && (
+                        <p className="text-xs text-gray-500">
+                          Checking availability...
+                        </p>
+                      )}
+                    {!checkingUsername &&
+                      newUsername &&
+                      newUsername !== userProfile?.username && (
+                        <p
+                          className={`text-xs ${usernameAvailable
+                            ? "text-green-600"
+                            : "text-red-600"
+                            }`}
+                        >
+                          {usernameAvailable
+                            ? "✓ Username is available"
+                            : "✗ Username is already taken"}
+                        </p>
+                      )}
                   </div>
                 ) : (
                   <div className="text-sm text-gray-700">
@@ -483,8 +508,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                   key={category.name}
                   onClick={() => handleCategoryClick(category.name)}
                   className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full border transition-all whitespace-nowrap ${isActive
-                      ? "bg-red-50 text-red-600 border-red-200"
-                      : "text-gray-700 border-gray-200 hover:text-red-600 hover:border-red-200 hover:bg-red-50"
+                    ? "bg-red-50 text-red-600 border-red-200"
+                    : "text-gray-700 border-gray-200 hover:text-red-600 hover:border-red-200 hover:bg-red-50"
                     }`}
                 >
                   {IconComponent ? (
@@ -505,7 +530,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           </div>
 
           {/* Search - desktop only */}
-          <div className="hidden lg:flex items-center w-[28rem] max-w-lg pt-2">
+          <div className="hidden lg:flex items-center w-[15rem] max-w-lg pt-2">
             <div className="relative w-full">
               <input
                 type="text"
@@ -529,11 +554,11 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           </div>
 
           {/* Search Bar - mobile view */}
-          <div className="flex lg:hidden items-center flex-1 min-w-0 pt-3">
+          <div className="flex lg:hidden items-center flex-1 w-[20rem] min-w-0 pt-3">
             <div className="relative w-full">
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search Headlines..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={(e) => {
@@ -554,7 +579,9 @@ const SideBar = ({ onLoginClick, userProfile }) => {
 
           {/* Profile Icon - visible on large screens */}
           <button
-            onClick={() => setIsProfileSidebarOpen((prev) => !prev)}
+            onClick={() => {
+              setIsProfileSidebarOpen((prev) => !prev);
+            }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = "#fef2f2";
               e.currentTarget.style.transform = "scale(1.05)";
@@ -606,8 +633,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                     key={category.name}
                     onClick={() => handleCategoryClick(category.name)}
                     className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
-                        ? "bg-red-50 text-red-600"
-                        : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                      ? "bg-red-50 text-red-600"
+                      : "text-gray-600 hover:text-red-600 hover:bg-red-50"
                       }`}
                   >
                     {IconComponent ? (
@@ -638,8 +665,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
         {/* Overlay */}
         <div
           className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${isProfileSidebarOpen
-              ? "bg-opacity-40"
-              : "bg-opacity-0 pointer-events-none"
+            ? "bg-opacity-40"
+            : "bg-opacity-0 pointer-events-none"
             }`}
           onClick={() => setIsProfileSidebarOpen(false)}
         />
@@ -824,8 +851,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               if (isProfileSidebarOpen) setIsProfileSidebarOpen(false);
             }}
             className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${location.pathname === "/"
-                ? "text-red-600 scale-105"
-                : "text-gray-600"
+              ? "text-red-600 scale-105"
+              : "text-gray-600"
               }`}
           >
             <Home className="w-6 h-6" />
@@ -834,7 +861,9 @@ const SideBar = ({ onLoginClick, userProfile }) => {
 
           {/* Profile Button */}
           <button
-            onClick={() => setIsProfileSidebarOpen((prev) => !prev)}
+            onClick={() => {
+              setIsProfileSidebarOpen((prev) => !prev);
+            }}
             className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${isProfileSidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
               }`}
           >

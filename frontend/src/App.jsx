@@ -13,9 +13,11 @@ import SideBar from "./components/SideBar";
 import AllNews from "./components/AllNews";
 import CategoryNews from "./components/CategoryNews";
 import LoginPage from "./components/LoginPage";
+import SignUp from "./components/SignUp";
 import Bookmarks from "./components/Bookmarks";
 import PersonalizedFeed from "./components/PersonalizedFeed";
 import HelpSupport from "./components/HelpSupport";
+import Profile from "./components/Profile";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import notify from "./utils/toast";
@@ -67,8 +69,9 @@ const categories = {
 // AppContent: inner component separated so <AuthProvider> only wraps once at root.
 // Contains all runtime logic; extracted from default export for clarity/testing.
 function AppContent() {
-  // --- State --- Login modal visibility.
+  // --- State --- Login/Signup modal visibility.
   const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
   // Auth context: firebaseUser = raw auth user, userProfile = enriched profile doc.
   const { user: firebaseUser, profile: userProfile, loading } = useAuth();
@@ -92,10 +95,10 @@ function AppContent() {
     }
   }, [userProfile, unverifiedUser]);
 
-  // Lock body scroll whenever a blocking modal (login / verify) is active.
+  // Lock body scroll whenever a blocking modal (login / signup / verify) is active.
   useEffect(() => {
-    // Check if EITHER the Login Modal OR the Unverified User Prompt is visible
-    const isAnyModalOpen = showLogin || unverifiedUser;
+    // Check if EITHER the Login Modal OR Signup Modal OR the Unverified User Prompt is visible
+    const isAnyModalOpen = showLogin || showSignup || unverifiedUser;
 
     if (isAnyModalOpen) {
       document.body.classList.add("body-locked");
@@ -107,12 +110,22 @@ function AppContent() {
     return () => {
       document.body.classList.remove("body-locked");
     };
-    // Dependency array includes both state variables that trigger a modal/overlay
-  }, [showLogin, unverifiedUser]);
+    // Dependency array includes all state variables that trigger a modal/overlay
+  }, [showLogin, showSignup, unverifiedUser]);
 
   // Modal open/close handlers.
-  const openLogin = () => setShowLogin(true);
-  const closeLogin = () => setShowLogin(false);
+  const openLogin = () => {
+    setShowSignup(false);
+    setShowLogin(true);
+  };
+  const openSignup = () => {
+    setShowLogin(false);
+    setShowSignup(true);
+  };
+  const closeAuth = () => {
+    setShowLogin(false);
+    setShowSignup(false);
+  };
 
   // Auth gate component: lightweight inline guard for protected routes.
   const LoginRequired = ({
@@ -297,6 +310,7 @@ function AppContent() {
               )
             }
           />
+          <Route path="/profile" element={<Profile />} />
           <Route
             path="/help"
             element={
@@ -314,7 +328,14 @@ function AppContent() {
 
         {/* --- Modals --- */}
         {/* The LoginPage is rendered conditionally based on the `showLogin` state. */}
-        {showLogin && <LoginPage onClose={closeLogin} />}
+        {showLogin && (
+          <LoginPage onClose={closeAuth} onSwitchToSignup={openSignup} />
+        )}
+
+        {/* The SignUp page is rendered conditionally based on the `showSignup` state. */}
+        {showSignup && (
+          <SignUp onClose={closeAuth} onSwitchToLogin={openLogin} />
+        )}
 
         {/* Onboarding modal for category preferences */}
         {showOnboarding && userProfile?.id && !unverifiedUser && (
