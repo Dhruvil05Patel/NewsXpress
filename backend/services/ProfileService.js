@@ -8,6 +8,29 @@
 const crypto = require('crypto');
 const { Profile } = require('../config/db');
 
+/**
+ * Check if a username is already taken by another profile
+ * @param {string} username - The username to check
+ * @param {string} excludeProfileId - Profile ID to exclude from check (for updates)
+ * @returns {Promise<boolean>} True if username exists, false otherwise
+ */
+async function isUsernameTaken(username, excludeProfileId = null) {
+  if (!username) return false;
+  
+  const whereClause = { username: username.toLowerCase() };
+  
+  const existingProfile = await Profile.findOne({ where: whereClause });
+  
+  if (!existingProfile) return false;
+  
+  // If we're updating and the username belongs to the same profile, it's okay
+  if (excludeProfileId && existingProfile.id === excludeProfileId) {
+    return false;
+  }
+  
+  return true;
+}
+
 
 
 /**
@@ -84,7 +107,12 @@ async function updateProfile(profileId, updateData) {
       profile.full_name = updateData.full_name;
     }
     if (updateData.username !== undefined) {
-      profile.username = updateData.username;
+      // Check if username is already taken by another user
+      const usernameTaken = await isUsernameTaken(updateData.username, profileId);
+      if (usernameTaken) {
+        throw new Error('Username is already taken. Please choose a different username.');
+      }
+      profile.username = updateData.username.toLowerCase(); // Store as lowercase
     }
     if (updateData.avatar_url !== undefined) {
       profile.avatar_url = updateData.avatar_url;
@@ -160,12 +188,23 @@ async function updateProfile(profileId, updateData) {
         id: profileIdFromFirebase,  // Use Firebase UID (converted to UUID) as primary key
         full_name: profileData.full_name || profileData.name || null,
         avatar_url: profileData.avatar_url || profileData.picture || null,
-        username: profileData.username || null,
+        username: profileData.username ? profileData.username.toLowerCase() : null,
         email: profileData.email || null,  // Required field for database constraint
         // Optional initial values
         fcm_token: profileData.fcm_token || null,
         categories: Array.isArray(profileData.categories) ? profileData.categories : null,
       };
+
+      // Check if username is already taken before creating profile
+      if (newProfileData.username) {
+        const usernameTaken = await isUsernameTaken(newProfileData.username);
+        if (usernameTaken) {
+          // Generate a unique username by appending random numbers
+          const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+          newProfileData.username = `${newProfileData.username}${randomSuffix}`;
+          console.log(`⚠️  Username taken, generated new username: ${newProfileData.username}`);
+        }
+      }
 
       // Create profile normally. Username is no longer constrained to be unique
       // at the model level, so this should not fail due to username collisions.
@@ -205,5 +244,6 @@ module.exports = {
   getProfileById,
   updateProfile,
   findOrCreateProfileByAuthId,
-  createProfile
+  createProfile,
+  isUsernameTaken
 };

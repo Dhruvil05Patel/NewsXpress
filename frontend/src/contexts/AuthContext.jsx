@@ -1,9 +1,14 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { initAuthListener } from "../components/auth/controller/authController";
 import { getFCMToken } from "../utils/getFCMToken";
-import { updateProfile } from "../services/api";
+import { updateProfile, getProfile } from "../services/api";
 
-const AuthContext = createContext({ user: null, profile: null, loading: true });
+const AuthContext = createContext({ 
+	user: null, 
+	profile: null, 
+	loading: true,
+	refreshProfile: () => {}
+});
 
 /**
  * Sync FCM Token + Categories
@@ -38,6 +43,20 @@ export function AuthProvider({ children }) {
 	const [firebaseUser, setFirebaseUser] = useState(null);
 	const [loading, setLoading] = useState(true);
 
+	// Function to manually refresh profile from backend
+	const refreshProfile = useCallback(async () => {
+		if (!profile?.id) return;
+		
+		try {
+			console.log("🔄 Refreshing profile from backend...");
+			const updatedProfile = await getProfile(profile.id);
+			setProfile(updatedProfile);
+			console.log("✅ Profile refreshed:", updatedProfile);
+		} catch (error) {
+			console.error("❌ Failed to refresh profile:", error);
+		}
+	}, [profile?.id]);
+
 	useEffect(() => {
 		const unsubscribe = initAuthListener(async (backendProfile, user) => {
 			setFirebaseUser(user);
@@ -60,9 +79,20 @@ export function AuthProvider({ children }) {
 		return () => unsubscribe && unsubscribe();
 	}, []);
 
+	// Listen for profile-updated events and refresh profile
+	useEffect(() => {
+		const handleProfileUpdated = () => {
+			console.log("📢 profile-updated event received");
+			refreshProfile();
+		};
+
+		window.addEventListener("profile-updated", handleProfileUpdated);
+		return () => window.removeEventListener("profile-updated", handleProfileUpdated);
+	}, [refreshProfile]);
+
 	const value = useMemo(
-		() => ({ user: firebaseUser, profile, loading }),
-		[firebaseUser, profile, loading]
+		() => ({ user: firebaseUser, profile, loading, refreshProfile }),
+		[firebaseUser, profile, loading, refreshProfile]
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

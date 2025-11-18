@@ -20,7 +20,7 @@ import {
   Bell,
 } from "lucide-react";
 import { logoutUser } from "./auth/controller/authController";
-import { updateProfile as apiUpdateProfile } from "../services/api";
+import { updateProfile as apiUpdateProfile, checkUsernameAvailability } from "../services/api";
 import notify from "../utils/toast";
 
 /**
@@ -153,7 +153,11 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     // Local UI state for settings forms inside profile panel
     const [showSettingsPanel, setShowSettingsPanel] = useState(false);
     const [editingName, setEditingName] = useState(false);
+    const [editingUsername, setEditingUsername] = useState(false);
     const [newName, setNewName] = useState(userProfile?.full_name || "");
+    const [newUsername, setNewUsername] = useState(userProfile?.username || "");
+    const [usernameAvailable, setUsernameAvailable] = useState(true);
+    const [checkingUsername, setCheckingUsername] = useState(false);
     const [uploadPreview, setUploadPreview] = useState(null);
     const [selectedFileName, setSelectedFileName] = useState(null);
     const fileInputRef = useRef(null);
@@ -162,7 +166,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     // Sync displayed name with latest profile as soon as it changes
     useEffect(() => {
       setNewName(userProfile?.full_name || "");
-    }, [userProfile?.full_name]);
+      setNewUsername(userProfile?.username || "");
+    }, [userProfile?.full_name, userProfile?.username]);
 
     const handleSaveName = async () => {
       if (!userProfile?.id) {
@@ -171,25 +176,79 @@ const SideBar = ({ onLoginClick, userProfile }) => {
       }
       setSaving(true);
       try {
-        // Save both full_name and username (if you allow editing username)
-        const payload = {
-          full_name: newName,
-          username: userProfile.username, // if username editing allowed include the new value
-        };
-
+        const payload = { full_name: newName };
         const updated = await apiUpdateProfile(userProfile.id, payload);
-
-        notify.success("Profile updated");
-        // Notify other parts of the app to refresh profile data
+        notify.success("Full name updated");
         window.dispatchEvent(new Event("profile-updated"));
         setEditingName(false);
       } catch (err) {
-        console.error("Failed to update profile:", err);
-        notify.error("Failed to save profile");
+        console.error("Failed to update full name:", err);
+        notify.error("Failed to save full name");
       } finally {
         setSaving(false);
       }
     };
+
+    const handleSaveUsername = async () => {
+      if (!userProfile?.id) {
+        notify.error("No profile found. Please login again.");
+        return;
+      }
+      
+      // Check username availability first
+      if (!usernameAvailable) {
+        notify.error("This username is already taken. Please choose another.");
+        return;
+      }
+      
+      if (!newUsername || newUsername.trim() === "") {
+        notify.error("Username cannot be empty.");
+        return;
+      }
+      
+      setSaving(true);
+      try {
+        const payload = { username: newUsername.trim() };
+        const updated = await apiUpdateProfile(userProfile.id, payload);
+        notify.success("Username updated successfully");
+        window.dispatchEvent(new Event("profile-updated"));
+        setEditingUsername(false);
+      } catch (err) {
+        console.error("Failed to update username:", err);
+        const errorMsg = err.response?.data?.error || err.message || "Failed to save username";
+        notify.error(errorMsg);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    // Check username availability with debounce
+    useEffect(() => {
+      if (!editingUsername || !newUsername || newUsername === userProfile?.username) {
+        setUsernameAvailable(true);
+        return;
+      }
+      
+      const timeoutId = setTimeout(async () => {
+        if (newUsername.trim() === "") {
+          setUsernameAvailable(false);
+          return;
+        }
+        
+        setCheckingUsername(true);
+        try {
+          const result = await checkUsernameAvailability(newUsername.trim(), userProfile?.id);
+          setUsernameAvailable(result.available);
+        } catch (err) {
+          console.error("Error checking username:", err);
+          setUsernameAvailable(false);
+        } finally {
+          setCheckingUsername(false);
+        }
+      }, 500); // 500ms debounce
+      
+      return () => clearTimeout(timeoutId);
+    }, [newUsername, editingUsername, userProfile?.username, userProfile?.id]);
 
     const handleUploadChange = (e) => {
       const file = e.target.files && e.target.files[0];
@@ -227,7 +286,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               </div>
             )}
             <div>
-              <p className="font-semibold text-gray-900 text-sm">
+              <p className="font-bold text-gray-900 text-base">
                 {userProfile?.full_name || "Guest User"}
               </p>
               <p className="text-xs text-gray-600">
@@ -235,9 +294,6 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               </p>
               <p className="text-xs text-gray-600">
                 @{userProfile?.username || "unknown"}
-              </p>
-              <p className="text-xs text-gray-600">
-                {userProfile?.email || ""}
               </p>
             </div>
           </div>
@@ -282,10 +338,10 @@ const SideBar = ({ onLoginClick, userProfile }) => {
 
           {showSettingsPanel && (
             <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200 shadow-sm">
-              {/* Edit Username */}
+              {/* Edit Full Name */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium">Username</div>
+                  <div className="text-sm font-medium">Full Name</div>
                   <button
                     onClick={() => setEditingName((v) => !v)}
                     className="text-xs text-gray-600"
@@ -300,7 +356,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       className="flex-1 px-3 py-2 border rounded-md text-sm"
-                      aria-label="Edit username"
+                      aria-label="Edit full name"
+                      placeholder="Enter your full name"
                     />
                     <button
                       onClick={handleSaveName}
@@ -313,6 +370,60 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                 ) : (
                   <div className="text-sm text-gray-700">
                     {userProfile?.full_name || "Not set"}
+                  </div>
+                )}
+              </div>
+
+              {/* Edit Username */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium">Username</div>
+                  <button
+                    onClick={() => setEditingUsername((v) => !v)}
+                    className="text-xs text-gray-600"
+                  >
+                    {editingUsername ? "Cancel" : "Edit"}
+                  </button>
+                </div>
+
+                {editingUsername ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        className={`flex-1 px-3 py-2 border rounded-md text-sm ${
+                          checkingUsername 
+                            ? 'border-gray-300' 
+                            : newUsername && newUsername !== userProfile?.username
+                            ? usernameAvailable 
+                              ? 'border-green-500 focus:ring-green-500' 
+                              : 'border-red-500 focus:ring-red-500'
+                            : 'border-gray-300'
+                        }`}
+                        aria-label="Edit username"
+                        placeholder="Enter your username"
+                      />
+                      <button
+                        onClick={handleSaveUsername}
+                        className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
+                        disabled={saving || !usernameAvailable || checkingUsername || !newUsername.trim()}
+                      >
+                        Save
+                      </button>
+                    </div>
+                    {checkingUsername && newUsername && newUsername !== userProfile?.username && (
+                      <p className="text-xs text-gray-500">Checking availability...</p>
+                    )}
+                    {!checkingUsername && newUsername && newUsername !== userProfile?.username && (
+                      <p className={`text-xs ${usernameAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                        {usernameAvailable ? '✓ Username is available' : '✗ Username is already taken'}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-700">
+                    @{userProfile?.username || "Not set"}
                   </div>
                 )}
               </div>

@@ -69,6 +69,13 @@ export const updateProfile = async (profileId, updateData) => {
   return data;
 };
 
+// Check if username is available
+export const checkUsernameAvailability = async (username, excludeProfileId = null) => {
+  const params = excludeProfileId ? { excludeId: excludeProfileId } : {};
+  const { data } = await api.get(`/api/profiles/check-username/${username}`, { params });
+  return data; // { available: boolean, username: string }
+};
+
 // Get bookmarks for a profile
 export const getBookmarksForProfile = async (profileId) => {
 	const { data } = await api.get(`/api/profiles/${profileId}/bookmarks`);
