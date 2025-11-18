@@ -12,8 +12,9 @@ import logging
 # Add parent directory to path
 sys.path.append(str(Path(__file__).resolve().parent))
 
-from recommendation_service import get_recommendation_service
+from Recommender_Models import get_recommendation_service
 from cache_manager import get_cache_manager, cached
+
 
 # Setup logging
 logging.basicConfig(
