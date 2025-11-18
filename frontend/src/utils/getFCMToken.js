@@ -9,39 +9,69 @@ export async function getFCMToken() {
       return null;
     }
 
-    if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        console.warn("FCM: Notification permission not granted.");
+    // Request notification permission first
+    if (typeof Notification !== "undefined") {
+      if (Notification.permission === "denied") {
+        console.warn("FCM: Notification permission denied by user.");
         return null;
+      }
+      
+      if (Notification.permission !== "granted") {
+        console.log("FCM: Requesting notification permission...");
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          console.warn("FCM: Notification permission not granted.");
+          return null;
+        }
+        console.log("✅ FCM: Notification permission granted");
       }
     }
 
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || "";
-    const messaging = getMessaging(app);
-
-    let swReg = null;
-    if (typeof navigator !== "undefined" && navigator.serviceWorker) {
-      try {
-        swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-      } catch (e) {
-        console.warn("FCM: SW registration failed, continuing without SW:", e?.message || e);
-      }
-    }
-
-    const token = await getToken(messaging, {
-      vapidKey: vapidKey || undefined,
-      serviceWorkerRegistration: swReg || undefined,
-    });
-
-    if (!token) {
-      console.warn("FCM: No registration token retrieved.");
+    if (!vapidKey) {
+      console.error("FCM: VAPID key not configured!");
       return null;
     }
 
+    const messaging = getMessaging(app);
+
+    // Wait for service worker to be ready
+    let swReg = null;
+    if (typeof navigator !== "undefined" && navigator.serviceWorker) {
+      try {
+        // Wait for existing registration or register new one
+        swReg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+        if (!swReg) {
+          console.log("FCM: Registering service worker...");
+          swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+          // Wait for SW to be active
+          await navigator.serviceWorker.ready;
+        }
+        console.log("✅ FCM: Service worker ready");
+      } catch (e) {
+        console.error("FCM: SW registration failed:", e?.message || e);
+        return null;
+      }
+    } else {
+      console.error("FCM: Service Worker not supported in this browser");
+      return null;
+    }
+
+    console.log("FCM: Requesting token...");
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: swReg,
+    });
+
+    if (!token) {
+      console.error("FCM: No registration token retrieved.");
+      return null;
+    }
+
+    console.log("✅ FCM: Token acquired:", token.substring(0, 20) + "...");
     return token;
   } catch (err) {
-    console.error("Error getting FCM token:", err);
+    console.error("❌ Error getting FCM token:", err);
     return null;
   }
 }

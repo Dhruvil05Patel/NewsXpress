@@ -79,8 +79,9 @@ async function fetchSubscriberTokens(category) {
 
     if (foundArrayField) {
       // Postgres array overlap (check if category is in the array)
-      // Use Op.overlap with array OR raw SQL @> operator
-      where[foundArrayField] = { [Op.overlap]: [category] };
+      // Categories stored in lowercase, so normalize the input
+      const normalizedCategory = category.toLowerCase();
+      where[foundArrayField] = { [Op.overlap]: [normalizedCategory] };
     } else if (attrs.topic) {
       where.topic = category;
     } else if (attrs.topic_pref || attrs.topic_preference) {
@@ -92,11 +93,20 @@ async function fetchSubscriberTokens(category) {
     }
 
     // Query matching profiles and pluck token values
-    const rows = await db.Profile.findAll({ where, attributes: ['id', tokenField] });
+    const rows = await db.Profile.findAll({ where, attributes: ['id', 'email', tokenField, foundArrayField] });
     const tokens = [];
     let withToken = 0;
+    
+    console.log(`\n🔍 fetchSubscriberTokens for category="${category}":`);
+    console.log(`   Field used: ${foundArrayField}, Token field: ${tokenField}`);
+    console.log(`   Found ${rows.length} matching profiles`);
+    
     for (const r of rows) {
       const val = r.get(tokenField);
+      const userCategories = r.get(foundArrayField);
+      
+      console.log(`   - Profile ${r.id} (${r.email}): categories=${JSON.stringify(userCategories)}, hasToken=${!!val}`);
+      
       if (!val) continue;
       if (Array.isArray(val)) {
         tokens.push(...val.filter(Boolean));
@@ -108,7 +118,7 @@ async function fetchSubscriberTokens(category) {
 
     // Deduplicate
     const uniq = Array.from(new Set(tokens));
-    console.log(`fetchSubscriberTokens: matched profiles=${rows.length}, withToken=${withToken}, tokensAfterDedup=${uniq.length} for category=${category}`);
+    console.log(`✅ Result: ${withToken} profiles with tokens, ${uniq.length} unique tokens\n`);
     return uniq;
   } catch (err) {
     console.error('fetchSubscriberTokens error:', err.message);
@@ -160,9 +170,16 @@ async function sendNotificationToTokens(tokens = [], payload = {}) {
  */
 async function notifySubscribersForCategory(category, article = {}) {
   try {
-    const tokens = await fetchSubscriberTokens(category);
+    // Normalize category to lowercase for consistent matching
+    const normalizedCategory = category.toLowerCase();
+    
+    console.log(`\n📢 notifySubscribersForCategory called:`);
+    console.log(`   Category: "${category}" -> normalized: "${normalizedCategory}"`);
+    console.log(`   Article: ${article.title?.slice(0, 50)}...`);
+    
+    const tokens = await fetchSubscriberTokens(normalizedCategory);
     if (!tokens || tokens.length === 0) {
-      console.log(`No subscribed tokens for category=${category}`);
+      console.log(`⚠️  No subscribed tokens for category=${normalizedCategory}\n`);
       return { success: true, sent: 0 };
     }
 
@@ -172,14 +189,16 @@ async function notifySubscribersForCategory(category, article = {}) {
       data: {
         url: article.newsUrl || article.original_url || "",
         id: article.id || "",
-        category: category,
+        category: normalizedCategory,
       },
     };
 
+    console.log(`📤 Sending to ${tokens.length} tokens...`);
     const result = await sendNotificationToTokens(tokens, payload);
+    console.log(`✅ Notification result:`, result, '\n');
     return result;
   } catch (err) {
-    console.error("notifySubscribersForCategory error:", err.message);
+    console.error("❌ notifySubscribersForCategory error:", err.message);
     return { success: false, error: err.message };
   }
 }
