@@ -130,6 +130,7 @@ export default function ReelView({
                 >
                   <ReelCard
                     {...item}
+                    articleId={item.id}
                     userProfile={userProfile}
                     isActive={index === currentIndex}
                     audioPlayersRef={audioPlayersRef}

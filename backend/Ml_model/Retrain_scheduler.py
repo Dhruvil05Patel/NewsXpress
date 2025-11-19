@@ -13,7 +13,7 @@ import logging
 # Add parent directory to path
 sys.path.append(str(Path(__file__).resolve().parent))
 
-from train_models import ModelTrainer
+from Train_modules import ModelTrainer
 from cache_manager import get_cache_manager
 
 # Setup logging

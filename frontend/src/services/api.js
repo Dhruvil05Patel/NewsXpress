@@ -3,6 +3,10 @@ import axios from "axios";
 const VITE_BACKEND_API_URL =
 	import.meta.env.VITE_BACKEND_API_URL || "http://localhost:4000";
 
+// ML API URL (separate service, typically on port 5001)
+const VITE_ML_API_URL =
+	import.meta.env.VITE_ML_API_URL || "http://localhost:5001";
+
 // Base URL for backend API
 const API_BASE_URL = VITE_BACKEND_API_URL;
 
@@ -10,6 +14,15 @@ const API_BASE_URL = VITE_BACKEND_API_URL;
 const api = axios.create({
 	baseURL: API_BASE_URL,
 	withCredentials: true, // Send cookies if needed
+	headers: {
+		"Content-Type": "application/json",
+	},
+});
+
+// Create axios instance for ML API
+const mlApi = axios.create({
+	baseURL: VITE_ML_API_URL,
+	timeout: 30000,
 	headers: {
 		"Content-Type": "application/json",
 	},
@@ -98,12 +111,9 @@ export const removeBookmarkApi = async (profileId, articleId) => {
 };
 
 export const sendVerificationEmail = async (email, name) => {
-	const response = await api.post("/api/auth/send-verification-email", {
-		email,
-		name,
-	});
-	return response.data;
-}
+	const { data } = await api.post('/api/auth/send-verification', { email, name });
+	return data;
+};
 
 export const sendResetPasswordEmail = async (email, name, resetUrl) => {
 	const response = await api.post("/api/auth/send-password-reset-email", {
@@ -111,9 +121,71 @@ export const sendResetPasswordEmail = async (email, name, resetUrl) => {
 		name,
 	});
 	return response.data;
-}
+};
 
+// =====================================================
+// ML RECOMMENDATIONS API HELPERS
+// =====================================================
 
+export const getRecommendations = async ({
+	method = 'hybrid',
+	userId = null,
+	articleId = null,
+	topN = 10,
+	exclude = [],
+	recentArticles = []
+} = {}) => {
+	try {
+		const response = await mlApi.post('/api/recommendations', {
+			method,
+			user_id: userId,
+			article_id: articleId,
+			top_n: topN,
+			exclude,
+			recent_articles: recentArticles
+		});
+		return response.data;
+	} catch (error) {
+		console.error('Error fetching recommendations:', error);
+		return {
+			success: false,
+			recommendations: [],
+			error: error.message
+		};
+	}
+};
+
+export const trackInteraction = async ({
+	userId = null,
+	articleId,
+	activityType,
+	source = 'direct',
+	recommendationType = null,
+	durationSeconds = null,
+	scrollPercentage = null,
+	metadata = {}
+} = {}) => {
+	try {
+		const response = await mlApi.post('/api/track', {
+			user_id: userId,
+			article_id: articleId,
+			activity_type: activityType,
+			source,
+			recommendation_type: recommendationType,
+			duration_seconds: durationSeconds,
+			scroll_percentage: scrollPercentage,
+			metadata,
+			timestamp: new Date().toISOString()
+		});
+		return response.data;
+	} catch (error) {
+		console.warn('Activity tracking failed:', error);
+		return {
+			success: false,
+			error: error.message
+		};
+	}
+};
 
 // Export axios instance for custom requests
 export default api;

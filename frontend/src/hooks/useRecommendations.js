@@ -3,18 +3,16 @@
 import { useState, useEffect } from 'react';
 import recommendationService from '../services/recommendations';
 
-/**
- * Hook to fetch similar articles
- * @param {string} articleId - Current article ID
- * @param {number} topN - Number of recommendations
- */
 export const useSimilarArticles = (articleId, topN = 5) => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!articleId) return;
+    if (!articleId) {
+      setRecommendations([]);
+      return;
+    }
 
     const fetchSimilar = async () => {
       setLoading(true);
@@ -23,7 +21,7 @@ export const useSimilarArticles = (articleId, topN = 5) => {
       try {
         const result = await recommendationService.getSimilarArticles(articleId, topN);
         if (result.success) {
-          setRecommendations(result.data);
+          setRecommendations(result.recommendations || []);
         } else {
           setError('Failed to load recommendations');
         }
@@ -40,24 +38,24 @@ export const useSimilarArticles = (articleId, topN = 5) => {
   return { recommendations, loading, error };
 };
 
-/**
- * Hook to fetch personalized recommendations
- * @param {number} topN - Number of recommendations
- * @param {string} method - 'hybrid' or 'collaborative'
- */
-export const usePersonalizedRecommendations = (topN = 10, method = 'hybrid') => {
+export const usePersonalizedRecommendations = (userId, topN = 10, method = 'hybrid') => {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const fetchRecommendations = async () => {
+    if (!userId) {
+      setRecommendations([]);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
     try {
-      const result = await recommendationService.getPersonalizedRecommendations(topN, method);
+      const result = await recommendationService.getPersonalizedRecommendations(userId, topN, method);
       if (result.success) {
-        setRecommendations(result.data);
+        setRecommendations(result.recommendations || []);
       } else {
         setError('Failed to load personalized recommendations');
       }
@@ -70,16 +68,11 @@ export const usePersonalizedRecommendations = (topN = 10, method = 'hybrid') => 
 
   useEffect(() => {
     fetchRecommendations();
-  }, [topN, method]);
+  }, [userId, topN, method]);
 
   return { recommendations, loading, error, refetch: fetchRecommendations };
 };
 
-/**
- * Hook to fetch trending articles
- * @param {number} topN - Number of articles
- * @param {number} days - Time window
- */
 export const useTrendingArticles = (topN = 10, days = 7) => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -93,7 +86,7 @@ export const useTrendingArticles = (topN = 10, days = 7) => {
       try {
         const result = await recommendationService.getTrendingArticles(topN, days);
         if (result.success) {
-          setArticles(result.data);
+          setArticles(result.recommendations || []);
         } else {
           setError('Failed to load trending articles');
         }
@@ -112,8 +105,9 @@ export const useTrendingArticles = (topN = 10, days = 7) => {
 
 /**
  * Hook to track article reading activity
+ * Supports userId for personalized tracking
  */
-export const useArticleTracking = () => {
+export const useArticleTracking = (userId = null) => {
   const [startTime, setStartTime] = useState(null);
   const [scrollPercentage, setScrollPercentage] = useState(0);
 
@@ -139,6 +133,7 @@ export const useArticleTracking = () => {
   // Track view/read activity
   const trackView = async (articleId, source = 'direct', recommendationType = null) => {
     await recommendationService.trackActivity({
+      userId,
       articleId,
       activityType: 'view',
       source,
@@ -150,6 +145,7 @@ export const useArticleTracking = () => {
     const durationSeconds = startTime ? Math.floor((Date.now() - startTime) / 1000) : null;
     
     await recommendationService.trackActivity({
+      userId,
       articleId,
       activityType: 'read',
       durationSeconds,
@@ -161,6 +157,7 @@ export const useArticleTracking = () => {
 
   const trackClick = async (articleId, source = 'recommendation', recommendationType = null) => {
     await recommendationService.trackActivity({
+      userId,
       articleId,
       activityType: 'click',
       source,
@@ -170,6 +167,7 @@ export const useArticleTracking = () => {
 
   const trackLike = async (articleId) => {
     await recommendationService.trackActivity({
+      userId,
       articleId,
       activityType: 'like'
     });
@@ -177,6 +175,7 @@ export const useArticleTracking = () => {
 
   const trackBookmark = async (articleId) => {
     await recommendationService.trackActivity({
+      userId,
       articleId,
       activityType: 'bookmark'
     });

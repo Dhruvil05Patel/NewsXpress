@@ -15,6 +15,7 @@ const { sync } = require('./auth/controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
 const { fetchLiveStreams } = require("./services/youtube-service/youtubeController");
 const { sendVerification, sendPasswordReset } = require("./auth/controllers/emailController");
+const recommendationsRouter = require("./routes/recommendations");
 // ================================================================= //
 dotenv.config();
 
@@ -342,6 +343,9 @@ app.delete("/api/bookmarks", async (req, res) => {
 
 
 app.get('/api/live-streams', fetchLiveStreams);
+
+// =================== RECOMMENDATIONS ROUTES =================== //
+app.use('/api/recommendations', recommendationsRouter);
 
 // =================== DEBUG NOTIFICATION ENDPOINTS =================== //
 // List subscriber token stats for a category

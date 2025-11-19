@@ -12,10 +12,12 @@ import {
   VolumeX,
   LoaderCircle,
   Bookmark,
+  Clock,
 } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useTranslation } from "../hooks/useTranslation";
+import { useInteractionTimer } from "../hooks/useInteractionTimer";
 import notify from "../utils/toast";
 import { isBadImage, markBadImage } from "../utils/badImageCache";
 
@@ -32,7 +34,16 @@ export default function ReelCard({
   audioPlayersRef,
   cardIndex,
   onOverlayChange,
+  articleId,
 }) {
+  // Track time spent on article when user is viewing it
+  const { timeSpent } = useInteractionTimer(
+    userProfile?.id,
+    articleId,
+    category,
+    isActive
+  );
+
   // Use custom hooks for translation + TTS.
   const {
     isTranslated,
@@ -207,9 +218,17 @@ export default function ReelCard({
         </p>
 
         <div className="mt-4 flex flex-wrap gap-y-3 justify-between items-center">
-          <div className="font-sans text-xs text-gray-400">
-            <span className="font-semibold">{source}</span> •{" "}
-            <span>{timestamp}</span>
+          <div className="flex items-center gap-4">
+            <div className="font-sans text-xs text-gray-400">
+              <span className="font-semibold">{source}</span> •{" "}
+              <span>{timestamp}</span>
+            </div>
+            {userProfile && (
+              <div className="flex items-center gap-1 px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-xs text-gray-300">
+                <Clock size={14} />
+                <span>{formatTime(timeSpent)}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -324,4 +343,22 @@ export default function ReelCard({
       )}
     </article>
   );
+}
+
+/**
+ * Helper function to format seconds into human-readable time
+ * @param {number} seconds - Time in seconds
+ * @returns {string} Formatted time (e.g., "2m 30s", "45s")
+ */
+function formatTime(seconds) {
+  if (!seconds || seconds < 0) return "0s";
+
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+
+  if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  } else {
+    return `${secs}s`;
+  }
 }

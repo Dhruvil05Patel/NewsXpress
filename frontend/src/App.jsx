@@ -301,7 +301,7 @@ function AppContent() {
             path="/feed/personalized"
             element={
               userProfile ? (
-                <PersonalizedFeed userProfile={userProfile} />
+                <PersonalizedFeed userId={userProfile.id} />
               ) : (
                 <LoginRequired
                   title="Personalized Feed"
