@@ -22,12 +22,20 @@ export async function initFCM() {
     if ("serviceWorker" in navigator) {
       try {
         const registration = await navigator.serviceWorker.register(
-          "/firebase-messaging-sw.js"
+          "/firebase-messaging-sw.js?v4" // query param to force update
         );
         console.log("✅ FCM: Service worker registered:", registration.scope);
         
         // Wait for service worker to be ready
         await navigator.serviceWorker.ready;
+        // Unregister stale SWs without the ?v4 suffix
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) {
+          if (r.active && r.active.scriptURL.includes('firebase-messaging-sw.js') && !r.active.scriptURL.includes('v4')) {
+            console.log('🧹 Unregistering old SW:', r.active.scriptURL);
+            await r.unregister();
+          }
+        }
         console.log("✅ FCM: Service worker is ready");
       } catch (err) {
         console.error("❌ FCM: Service worker registration failed:", err);

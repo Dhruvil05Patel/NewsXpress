@@ -40,14 +40,14 @@ export async function getFCMToken() {
     if (typeof navigator !== "undefined" && navigator.serviceWorker) {
       try {
         // Wait for existing registration or register new one
-        swReg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+        swReg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js?v4");
         if (!swReg) {
           console.log("FCM: Registering service worker...");
-          swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+          swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js?v4");
           // Wait for SW to be active
           await navigator.serviceWorker.ready;
         }
-        console.log("✅ FCM: Service worker ready");
+        console.log("✅ FCM: Service worker ready (v4)");
       } catch (e) {
         console.error("FCM: SW registration failed:", e?.message || e);
         return null;
