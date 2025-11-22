@@ -1,4 +1,7 @@
-// src/components/categories/AllNews.jsx
+// AllNews.jsx
+// Aggregated "latest" feed across all categories.
+// Responsibilities: fetch summarized articles once on mount, normalize backend payload
+// for card/reel consumption, gate extra results for guests, and launch ReelView overlay.
 
 // --- Imports ---
 import { useState, useEffect } from "react";
@@ -19,10 +22,7 @@ const getFormattedDate = () => {
   });
 };
 
-/**
- * The AllNews component fetches and displays a list of all news articles.
- * It also manages the state for opening a full-screen "reel" view.
- */
+// Component: fetches + renders all news; manages ReelView open/index state.
 import notify from "../utils/toast";
 
 export default function AllNews({ userProfile, onLoginClick }) {
@@ -42,10 +42,8 @@ export default function AllNews({ userProfile, onLoginClick }) {
       try {
         // Fetch summarized news from backend (DB-first endpoint)
         const resp = await fetch(
-          `${
-            import.meta.env.VITE_API_BASE || "http://localhost:4000"
+          `${import.meta.env.VITE_API_BASE || "http://localhost:4000"
           }/get-summarized-news`
-      
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const payload = await resp.json();

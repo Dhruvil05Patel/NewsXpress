@@ -1,5 +1,5 @@
 // --- Imports ---
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Laptop,
@@ -17,30 +17,22 @@ import {
   User,
   Search,
   Home,
-  Settings,
   Bell,
-  Key, // Import for Change Password
-  Image, // Import for Change Profile Photo
-  HelpCircle, // Import for Help
-  MapPin, // Import for Location
-  ChevronDown,
 } from "lucide-react";
 import { logoutUser } from "./auth/controller/authController";
+import {
+  updateProfile as apiUpdateProfile,
+  checkUsernameAvailability,
+} from "../services/api";
 import notify from "../utils/toast";
 
-/**
- * A responsive component that renders a top navbar, a desktop sidebar,
- * and a mobile bottom navigation bar for category and profile management.
- * @param {object} props - The component's props.
- * @param {Function} props.onLoginClick - Function to call when the login button is clicked.
- * @param {object} props.userProfile - The logged-in user's profile (null if not logged in).
- */
+// SideBar: responsive navigation, category links, profile overlay
 const SideBar = ({ onLoginClick, userProfile }) => {
-  // --- Hooks ---
+  // Hooks
   const location = useLocation();
   const navigate = useNavigate();
 
-  // --- Data & Configuration ---
+  // Category routes
   const categoryRoutes = {
     All: "/all",
     Technology: "/technology",
@@ -54,26 +46,12 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     Crime: "/crime",
   };
 
-  // --- Location Options ---
-  const availableLocations = [
-    "Global",
-    "New York, NY",
-    "London, UK",
-    "Tokyo, JP",
-    "New Delhi, IN",
-    "Sydney, AU",
-    "Local (Current Location)",
-  ];
-
-  // --- State Management ---
+  // State
   const [isProfileSidebarOpen, setIsProfileSidebarOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSettings, setShowSettings] = useState(false);
   const [notifications, setNotifications] = useState(true);
-
-  const [hoveredCategory, setHoveredCategory] = useState(null);
 
   const categories = [
     { name: "All", icon: null },
@@ -101,17 +79,6 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     }
   };
 
-  // Placeholder handlers for new features
-  const handleChangePassword = () => {
-    notify.info("🔑 Opening change password settings...");
-    setIsProfileSidebarOpen(false);
-  };
-
-  const handleChangeProfilePhoto = () => {
-    notify.info("📸 Opening photo upload dialog...");
-    // In a real app, this would trigger a file upload input
-  };
-
   const handleHelpClick = () => {
     notify.info("❓ Redirecting to Help & Support...");
     navigate("/help");
@@ -133,6 +100,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
     }
   }, [sidebarOpen]);
 
+  // Overlay remains open for guests as well; no auto-close on logout
+
   // --- Reusable UI Component ---
 
   // ToggleSwitch (Existing)
@@ -144,43 +113,19 @@ const SideBar = ({ onLoginClick, userProfile }) => {
       </div>
       <button
         onClick={() => setEnabled(!enabled)}
-        className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
-          enabled ? "bg-red-500" : "bg-gray-200"
-        }`}
+        className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${enabled ? "bg-red-500" : "bg-gray-200"
+          }`}
       >
         <span
           aria-hidden="true"
-          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-            enabled ? "translate-x-5" : "translate-x-0"
-          }`}
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${enabled ? "translate-x-5" : "translate-x-0"
+            }`}
         />
       </button>
     </div>
   );
 
-  // SelectPreference (Existing, used for Font Size and Location)
-  const SelectPreference = ({ label, value, onChange, options, Icon }) => (
-    <div className="flex flex-col space-y-2">
-      <div className="flex items-center space-x-3">
-        {Icon && <Icon className="w-5 h-5 text-gray-600" />}
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-      </div>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={onChange}
-          className="appearance-none block w-full bg-white border border-gray-300 text-gray-900 py-2 px-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 text-sm transition-all duration-200 cursor-pointer"
-        >
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-      </div>
-    </div>
-  );
+  // (Removed unused SelectPreference component)
 
   // ProfileActionButton (Existing)
   const ProfileActionButton = ({ label, Icon, onClick }) => {
@@ -204,55 +149,122 @@ const SideBar = ({ onLoginClick, userProfile }) => {
   };
 
   const ProfileSection = () => {
-    const isBookmarksActive = location.pathname === "/bookmarks";
-
     // Local UI state for settings forms inside profile panel
     const [showSettingsPanel, setShowSettingsPanel] = useState(false);
     const [editingName, setEditingName] = useState(false);
+    const [editingUsername, setEditingUsername] = useState(false);
     const [newName, setNewName] = useState(userProfile?.full_name || "");
+    const [newUsername, setNewUsername] = useState(userProfile?.username || "");
+    const [usernameAvailable, setUsernameAvailable] = useState(true);
+    const [checkingUsername, setCheckingUsername] = useState(false);
     const [uploadPreview, setUploadPreview] = useState(null);
-    const [passwords, setPasswords] = useState({
-      current: "",
-      next: "",
-      verify: "",
-    });
+    const [selectedFileName, setSelectedFileName] = useState(null);
+    const fileInputRef = useRef(null);
     const [saving, setSaving] = useState(false);
 
-    const handleSaveName = () => {
+    // Sync displayed name with latest profile as soon as it changes
+    useEffect(() => {
+      setNewName(userProfile?.full_name || "");
+      setNewUsername(userProfile?.username || "");
+    }, [userProfile?.full_name, userProfile?.username]);
+
+    const handleSaveName = async () => {
+      if (!userProfile?.id) {
+        notify.error("No profile found. Please login again.");
+        return;
+      }
       setSaving(true);
-      // In real app, call API to update username. Here we mock the behavior.
-      setTimeout(() => {
-        setSaving(false);
+      try {
+        const payload = { full_name: newName };
+        const updated = await apiUpdateProfile(userProfile.id, payload);
+        notify.success("Full name updated");
+        window.dispatchEvent(new Event("profile-updated"));
         setEditingName(false);
-        notify.success("Username updated (mock)");
-      }, 800);
+      } catch (err) {
+        console.error("Failed to update full name:", err);
+        notify.error("Failed to save full name");
+      } finally {
+        setSaving(false);
+      }
     };
+
+    const handleSaveUsername = async () => {
+      if (!userProfile?.id) {
+        notify.error("No profile found. Please login again.");
+        return;
+      }
+
+      // Check username availability first
+      if (!usernameAvailable) {
+        notify.error("This username is already taken. Please choose another.");
+        return;
+      }
+
+      if (!newUsername || newUsername.trim() === "") {
+        notify.error("Username cannot be empty.");
+        return;
+      }
+
+      setSaving(true);
+      try {
+        const payload = { username: newUsername.trim() };
+        const updated = await apiUpdateProfile(userProfile.id, payload);
+        notify.success("Username updated successfully");
+        window.dispatchEvent(new Event("profile-updated"));
+        setEditingUsername(false);
+      } catch (err) {
+        console.error("Failed to update username:", err);
+        const errorMsg =
+          err.response?.data?.error || err.message || "Failed to save username";
+        notify.error(errorMsg);
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    // Check username availability with debounce
+    useEffect(() => {
+      if (
+        !editingUsername ||
+        !newUsername ||
+        newUsername === userProfile?.username
+      ) {
+        setUsernameAvailable(true);
+        return;
+      }
+
+      const timeoutId = setTimeout(async () => {
+        if (newUsername.trim() === "") {
+          setUsernameAvailable(false);
+          return;
+        }
+
+        setCheckingUsername(true);
+        try {
+          const result = await checkUsernameAvailability(
+            newUsername.trim(),
+            userProfile?.id
+          );
+          setUsernameAvailable(result.available);
+        } catch (err) {
+          console.error("Error checking username:", err);
+          setUsernameAvailable(false);
+        } finally {
+          setCheckingUsername(false);
+        }
+      }, 500); // 500ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }, [newUsername, editingUsername, userProfile?.username, userProfile?.id]);
 
     const handleUploadChange = (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
       const url = URL.createObjectURL(file);
       setUploadPreview(url);
+      setSelectedFileName(file.name);
       // In a real app, you would upload the file to backend / storage here.
       notify.info("Selected profile picture (preview)");
-    };
-
-    const handleChangePasswordSubmit = () => {
-      if (!passwords.current || !passwords.next || !passwords.verify) {
-        notify.error("Please fill all password fields");
-        return;
-      }
-      if (passwords.next !== passwords.verify) {
-        notify.error("New password and verify password do not match");
-        return;
-      }
-      setSaving(true);
-      // Mock API call
-      setTimeout(() => {
-        setSaving(false);
-        setPasswords({ current: "", next: "", verify: "" });
-        notify.success("Password changed (mock)");
-      }, 1000);
     };
 
     return (
@@ -281,15 +293,38 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               </div>
             )}
             <div>
-              <p className="font-semibold text-gray-900 text-sm">
+              <p className="font-bold text-gray-900 text-base">
                 {userProfile?.full_name || "Guest User"}
               </p>
               <p className="text-xs text-gray-600">
                 {userProfile?.email || ""}
               </p>
+              <p className="text-xs text-gray-600">
+                @{userProfile?.username || "unknown"}
+              </p>
             </div>
           </div>
         </div>
+
+        {/* Quick Actions (Bookmarks & Personalized Feed) - visible only when logged in */}
+        {userProfile && (
+          <div className="space-y-2">
+            <ProfileActionButton
+              label="Bookmarks"
+              Icon={Bookmark}
+              onClick={() => {
+                navigate("/bookmarks");
+              }}
+            />
+            <ProfileActionButton
+              label="Personalized Feed"
+              Icon={TrendingUp}
+              onClick={() => {
+                navigate("/feed/personalized");
+              }}
+            />
+          </div>
+        )}
 
         {/* Settings Section with dropdown */}
         <div className="space-y-2">
@@ -298,7 +333,10 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               Profile Settings
             </h4>
             <button
-              onClick={() => setShowSettingsPanel((s) => !s)}
+              onClick={() => {
+                if (!userProfile) return handleLoginClick();
+                setShowSettingsPanel((s) => !s);
+              }}
               className="text-sm text-red-600 font-semibold"
             >
               {showSettingsPanel ? "Close" : "Open"}
@@ -306,11 +344,11 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           </div>
 
           {showSettingsPanel && (
-            <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200">
-              {/* Edit Username */}
+            <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200 shadow-sm">
+              {/* Edit Full Name */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-medium">Edit Username</div>
+                  <div className="text-sm font-medium">Full Name</div>
                   <button
                     onClick={() => setEditingName((v) => !v)}
                     className="text-xs text-gray-600"
@@ -318,95 +356,108 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                     {editingName ? "Cancel" : "Edit"}
                   </button>
                 </div>
+
                 {editingName ? (
                   <div className="flex gap-2">
                     <input
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="flex-1 px-3 py-2 border rounded"
+                      className="flex-1 px-3 py-2 border rounded-md text-sm"
+                      aria-label="Edit full name"
+                      placeholder="Enter your full name"
                     />
                     <button
                       onClick={handleSaveName}
-                      className="px-3 py-2 bg-red-600 text-white rounded disabled:opacity-60"
+                      className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
                       disabled={saving}
                     >
                       Save
                     </button>
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-gray-700">
                     {userProfile?.full_name || "Not set"}
                   </div>
                 )}
               </div>
 
-              {/* Upload Profile Picture */}
+              {/* Edit Username */}
               <div>
-                <div className="text-sm font-medium mb-2">Profile Picture</div>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleUploadChange}
-                  />
-                  {uploadPreview && (
-                    <img
-                      src={uploadPreview}
-                      alt="preview"
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  )}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-medium">Username</div>
+                  <button
+                    onClick={() => setEditingUsername((v) => !v)}
+                    className="text-xs text-gray-600"
+                  >
+                    {editingUsername ? "Cancel" : "Edit"}
+                  </button>
                 </div>
-              </div>
 
-              {/* Change Password */}
-              <div>
-                <div className="text-sm font-medium mb-2">Change Password</div>
-                <div className="space-y-2">
-                  <input
-                    type="password"
-                    placeholder="Current password"
-                    value={passwords.current}
-                    onChange={(e) =>
-                      setPasswords({ ...passwords, current: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                  <input
-                    type="password"
-                    placeholder="New password"
-                    value={passwords.next}
-                    onChange={(e) =>
-                      setPasswords({ ...passwords, next: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Verify new password"
-                    value={passwords.verify}
-                    onChange={(e) =>
-                      setPasswords({ ...passwords, verify: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded"
-                  />
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handleChangePasswordSubmit}
-                      className="px-4 py-2 bg-red-600 text-white rounded"
-                      disabled={saving}
-                    >
-                      Change
-                    </button>
+                {editingUsername ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={newUsername}
+                        onChange={(e) => setNewUsername(e.target.value)}
+                        className={`flex-1 px-3 py-2 border rounded-md text-sm ${checkingUsername
+                          ? "border-gray-300"
+                          : newUsername &&
+                            newUsername !== userProfile?.username
+                            ? usernameAvailable
+                              ? "border-green-500 focus:ring-green-500"
+                              : "border-red-500 focus:ring-red-500"
+                            : "border-gray-300"
+                          }`}
+                        aria-label="Edit username"
+                        placeholder="Enter your username"
+                      />
+                      <button
+                        onClick={handleSaveUsername}
+                        className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
+                        disabled={
+                          saving ||
+                          !usernameAvailable ||
+                          checkingUsername ||
+                          !newUsername.trim()
+                        }
+                      >
+                        Save
+                      </button>
+                    </div>
+                    {checkingUsername &&
+                      newUsername &&
+                      newUsername !== userProfile?.username && (
+                        <p className="text-xs text-gray-500">
+                          Checking availability...
+                        </p>
+                      )}
+                    {!checkingUsername &&
+                      newUsername &&
+                      newUsername !== userProfile?.username && (
+                        <p
+                          className={`text-xs ${usernameAvailable
+                            ? "text-green-600"
+                            : "text-red-600"
+                            }`}
+                        >
+                          {usernameAvailable
+                            ? "✓ Username is available"
+                            : "✗ Username is already taken"}
+                        </p>
+                      )}
                   </div>
-                </div>
+                ) : (
+                  <div className="text-sm text-gray-700">
+                    @{userProfile?.username || "Not set"}
+                  </div>
+                )}
               </div>
 
               {/* Help & Support */}
               <div>
                 <button
                   onClick={handleHelpClick}
-                  className="w-full text-left px-3 py-2 rounded hover:bg-white/30"
+                  className="w-full px-4 py-2 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 font-medium shadow-sm hover:bg-red-100 transition"
                 >
                   Help & Support
                 </button>
@@ -456,23 +507,20 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                 <button
                   key={category.name}
                   onClick={() => handleCategoryClick(category.name)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full border transition-all whitespace-nowrap ${
-                    isActive
-                      ? "bg-red-50 text-red-600 border-red-200"
-                      : "text-gray-700 border-gray-200 hover:text-red-600 hover:border-red-200 hover:bg-red-50"
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full border transition-all whitespace-nowrap ${isActive
+                    ? "bg-red-50 text-red-600 border-red-200"
+                    : "text-gray-700 border-gray-200 hover:text-red-600 hover:border-red-200 hover:bg-red-50"
+                    }`}
                 >
                   {IconComponent ? (
                     <IconComponent
-                      className={`w-4 h-4 ${
-                        isActive ? "text-red-500" : "text-gray-500"
-                      }`}
+                      className={`w-4 h-4 ${isActive ? "text-red-500" : "text-gray-500"
+                        }`}
                     />
                   ) : (
                     <span
-                      className={`inline-block w-2 h-2 rounded-full ${
-                        isActive ? "bg-red-500" : "bg-gray-400"
-                      }`}
+                      className={`inline-block w-2 h-2 rounded-full ${isActive ? "bg-red-500" : "bg-gray-400"
+                        }`}
                     />
                   )}
                   <span>{category.name}</span>
@@ -482,7 +530,7 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           </div>
 
           {/* Search - desktop only */}
-          <div className="hidden lg:flex items-center w-[28rem] max-w-lg pt-2">
+          <div className="hidden lg:flex items-center w-[15rem] max-w-lg pt-2">
             <div className="relative w-full">
               <input
                 type="text"
@@ -506,11 +554,11 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           </div>
 
           {/* Search Bar - mobile view */}
-          <div className="flex lg:hidden items-center flex-1 min-w-0 pt-3">
+          <div className="flex lg:hidden items-center flex-1 w-[20rem] min-w-0 pt-3">
             <div className="relative w-full">
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search Headlines..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={(e) => {
@@ -531,7 +579,9 @@ const SideBar = ({ onLoginClick, userProfile }) => {
 
           {/* Profile Icon - visible on large screens */}
           <button
-            onClick={() => setIsProfileSidebarOpen((prev) => !prev)}
+            onClick={() => {
+              setIsProfileSidebarOpen((prev) => !prev);
+            }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = "#fef2f2";
               e.currentTarget.style.transform = "scale(1.05)";
@@ -548,73 +598,21 @@ const SideBar = ({ onLoginClick, userProfile }) => {
         </div>
       </nav>
 
-      {/* Desktop-only Left Sidebar (hidden; replaced by top bar) */}
-      <aside className="hidden">
-        <div className="p-6">
-          <h3 className="text-base font-bold text-gray-900 mb-6 tracking-tight">
-            Categories
-          </h3>
-          <nav className="space-y-2">
-            {categories.map((category) => {
-              const IconComponent = category.icon;
-              const route = categoryRoutes[category.name] || "/all";
-              const isActive = location.pathname === route;
-              const isHovered = hoveredCategory === category.name;
-
-              return (
-                <button
-                  key={category.name}
-                  onClick={() => handleCategoryClick(category.name)}
-                  onMouseEnter={() => setHoveredCategory(category.name)}
-                  onMouseLeave={() => setHoveredCategory(null)}
-                  style={{
-                    transform:
-                      isHovered && !isActive
-                        ? "translateX(4px)"
-                        : "translateX(0)",
-                  }}
-                  className={`w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    isActive
-                      ? "bg-red-50 text-red-600 border-l-4 border-red-500 shadow-sm"
-                      : "text-gray-700 hover:text-red-600 hover:bg-red-50"
-                  }`}
-                >
-                  {IconComponent ? (
-                    <IconComponent
-                      className={`w-5 h-5 flex-shrink-0 transition-colors duration-200 ${
-                        isActive ? "text-red-500" : "text-gray-500"
-                      }`}
-                    />
-                  ) : (
-                    <div
-                      className={`w-5 h-5 rounded-full flex-shrink-0 transition-colors duration-200 ${
-                        isActive ? "bg-red-500" : "bg-gray-400"
-                      }`}
-                    />
-                  )}
-                  <span className="text-left">{category.name}</span>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </aside>
+      {/* Desktop-only Left Sidebar removed as redundant */}
 
       {/* Mobile-only Left Sidebar (for Categories) */}
       {isSidebarVisible && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
           {/* Overlay */}
           <div
-            className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${
-              sidebarOpen ? "bg-opacity-40" : "bg-opacity-0"
-            }`}
+            className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${sidebarOpen ? "bg-opacity-40" : "bg-opacity-0"
+              }`}
             onClick={() => setSidebarOpen(false)}
           />
           {/* Sidebar Panel */}
           <div
-            className={`relative w-64 bg-white shadow-xl h-full p-4 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
-              sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
+            className={`relative w-64 bg-white shadow-xl h-full p-4 flex flex-col z-50 transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+              }`}
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-bold text-gray-900">Categories</h3>
@@ -634,23 +632,20 @@ const SideBar = ({ onLoginClick, userProfile }) => {
                   <button
                     key={category.name}
                     onClick={() => handleCategoryClick(category.name)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                      isActive
-                        ? "bg-red-50 text-red-600"
-                        : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-                    }`}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
+                      ? "bg-red-50 text-red-600"
+                      : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                      }`}
                   >
                     {IconComponent ? (
                       <IconComponent
-                        className={`w-4 h-4 flex-shrink-0 ${
-                          isActive ? "text-red-500" : "text-gray-600"
-                        }`}
+                        className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-red-500" : "text-gray-600"
+                          }`}
                       />
                     ) : (
                       <div
-                        className={`w-4 h-4 rounded-full flex-shrink-0 ${
-                          isActive ? "bg-red-500" : "bg-gray-400"
-                        }`}
+                        className={`w-4 h-4 rounded-full flex-shrink-0 ${isActive ? "bg-red-500" : "bg-gray-400"
+                          }`}
                       />
                     )}
                     <span className="text-left">{category.name}</span>
@@ -664,24 +659,21 @@ const SideBar = ({ onLoginClick, userProfile }) => {
 
       {/* Mobile-only Right Sidebar (for Profile) */}
       <div
-        className={`lg:hidden fixed inset-0 z-60 flex justify-end ${
-          isProfileSidebarOpen ? "pointer-events-auto" : "pointer-events-none"
-        }`}
+        className={`lg:hidden fixed inset-0 z-60 flex justify-end ${isProfileSidebarOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
       >
         {/* Overlay */}
         <div
-          className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${
-            isProfileSidebarOpen
-              ? "bg-opacity-40"
-              : "bg-opacity-0 pointer-events-none"
-          }`}
+          className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${isProfileSidebarOpen
+            ? "bg-opacity-40"
+            : "bg-opacity-0 pointer-events-none"
+            }`}
           onClick={() => setIsProfileSidebarOpen(false)}
         />
         {/* Profile Panel */}
         <div
-          className={`relative w-[30rem] bg-white shadow-xl h-full flex flex-col z-70 transition-transform duration-300 ease-in-out ${
-            isProfileSidebarOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+          className={`relative w-[30rem] bg-white shadow-xl h-full flex flex-col z-70 transition-transform duration-300 ease-in-out ${isProfileSidebarOpen ? "translate-x-0" : "translate-x-full"
+            }`}
         >
           <div className="flex justify-between items-center p-4 border-b">
             <h3 className="text-base font-bold text-gray-900">
@@ -844,9 +836,8 @@ const SideBar = ({ onLoginClick, userProfile }) => {
           {/* Categories Button */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${
-              sidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
-            }`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${sidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
+              }`}
           >
             <Menu className="w-6 h-6" />
             <span className="text-xs font-medium">Categories</span>
@@ -859,11 +850,10 @@ const SideBar = ({ onLoginClick, userProfile }) => {
               if (sidebarOpen) setSidebarOpen(false);
               if (isProfileSidebarOpen) setIsProfileSidebarOpen(false);
             }}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${
-              location.pathname === "/"
-                ? "text-red-600 scale-105"
-                : "text-gray-600"
-            }`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${location.pathname === "/"
+              ? "text-red-600 scale-105"
+              : "text-gray-600"
+              }`}
           >
             <Home className="w-6 h-6" />
             <span className="text-xs font-medium">Home</span>
@@ -871,10 +861,11 @@ const SideBar = ({ onLoginClick, userProfile }) => {
 
           {/* Profile Button */}
           <button
-            onClick={() => setIsProfileSidebarOpen((prev) => !prev)}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${
-              isProfileSidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
-            }`}
+            onClick={() => {
+              setIsProfileSidebarOpen((prev) => !prev);
+            }}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${isProfileSidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
+              }`}
           >
             <User className="w-6 h-6" />
             <span className="text-xs font-medium">Profile</span>

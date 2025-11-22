@@ -19,27 +19,6 @@ export default function CategoryOnboarding({
   onClose,
   initialSelected,
 }) {
-  // Register the Firebase Messaging service worker when this component mounts
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      const onLoad = () => {
-        navigator.serviceWorker
-          .register("/firebase-messaging-sw.js")
-          .then((registration) => {
-            console.log("Service Worker registered:", registration);
-          })
-          .catch((err) => {
-            console.error("SW registration failed:", err);
-          });
-      };
-      if (document.readyState === "complete") {
-        onLoad();
-      } else {
-        window.addEventListener("load", onLoad, { once: true });
-        return () => window.removeEventListener("load", onLoad);
-      }
-    }
-  }, []);
   const [saving, setSaving] = useState(false);
   const selectedSet = useMemo(
     () => new Set(initialSelected && initialSelected.length ? initialSelected : []),
@@ -56,17 +35,36 @@ export default function CategoryOnboarding({
   const save = async () => {
     try {
       setSaving(true);
+      
       // Convert categories to lowercase before sending to backend
       const lowercaseCategories = selected.map(cat => cat.toLowerCase());
       const payload = { categories: lowercaseCategories };
+      
+      // Try to get FCM token (will request permission if needed)
       try {
+        console.log("🔔 Requesting FCM token for notifications...");
         const token = await getFCMToken();
-        if (token) payload.fcm_token = token;
-      } catch {}
+        if (token) {
+          payload.fcm_token = token;
+          console.log("✅ FCM token acquired and will be saved");
+        } else {
+          console.warn("⚠️ No FCM token available - notifications may not work");
+        }
+      } catch (err) {
+        console.warn("⚠️ FCM token acquisition failed:", err);
+        // Continue anyway - categories will still be saved
+      }
+      
+      console.log("📤 Saving profile with:", { categories: lowercaseCategories, hasToken: !!payload.fcm_token });
       await updateProfile(profile.id, payload);
+      console.log("✅ Profile updated successfully");
+      
+      // Dispatch event so AuthContext can refresh
+      window.dispatchEvent(new Event('profile-updated'));
+      
       onClose && onClose(selected);
     } catch (e) {
-      console.error("Failed to save categories:", e?.message || e);
+      console.error("❌ Failed to save categories:", e?.message || e);
       alert("Failed to save preferences. Please try again.");
     } finally {
       setSaving(false);

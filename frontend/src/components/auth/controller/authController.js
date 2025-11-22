@@ -2,6 +2,7 @@ import notify from "../../../utils/toast";
 import { app, auth } from "../firebase";
 import {
   createUserWithEmailAndPassword,
+  updateProfile as fbUpdateProfile,
   signInWithEmailAndPassword,
   signOut,
   signInWithPopup,
@@ -56,36 +57,41 @@ export const initAuthListener = (onUserSynced) => {
   });
 };
 
-export const registerUser = async (email, password) => {
-  if (!email || !password) {
-    notify.error("❌ Email and Password Required!");
-    return { success: false };
-  }
-
+export async function registerUser(email, password, profile = {}) {
+  // profile: { username, full_name }
   try {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    await sendVerificationEmail(auth.currentUser.email, auth.currentUser.displayName || "User");
-    // Return success with unverified status
-    return { success: true, emailVerified: false, email };
-  } catch (error) {
-    switch (error.code) {
-      case "auth/email-already-in-use":
-        notify.error("❌ Email already in use. Try another or login.");
-        break;
-      case "auth/too-many-requests":
-        notify.error("⌛ Server is busy. Please try again later!");
-        break;
-      default:
-        notify.error(`❌ Error: ${error.code}`);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Optionally set display name in Firebase
+    if (profile.full_name) {
+      try {
+        await fbUpdateProfile(user, { displayName: profile.full_name });
+      } catch (err) {
+        console.warn("Firebase updateProfile failed:", err.message);
+      }
     }
-    console.error(error);
-    return { success: false };
+
+    // get ID token
+    const idToken = await user.getIdToken();
+
+    // Compose payload for backend sync. Ensure email, username and full_name sent
+    const backendProfile = {
+      username: profile.username || (email ? email.split("@")[0] : null),
+      full_name: profile.full_name || user.displayName || null,
+      email: user.email,
+    };
+
+    // Call backend to create/find profile
+    const createdProfile = await syncUser(idToken, backendProfile);
+
+    return { success: true, profile: createdProfile, email: user.email };
+  } catch (error) {
+    console.error("registerUser error:", error);
+    notify.error(error.message || "Registration failed");
+    return { success: false, error: error.message || "Registration failed" };
   }
-};
+}
 
 export const loginUser = async (email, password) => {
   if (!email || !password) {

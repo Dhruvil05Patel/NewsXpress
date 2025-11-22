@@ -1,0 +1,24 @@
+# Python ML Requirements for NewsXpress
+# Install with: pip install -r requirements.txt
+# Compatible with Python 3.11, 3.12, and 3.13
+
+# Core ML Libraries
+pandas>=2.2.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+
+# Database
+psycopg2-binary>=2.9.9
+
+# API Server
+Flask>=3.0.0
+Flask-CORS>=4.0.0
+
+# Caching
+redis>=5.0.0
+
+# Scheduling
+schedule>=1.2.0
+
+# Utilities
+python-dotenv>=1.0.0

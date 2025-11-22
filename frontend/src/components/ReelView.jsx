@@ -1,14 +1,14 @@
-// src/components/ReelView.jsx
+// ReelView.jsx
+// Full-screen vertical reel viewer with snap scrolling.
+// Responsibilities: manage active index, throttle wheel/touch navigation,
+// pause any playing audio on exit, and enforce guest limit (first 6 items).
 
 // --- Imports ---
 import React, { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import ReelCard from "./ReelCard";
 
-/**
- * A full-screen overlay component that displays news articles in a vertically
- * scrollable "reel" format.
- */
+/** Overlay reel: maps normalized news array into stacked ReelCard slides. */
 export default function ReelView({
   news = [],
   initialIndex = 0,
@@ -17,9 +17,10 @@ export default function ReelView({
   onRequireLogin,
 }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0);
-  const containerRef = useRef(null);
   const scrollTimeout = useRef(null);
   const audioPlayersRef = useRef([]);
+  const containerRef = useRef(null); // needed for non-passive wheel listener
+  const [childOverlayOpen, setChildOverlayOpen] = useState(false); // disable scroll when a child modal is open
 
   // Lock body scroll while reel is open
   useEffect(() => {
@@ -30,42 +31,45 @@ export default function ReelView({
     };
   }, []);
 
+  // Wheel handler (non-passive): we attach manually to allow preventDefault without warning.
   const handleWheel = (e) => {
-    e.preventDefault();
-
-    if (scrollTimeout.current) return; // Prevent rapid scrolling
-
+    if (childOverlayOpen) return; // allow modal to handle its own scrolling
+    e.preventDefault(); // suppress native scroll when no modal is open
+    if (scrollTimeout.current) return;
     const delta = e.deltaY;
     const maxIndex = userProfile
       ? news.length - 1
       : Math.min(5, news.length - 1);
-
     if (delta > 0) {
-      // Scroll DOWN -> Next
-      if (currentIndex < maxIndex) {
-        setCurrentIndex((prev) => prev + 1);
-      } else {
-        if (!userProfile && onRequireLogin) onRequireLogin();
-      }
+      if (currentIndex < maxIndex) setCurrentIndex((prev) => prev + 1);
+      else if (!userProfile && onRequireLogin) onRequireLogin();
     } else if (delta < 0) {
-      // Scroll UP -> Prev
       if (currentIndex > 0) setCurrentIndex((prev) => prev - 1);
     }
-
-    // throttle
     scrollTimeout.current = setTimeout(() => {
       scrollTimeout.current = null;
     }, 500);
   };
 
+  // Attach wheel listener with passive: false to avoid Chrome warning.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () =>
+      el.removeEventListener("wheel", handleWheel, { passive: false });
+  }, [handleWheel]);
+
   // Touch handling
   const [touchStart, setTouchStart] = useState(null);
 
   const handleTouchStart = (e) => {
+    if (childOverlayOpen) return;
     setTouchStart(e.touches[0].clientY);
   };
 
   const handleTouchEnd = (e) => {
+    if (childOverlayOpen) return;
     if (touchStart === null) return;
     const touchEnd = e.changedTouches[0].clientY;
     const diff = touchStart - touchEnd;
@@ -112,7 +116,6 @@ export default function ReelView({
           <div
             ref={containerRef}
             className="h-full w-full snap-y snap-mandatory overflow-hidden"
-            onWheel={handleWheel}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
@@ -127,10 +130,12 @@ export default function ReelView({
                 >
                   <ReelCard
                     {...item}
+                    articleId={item.id}
                     userProfile={userProfile}
                     isActive={index === currentIndex}
                     audioPlayersRef={audioPlayersRef}
                     cardIndex={index}
+                    onOverlayChange={setChildOverlayOpen}
                   />
                 </div>
               ))}

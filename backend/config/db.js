@@ -30,7 +30,7 @@ if (process.env.DATABASE_URL) {
  // Create a Sequelize instance connected to your Supabase PostgreSQL database
   const sequelize = new Sequelize(process.env.DATABASE_URL, {
    dialect: "postgres", // Database type is PostgreSQL
-   logging: process.env.NODE_ENV === "development" ? console.log : false, // Log SQL queries only in development
+   logging: false, // Log SQL queries only in development
    pool: {
      max: 5,      // Maximum number of connections
      min: 0,      // Minimum number of connections

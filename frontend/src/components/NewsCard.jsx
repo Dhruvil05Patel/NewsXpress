@@ -1,14 +1,11 @@
-import React, { useState } from "react";
-import {
-  SquareArrowOutUpRight,
-  Languages,
-  Volume2,
-  VolumeX,
-  LoaderCircle,
-} from "lucide-react";
-import LanguageSelector from "./LanguageSelector";
-import { useTextToSpeech } from "../hooks/useTextToSpeech";
-import { useTranslation } from "../hooks/useTranslation";
+import React from "react";
+import defaultImg from "./Default.png"; // Fallback image
+// NewsCard: compact article preview used in grid feeds.
+// Props: title, summary (truncated intentionally), imageUrl, newsUrl (external),
+// source + timestamp meta, category tag, and optional onCardClick handler.
+// Images gracefully fallback; text overlay uses gradient for readability.
+import { SquareArrowOutUpRight } from "lucide-react";
+import { isBadImage, markBadImage } from "../utils/badImageCache";
 
 export default function NewsCard({
   title,
@@ -19,48 +16,24 @@ export default function NewsCard({
   timestamp,
   category,
   onCardClick,
-  userProfile,
 }) {
-  // Local state for image error handling
-  const [imgError, setImgError] = useState(false);
-
-  // Use custom hooks
-  const {
-    isTranslated,
-    translatedContent,
-    isTranslating,
-    selectedLanguage,
-    isLangSelectorOpen,
-    setIsLangSelectorOpen,
-    handleTranslateClick,
-    performTranslation,
-  } = useTranslation();
-
-  const { isSpeaking, isFetchingAudio, handleListen } =
-    useTextToSpeech(selectedLanguage);
-
-  // Image error handler
-  const handleImageError = () => setImgError(true);
-
-  // Wrapper function to handle translate click event
-  const onTranslateClick = (e) => {
-    e.stopPropagation();
-    handleTranslateClick();
+  const [imgError, setImgError] = React.useState(false);
+  const handleImageError = () => {
+    setImgError(true);
+    if (imageUrl) markBadImage(imageUrl);
   };
 
-  // Wrapper for performTranslation with current title/summary
-  const onSelectLanguage = (targetLanguage) => {
-    performTranslation(title, summary, targetLanguage);
+  // Truncate helper: limits by word count and appends an ellipsis.
+  const truncateWords = (text, count) => {
+    if (!text) return "";
+    const words = String(text).trim().split(/\s+/);
+    if (words.length <= count) return text;
+    return words.slice(0, count).join(" ") + "…";
   };
 
-  // Wrapper for handleListen with appropriate text
-  const onListenClick = async (e) => {
-    e.stopPropagation();
-    const textToSpeak =
-      (isTranslated ? translatedContent.summary : summary) ||
-      (isTranslated ? translatedContent.title : title);
-    await handleListen(textToSpeak);
-  };
+  // Adjusted word counts chosen for concise scanning without losing context.
+  const titleShort = truncateWords(title, 9);
+  const summaryShort = truncateWords(summary, 20);
 
   return (
     <article
@@ -69,18 +42,15 @@ export default function NewsCard({
     >
       {/* Per-card profile header removed (profile shown in SideBar instead) */}
       {/* Conditionally render the image or a fallback UI if the image fails to load. */}
-      {imageUrl && !imgError ? (
-        <img
-          src={imageUrl}
-          alt={title}
-          className="w-full h-[70vh] max-h-[600px] object-cover"
-          onError={handleImageError}
-        />
-      ) : (
-        <div className="w-full h-[70vh] max-h-[600px] bg-gradient-to-r from-blue-900 to-blue-700 flex items-center justify-center">
-          <span className="text-gray-300 text-sm">Image Not Found</span>
-        </div>
-      )}
+      <img
+        src={
+          imageUrl && !imgError && !isBadImage(imageUrl) ? imageUrl : defaultImg
+        }
+        alt={title || "Article"}
+        className="w-full h-[70vh] max-h-[600px] object-cover"
+        onError={handleImageError}
+        referrerPolicy="no-referrer"
+      />
 
       {/* A dark gradient overlay to make the text readable over the image. */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent"></div>
@@ -93,12 +63,12 @@ export default function NewsCard({
       {/* Container for the text content and action buttons at the bottom. */}
       <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
         {/* Display translated or original title. */}
-        <h2 className="font-serif text-xl sm:text-2xl mb-2 leading-tight line-clamp-3">
-          {isTranslated ? translatedContent.title : title}
+        <h2 className="font-serif text-xl sm:text-2xl mb-2 leading-tight">
+          {titleShort}
         </h2>
         {/* Display translated or original summary. */}
-        <p className="font-sans text-gray-300 text-sm md:text-base line-clamp-2 mb-4">
-          {isTranslated ? translatedContent.summary : summary}
+        <p className="font-sans text-gray-300 text-sm md:text-base mb-4">
+          {summaryShort}
         </p>
         {/* News source and timestamp. */}
         <div className="font-sans text-xs text-gray-400 mb-3">
@@ -108,37 +78,7 @@ export default function NewsCard({
 
         {/* Container for action buttons. */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Translate Button
-                    <button
-                        onClick={onTranslateClick}
-                        disabled={isTranslating}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-50"
-                    >
-                        {isTranslating ? 'Translating...' : (isTranslated ? 'Show Original' : 'Translate')}
-                        <Languages size={16} />
-                    </button> */}
-
-          {/* Listen Button
-                    <button
-                        onClick={onListenClick}
-                        disabled={isFetchingAudio && !isSpeaking}
-                        className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-all backdrop-blur-sm disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking ? "bg-red-500/50 hover:bg-red-500/60" : "bg-white/10 hover:bg-white/20"}`}
-                    >
-                        {isFetchingAudio ? (
-                            <>
-                                <LoaderCircle size={16} className="animate-spin" />
-                                Loading Audio...
-                            </>
-                        ) : isSpeaking ? (
-                            <>
-                                Stop Listening <VolumeX size={16} />
-                            </>
-                        ) : (
-                            <>
-                                Listen News <Volume2 size={16} />
-                            </>
-                        )}
-                    </button> */}
+          {/* (Removed translate & listen features as unused) */}
 
           {/* Read More Link */}
           <a
@@ -153,13 +93,7 @@ export default function NewsCard({
         </div>
       </div>
 
-      {/* Conditionally render the Language Selector modal when needed. */}
-      {isLangSelectorOpen && (
-        <LanguageSelector
-          onSelectLanguage={onSelectLanguage}
-          onClose={() => setIsLangSelectorOpen(false)}
-        />
-      )}
+      {/* Translation modal removed */}
     </article>
   );
 }

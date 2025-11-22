@@ -15,6 +15,7 @@ const { sync } = require('./auth/controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
 const { fetchLiveStreams } = require("./services/youtube-service/youtubeController");
 const { sendVerification, sendPasswordReset } = require("./auth/controllers/emailController");
+const recommendationsRouter = require("./routes/recommendations");
 // ================================================================= //
 dotenv.config();
 
@@ -258,6 +259,31 @@ app.post("/api/auth/sync", async (req, res) => {
   return sync(req, res);
 });
 
+// CHECK if username is available
+app.get("/api/profiles/check-username/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { excludeId } = req.query; // Optional: profile ID to exclude from check
+    
+    if (!username) {
+      return res.status(400).json({ message: "Username is required" });
+    }
+    
+    const { isUsernameTaken } = require('./services/ProfileService');
+    const taken = await isUsernameTaken(username, excludeId);
+    
+    res.status(200).json({ 
+      available: !taken,
+      username: username 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      message: "Error checking username", 
+      error: error.message 
+    });
+  }
+});
+
 // =================== EMAIL ROUTES =================== //
 app.post("/api/auth/send-verification-email", sendVerification);
 app.post("/api/auth/send-password-reset-email", sendPasswordReset);
@@ -317,6 +343,9 @@ app.delete("/api/bookmarks", async (req, res) => {
 
 
 app.get('/api/live-streams', fetchLiveStreams);
+
+// =================== RECOMMENDATIONS ROUTES =================== //
+app.use('/api/recommendations', recommendationsRouter);
 
 // =================== DEBUG NOTIFICATION ENDPOINTS =================== //
 // List subscriber token stats for a category

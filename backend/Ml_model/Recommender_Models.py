@@ -316,6 +316,7 @@ def get_recommendation_service():
 
 
 # Example usage
+# pragma: no cover
 if __name__ == '__main__':
     service = get_recommendation_service()
     
