@@ -101,15 +101,81 @@ export default function AllNews({ userProfile, onLoginClick }) {
   };
 
   // --- Conditional Rendering: Loading State ---
-  // Display a loading message while data is being fetched.
+  // Display skeleton cards while data is being fetched.
   if (loading) {
     return (
       <main className="bg-newspaper min-h-screen pt-24">
-        <div className="flex justify-center items-center h-full">
-          <div className="font-serif text-lg text-stone-600">
-            Loading Headlines...
+        <div className="px-4 lg:px-10 py-12 w-full">
+          <div className="w-full mx-auto">
+            {/* Skeleton Header */}
+            <div className="text-center mb-10">
+              <div
+                className="h-16 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded-lg mb-4 mx-auto max-w-xl animate-pulse"
+                style={{
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 1.5s infinite",
+                }}
+              ></div>
+              <div
+                className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded mx-auto max-w-md mb-2 animate-pulse"
+                style={{
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 1.5s infinite",
+                }}
+              ></div>
+              <div
+                className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded mx-auto max-w-sm animate-pulse"
+                style={{
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 1.5s infinite",
+                }}
+              ></div>
+            </div>
+            {/* Skeleton Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="rounded-lg overflow-hidden shadow-md">
+                  <div
+                    className="h-64 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 animate-pulse"
+                    style={{
+                      backgroundSize: "200% 100%",
+                      animation: "shimmer 1.5s infinite",
+                    }}
+                  ></div>
+                  <div className="p-4 space-y-3">
+                    <div
+                      className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded w-3/4 animate-pulse"
+                      style={{
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                      }}
+                    ></div>
+                    <div
+                      className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded animate-pulse"
+                      style={{
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                      }}
+                    ></div>
+                    <div
+                      className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded w-5/6 animate-pulse"
+                      style={{
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+        <style>{`
+          @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+          }
+        `}</style>
       </main>
     );
   }
@@ -130,8 +196,14 @@ export default function AllNews({ userProfile, onLoginClick }) {
             </p>
             <div className="flex items-center justify-center gap-4 text-sm text-stone-500">
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-red-500"></span>Live
-                Updates
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{
+                    background:
+                      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 50%,#ff0066 100%)",
+                  }}
+                ></span>
+                Live Updates
               </div>
               <span>•</span>
               <span>{getFormattedDate()}</span>
@@ -168,7 +240,13 @@ export default function AllNews({ userProfile, onLoginClick }) {
                   notify.info("🔒 Please login to view more headlines");
                   if (onLoginClick) onLoginClick();
                 }}
-                className="px-6 py-3 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
+                className="px-6 py-3 rounded-full text-white transition-colors"
+                style={{
+                  background:
+                    "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+                  boxShadow:
+                    "0 4px 14px -2px rgba(255,0,80,0.45),0 2px 6px -1px rgba(0,0,0,0.25)",
+                }}
               >
                 View More
               </button>

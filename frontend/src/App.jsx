@@ -9,7 +9,8 @@ import { useState, useEffect } from "react";
 // 4. Applies body scroll lock when overlays/modal are open.
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import CategoryOnboarding from "./components/CategoryOnboarding";
-import SideBar from "./components/SideBar";
+import Navbar from "./components/Navbar";
+import Profile from "./components/Profile";
 import AllNews from "./components/AllNews";
 import CategoryNews from "./components/CategoryNews";
 import LoginPage from "./components/LoginPage";
@@ -17,7 +18,6 @@ import SignUp from "./components/SignUp";
 import Bookmarks from "./components/Bookmarks";
 import PersonalizedFeed from "./components/PersonalizedFeed";
 import HelpSupport from "./components/HelpSupport";
-import Profile from "./components/Profile";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import notify from "./utils/toast";
@@ -127,6 +127,9 @@ function AppContent() {
     setShowSignup(false);
   };
 
+  // Profile panel state (replaces embedded sidebar profile logic)
+  const [profileOpen, setProfileOpen] = useState(false);
+
   // Auth gate component: lightweight inline guard for protected routes.
   const LoginRequired = ({
     title = "Login Required",
@@ -156,8 +159,17 @@ function AppContent() {
     <BrowserRouter>
       {/* Main application container */}
       <div className="min-h-screen bg-gray-50">
-        {/* The sidebar is a persistent component across all routes. */}
-        <SideBar onLoginClick={openLogin} userProfile={userProfile} />
+        <Navbar
+          onLoginClick={openLogin}
+          userProfile={userProfile}
+          onToggleProfile={() => setProfileOpen((p) => !p)}
+        />
+        <Profile
+          isOpen={profileOpen}
+          onClose={() => setProfileOpen(false)}
+          userProfile={userProfile}
+          onLoginClick={openLogin}
+        />
 
         {/* The Routes component defines all possible navigation paths. */}
         <Routes>
@@ -310,7 +322,6 @@ function AppContent() {
               )
             }
           />
-          <Route path="/profile" element={<Profile />} />
           <Route
             path="/help"
             element={

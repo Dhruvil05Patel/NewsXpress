@@ -35,6 +35,14 @@ export default function NewsCard({
   const titleShort = truncateWords(title, 9);
   const summaryShort = truncateWords(summary, 20);
 
+  // Inline gradient style for category badge & primary red accents
+  const gradientStyle = {
+    background:
+      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+    boxShadow:
+      "0 4px 12px -2px rgba(255,0,80,0.5), 0 2px 4px -1px rgba(0,0,0,0.3)",
+  };
+
   return (
     <article
       onClick={onCardClick}
@@ -56,7 +64,10 @@ export default function NewsCard({
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent"></div>
 
       {/* Category tag at the top-left corner. */}
-      <span className="absolute top-4 left-4 bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+      <span
+        className="absolute top-4 left-4 text-white text-xs font-semibold px-3 py-1 rounded-full"
+        style={gradientStyle}
+      >
         {category}
       </span>
 

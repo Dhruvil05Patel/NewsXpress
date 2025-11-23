@@ -191,6 +191,13 @@ export default function ReelCard({
   const resolvedImage =
     imageUrl && !imgError && !isBadImage(imageUrl) ? imageUrl : defaultImg;
 
+  const gradientStyle = {
+    background:
+      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+    boxShadow:
+      "0 4px 12px -2px rgba(255,0,80,0.5), 0 2px 4px -1px rgba(0,0,0,0.3)",
+  };
+
   return (
     <article className="relative h-full w-full bg-gray-900 text-white flex items-center justify-center">
       {/* Background image (with fallback) */}
@@ -205,7 +212,10 @@ export default function ReelCard({
         referrerPolicy="no-referrer"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-      <span className="absolute top-20 left-6 bg-red-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+      <span
+        className="absolute top-10 left-6 text-white text-xs font-semibold px-3 py-1 rounded-full"
+        style={gradientStyle}
+      >
         {category}
       </span>
 
@@ -234,10 +244,9 @@ export default function ReelCard({
           <div className="flex items-center gap-3">
             <button
               onClick={onBookmarkClick}
-              className={`flex items-center gap-2 p-2.5 rounded-full backdrop-blur-sm transition-colors ${isBookmarked
-                  ? "bg-red-500/70 hover:bg-red-500/80"
-                  : "bg-white/10 hover:bg-white/20"
+              className={`flex items-center gap-2 p-2.5 rounded-full backdrop-blur-sm transition-colors ${isBookmarked ? "" : "bg-white/10 hover:bg-white/20"
                 }`}
+              style={isBookmarked ? gradientStyle : undefined}
               aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
             >
               <Bookmark
@@ -257,10 +266,9 @@ export default function ReelCard({
             <button
               onClick={onListenClick}
               disabled={isFetchingAudio}
-              className={`p-2.5 rounded-full backdrop-blur-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking
-                  ? "bg-red-500/50 hover:bg-red-500/60"
-                  : "bg-white/10 hover:bg-white/20"
+              className={`p-2.5 rounded-full backdrop-blur-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking ? "" : "bg-white/10 hover:bg-white/20"
                 }`}
+              style={isSpeaking ? gradientStyle : undefined}
               aria-label="Listen to news summary"
             >
               {isFetchingAudio ? (
@@ -298,7 +306,8 @@ export default function ReelCard({
           onClick={cancelBookmarkModal}
         >
           <div
-            className="relative w-full max-w-md mx-4 bg-gray-900 border border-red-600/40 rounded-xl p-6 shadow-lg"
+            className="relative w-full max-w-md mx-4 bg-gray-900 rounded-xl p-6 shadow-lg"
+            style={{ border: "2px solid #ff1e4d" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -333,7 +342,8 @@ export default function ReelCard({
               </button>
               <button
                 onClick={finalizeBookmark}
-                className="px-4 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-500 transition"
+                className="px-4 py-2 text-sm rounded-md text-white transition"
+                style={gradientStyle}
               >
                 Save
               </button>
