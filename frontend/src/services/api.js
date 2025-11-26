@@ -1,7 +1,7 @@
 import axios from "axios";
 // Vite exposes env vars via `import.meta.env`. Do not use dotenv in browser code.
 const VITE_BACKEND_API_URL =
-	import.meta.env.VITE_BACKEND_API_URL || "http://localhost:4000";
+	import.meta.env.VITE_BACKEND_API_URL;
 
 // ML API URL (separate service, typically on port 5001)
 const VITE_ML_API_URL =
