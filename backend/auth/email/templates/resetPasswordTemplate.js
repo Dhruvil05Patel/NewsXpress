@@ -1,21 +1,38 @@
 // Template for reset password email
-const { title, subtitle, button, fallbackLink } = require("./components");
-const { palette } = require("../theme");
+const { colors } = require("../../../config/email/sharedStyles");
+const { sectionLabel, title, subtitle, button, fallbackLink } = require("../../../config/email/components");
 
-exports.resetPasswordContent = ({ name, resetUrl }) => `
-  <p style="margin:0 0 8px;color:${palette.muted};letter-spacing:0.3em;text-transform:uppercase;font-size:12px;">
-    Reset Password
-  </p>
+exports.resetPasswordContent = ({
+  name = "User",
+  resetUrl
+}) => `
+  <!-- Section Label -->
+  ${sectionLabel("Reset Password")}
 
-  ${title(`Reset your password, ${name}`)}
+  <!-- Title -->
+  ${title(`Hi ${name}, let's secure your NewsXpress account`)}
 
-  ${subtitle("We received a request to reset your password. Tap the button below to set a new one.")}
+  <!-- Subtitle -->
+  ${subtitle(`
+    We received a request to reset your password.
+    Tap the button below to create a new one and regain access to your account.
+  `)}
 
-  ${button("Reset my password", resetUrl)}
+  <!-- Reset Button -->
+  ${button("Reset My Password", resetUrl)}
 
+  <!-- Fallback Link -->
   ${fallbackLink(resetUrl)}
 
-  <p style="margin-top:24px;font-size:13px;color:${palette.muted};line-height:1.6;">
-    Didn’t request this? Ignore this email or contact support.
+  <!-- Security Notice -->
+  <p style="
+    margin-top: 26px;
+    font-size: 13px;
+    color: ${colors.lightText};
+    line-height: 1.7;
+  ">
+    Didn't request this password reset?  
+    You can safely ignore this message.  
+    If you suspect unauthorized activity, please contact NewsXpress support immediately.
   </p>
 `;

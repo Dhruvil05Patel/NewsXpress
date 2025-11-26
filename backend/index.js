@@ -15,6 +15,7 @@ const { sync } = require('./auth/controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
 const { fetchLiveStreams } = require("./services/youtube-service/youtubeController");
 const { sendVerification, sendPasswordReset } = require("./auth/controllers/emailController");
+const {handleSupportRequest} = require("./support/controller/supportController");
 const recommendationsRouter = require("./routes/recommendations");
 // ================================================================= //
 dotenv.config();
@@ -192,6 +193,9 @@ app.get("/articles", async (req, res) => {
   }
 });
 
+
+// =================== TRANSLATION & TTS ROUTES =================== //
+
 app.post("/api/translation", translationController);
 app.post("/api/tts", handleTextToSpeech);
 
@@ -342,7 +346,11 @@ app.delete("/api/bookmarks", async (req, res) => {
 });
 
 
+// =================== LIVE STREAM ROUTE =================== //
 app.get('/api/live-streams', fetchLiveStreams);
+
+// =================== SUPPORT REQUEST ROUTE =================== //
+app.post('/api/support/request', handleSupportRequest);
 
 // =================== RECOMMENDATIONS ROUTES =================== //
 app.use('/api/recommendations', recommendationsRouter);

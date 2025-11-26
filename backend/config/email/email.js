@@ -4,6 +4,7 @@ const Brevo = require("@getbrevo/brevo");
 const apiKey = process.env.BREVO_API_KEY || process.env.BREVO_KEY;
 const senderEmail = process.env.BREVO_USER;   // VERIFIED sender email
 const senderName = process.env.BREVO_SENDER_NAME || "NewsXpress";
+const replyToEmail = process.env.ADMIN_EMAIL;
 
 // Validate required env values
 if (!apiKey) {
@@ -27,7 +28,7 @@ module.exports = {
     name: senderName,
   },
   replyTo: {
-    email: senderEmail,
+    email: replyToEmail,
     name: senderName,
   }
 };

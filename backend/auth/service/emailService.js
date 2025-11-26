@@ -1,7 +1,6 @@
 // backend/auth/service/emailService.js
-const { brevo, sender, replyTo } = require("../email/config/email");
+const { brevo, sender, replyTo } = require("../../config/email/email");
 const { renderEmail } = require("../email/emailRenderer");
-
 const { verificationEmailContent } = require("../email/templates/verificationTemplate");
 const { resetPasswordContent } = require("../email/templates/resetPasswordTemplate");
 
