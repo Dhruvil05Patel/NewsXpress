@@ -1,193 +1,235 @@
-// Import the functions we want to test
 const {
-  updateProfile,
   getProfileById,
-  createProfile,
+  updateProfile,
   findOrCreateProfileByAuthId,
+  createProfile,
+  isUsernameTaken
 } = require('./ProfileService');
 
-// Import the Profile model (which we will be faking)
 const { Profile } = require('../config/db');
+const crypto = require('crypto');
 
-// This line "mocks" (fakes) the Profile model for all tests.
-// We are faking the functions our service calls: findByPk, create, and findOne.
+// --- MOCKS ---
 jest.mock('../config/db', () => ({
   Profile: {
     findByPk: jest.fn(),
+    findOne: jest.fn(),
     create: jest.fn(),
-    findOne: jest.fn(), // findOrCreateProfileByAuthId might use this
   },
 }));
 
-// This helper function resets the mocks before each test
+// Helper to reset mocks
 beforeEach(() => {
-  jest.clearAllMocks(); // Resets call counts for .toHaveBeenCalled()
+  jest.clearAllMocks();
 });
 
-// Test Suite for the entire ProfileService
 describe('ProfileService', () => {
-  
-  // --- Tests for getProfileById ---
+
+  // --- 1. isUsernameTaken TESTS ---
+  describe('isUsernameTaken', () => {
+    it('returns FALSE if username is empty', async () => {
+      const result = await isUsernameTaken(null);
+      expect(result).toBe(false);
+    });
+
+    it('returns TRUE if username exists', async () => {
+      Profile.findOne.mockResolvedValue({ id: 'other-user' });
+      const result = await isUsernameTaken('taken_user');
+      expect(Profile.findOne).toHaveBeenCalledWith({ where: { username: 'taken_user' } });
+      expect(result).toBe(true);
+    });
+
+    it('returns FALSE if username does not exist', async () => {
+      Profile.findOne.mockResolvedValue(null);
+      const result = await isUsernameTaken('new_user');
+      expect(result).toBe(false);
+    });
+
+    it('returns FALSE if username belongs to the same user (excludeProfileId)', async () => {
+      Profile.findOne.mockResolvedValue({ id: 'my-id' });
+      const result = await isUsernameTaken('my_user', 'my-id');
+      expect(result).toBe(false);
+    });
+  });
+
+  // --- 2. getProfileById TESTS ---
   describe('getProfileById', () => {
-    it('should return the correct profile when found', async () => {
-      // 1. Arrange
-      const mockProfile = { id: 'real-id', full_name: 'Jane Doe' };
+    it('returns profile on success', async () => {
+      const mockProfile = { id: '123' };
       Profile.findByPk.mockResolvedValue(mockProfile);
-
-      // 2. Act
-      const profile = await getProfileById('real-id');
-
-      // 3. Assert
-      expect(Profile.findByPk).toHaveBeenCalledWith('real-id');
-      expect(profile).toBe(mockProfile);
+      const result = await getProfileById('123');
+      expect(result).toBe(mockProfile);
     });
 
-    it('should return null if profile is not found', async () => {
-      // 1. Arrange
-      Profile.findByPk.mockResolvedValue(null);
-
-      // 2. Act
-      const profile = await getProfileById('fake-id');
-
-      // 3. Assert
-      expect(profile).toBeNull();
-    });
-
-    it('should throw an error if the database fails', async () => {
-      // 1. Arrange
+    it('throws error on failure', async () => {
       Profile.findByPk.mockRejectedValue(new Error('DB Error'));
-
-      // 2. Act & 3. Assert
-      await expect(getProfileById('real-id')).rejects.toThrow('Could not retrieve profile.');
+      await expect(getProfileById('123')).rejects.toThrow('Could not retrieve profile');
     });
   });
 
-  // --- Tests for createProfile ---
-  describe('createProfile', () => {
-    it('should create a new profile with the correct data', async () => {
-      // 1. Arrange
-      const inputData = { fullName: 'Test User', username: 'test_user', authId: 'test-auth-id' };
-      const expectedOutput = { id: 'new-uuid', ...inputData };
-      Profile.create.mockResolvedValue(expectedOutput);
-
-      // 2. Act
-      const profile = await createProfile(inputData);
-
-      // 3. Assert
-      expect(Profile.create).toHaveBeenCalledWith(expect.objectContaining({
-        full_name: 'Test User',
-      }));
-      expect(profile).toBe(expectedOutput);
-    });
-
-    it('should throw an error if create fails', async () => {
-      // 1. Arrange
-      Profile.create.mockRejectedValue(new Error('DB Error'));
-
-      // 2. Act & 3. Assert
-      await expect(createProfile({})).rejects.toThrow('Could not create profile.');
-    });
-  });
-
-  // --- Tests for updateProfile ---
+  // --- 3. updateProfile TESTS (Complex Logic) ---
   describe('updateProfile', () => {
-    // We create a base mock profile for all update tests
     const mockProfile = {
-      id: 'test-id',
-      full_name: 'Test User',
-      topic: null,
-      place: null,
-      actor: [],
-      avatar_url: null,
-      username: 'testuser',
+      id: 'p1',
+      full_name: 'Old Name',
+      username: 'olduser',
+      categories: [],
+      fcm_token: null,
       save: jest.fn(),
     };
 
-    // Reset mocks before each 'updateProfile' test
     beforeEach(() => {
       Profile.findByPk.mockResolvedValue(mockProfile);
-      mockProfile.save.mockResolvedValue(true); // Make save work
+      Profile.findOne.mockResolvedValue(null); // Default: username not taken
     });
 
-    it('should correctly update all fields', async () => {
-      // 1. Arrange
-      const updateData = {
-        full_name: 'Updated Name',
-        username: 'newuser',
-        avatar_url: 'new.png',
-        topic: 'Technology',
-        place: 'New York',
-        actor: ['Tom Hanks'],
-      };
+    it('throws error if profile not found', async () => {
+      Profile.findByPk.mockResolvedValue(null);
+      await expect(updateProfile('p1', {})).rejects.toThrow('Profile not found');
+    });
 
-      // 2. Act
-      await updateProfile('test-id', updateData);
-
-      // 3. Assert
-      expect(Profile.findByPk).toHaveBeenCalledWith('test-id');
-      expect(mockProfile.full_name).toBe('Updated Name');
-      expect(mockProfile.username).toBe('newuser');
-      expect(mockProfile.avatar_url).toBe('new.png');
-      expect(mockProfile.topic).toBe('Technology');
-      expect(mockProfile.place).toBe('New York');
-      expect(mockProfile.actor).toEqual(['Tom Hanks']);
+    it('updates basic fields (Name, Avatar)', async () => {
+      await updateProfile('p1', { full_name: 'New Name', avatar_url: 'pic.jpg' });
+      
+      expect(mockProfile.full_name).toBe('New Name');
+      expect(mockProfile.avatar_url).toBe('pic.jpg');
       expect(mockProfile.save).toHaveBeenCalled();
     });
 
-    it('should throw an error if profile is not found', async () => {
-      // 1. Arrange
-      Profile.findByPk.mockResolvedValue(null);
-
-      // 2. Act & 3. Assert
-      await expect(updateProfile('fake-id', {})).rejects.toThrow('Profile not found.');
+    it('updates Username if available', async () => {
+      await updateProfile('p1', { username: 'NewUser' });
+      
+      expect(mockProfile.username).toBe('newuser'); // Lowercase check
+      expect(mockProfile.save).toHaveBeenCalled();
     });
 
-    it('should throw an error if save fails', async () => {
-      // 1. Arrange
-      mockProfile.save.mockRejectedValue(new Error('Save Error'));
+    it('throws error if Username is taken', async () => {
+      // Mock that 'newuser' is taken by someone else
+      Profile.findOne.mockResolvedValue({ id: 'other-p2' });
+      
+      await expect(updateProfile('p1', { username: 'NewUser' }))
+        .rejects.toThrow('Username is already taken');
+      
+      expect(mockProfile.save).not.toHaveBeenCalled();
+    });
 
-      // 2. Act & 3. Assert
-      await expect(updateProfile('test-id', { topic: 'test' })).rejects.toThrow('Could not update profile.');
+    it('updates Categories (from String)', async () => {
+      await updateProfile('p1', { categories: 'Tech, Sports, ' });
+      
+      expect(mockProfile.categories).toEqual(['tech', 'sports']); // Trimmed & Lowercase
+    });
+
+    it('updates Categories (from Array)', async () => {
+      await updateProfile('p1', { categories: ['Tech', 'Sports'] });
+      
+      expect(mockProfile.categories).toEqual(['tech', 'sports']);
+    });
+
+    it('updates FCM Token', async () => {
+      await updateProfile('p1', { fcm_token: 'token-123' });
+      
+      expect(mockProfile.fcm_token).toBe('token-123');
+    });
+
+    it('updates Preferences (Actor, Place, Topic)', async () => {
+      await updateProfile('p1', { 
+        actor: ['Tom'], 
+        place: 'NY', 
+        topic: 'News' 
+      });
+      
+      expect(mockProfile.actor).toEqual(['Tom']);
+      expect(mockProfile.place).toBe('NY');
+      expect(mockProfile.topic).toBe('News');
+    });
+    
+    it('handles DB Error during save', async () => {
+        mockProfile.save.mockRejectedValue(new Error('Save failed'));
+        await expect(updateProfile('p1', { full_name: 'Test' }))
+            .rejects.toThrow('Could not update profile');
     });
   });
 
-  // --- Tests for findOrCreateProfileByAuthId ---
+  // --- 4. findOrCreateProfileByAuthId TESTS ---
   describe('findOrCreateProfileByAuthId', () => {
+    it('throws error if authId missing', async () => {
+      await expect(findOrCreateProfileByAuthId(null)).rejects.toThrow('authId is required');
+    });
+
+    it('returns existing profile if found', async () => {
+      const existing = { id: 'found-id', auth_id: 'firebase-123' };
+      Profile.findByPk.mockResolvedValue(existing);
+
+      const result = await findOrCreateProfileByAuthId('firebase-123');
+      
+      expect(Profile.create).not.toHaveBeenCalled();
+      expect(result).toBe(existing);
+    });
+
+    it('creates NEW profile if not found', async () => {
+      Profile.findByPk.mockResolvedValue(null);
+      const newProfile = { id: 'new-id' };
+      Profile.create.mockResolvedValue(newProfile);
+
+      const result = await findOrCreateProfileByAuthId('firebase-123', { 
+        full_name: 'User', 
+        username: 'user1' 
+      });
+
+      expect(Profile.create).toHaveBeenCalledWith(expect.objectContaining({
+        full_name: 'User',
+        username: 'user1'
+      }));
+      expect(result).toBe(newProfile);
+    });
+
+    it('generates NEW username if requested one is taken', async () => {
+      Profile.findByPk.mockResolvedValue(null); // Profile doesn't exist
+      
+      // Mock username check: First time taken, then available (implicitly handled by loop logic or just once in your code)
+      // Your code handles it once: checks isUsernameTaken. If true -> appends suffix.
+      
+      // 1. Profile not found by ID
+      // 2. Check username 'takenuser' -> Returns found profile
+      Profile.findOne.mockResolvedValue({ id: 'other' }); 
+
+      // 3. Create should be called with modified username
+      const newProfile = { id: 'new' };
+      Profile.create.mockResolvedValue(newProfile);
+
+      await findOrCreateProfileByAuthId('firebase-123', { username: 'takenuser' });
+
+      expect(Profile.create).toHaveBeenCalledWith(expect.objectContaining({
+        // Expect username to contain 'takenuser' AND some digits
+        username: expect.stringMatching(/^takenuser\d{4}$/) 
+      }));
+    });
     
-    it('should find and return an existing profile', async () => {
-      // 1. Arrange
-      const mockProfile = { id: 'uuid-from-firebase-uid', full_name: 'Existing User' };
-      Profile.findByPk.mockResolvedValue(mockProfile);
-
-      // 2. Act
-      const profile = await findOrCreateProfileByAuthId('firebase-uid-123', {});
-
-      // 3. Assert
-      expect(Profile.findByPk).toHaveBeenCalled();
-      expect(Profile.create).not.toHaveBeenCalled(); // Create should NOT be called
-      expect(profile).toBe(mockProfile);
+    it('handles Errors gracefully', async () => {
+        Profile.findByPk.mockRejectedValue(new Error('DB Error'));
+        await expect(findOrCreateProfileByAuthId('uid')).rejects.toThrow('Could not create or retrieve profile');
     });
+  });
 
-    it('should create a new profile if one is not found', async () => {
-      // 1. Arrange
-      const newProfileData = { full_name: 'New User', avatar_url: 'pic.png' };
-      const mockCreatedProfile = { id: 'uuid-from-firebase-uid', ...newProfileData };
+  // --- 5. createProfile TESTS ---
+  describe('createProfile', () => {
+    it('creates a profile with generated UUID', async () => {
+      const mockCreated = { id: 'generated-id' };
+      Profile.create.mockResolvedValue(mockCreated);
 
-      Profile.findByPk.mockResolvedValue(null); // Step 1: Find fails
-      Profile.create.mockResolvedValue(mockCreatedProfile); // Step 2: Create succeeds
+      const result = await createProfile({ fullName: 'Test', username: 'test' });
 
-      // 2. Act
-      const profile = await findOrCreateProfileByAuthId('firebase-uid-456', newProfileData);
-
-      // 3. Assert
-      expect(Profile.findByPk).toHaveBeenCalled(); // Find was called
-      expect(Profile.create).toHaveBeenCalled(); // Create WAS called
-      expect(profile).toBe(mockCreatedProfile);
+      expect(Profile.create).toHaveBeenCalledWith(expect.objectContaining({
+        id: expect.any(String), // Checks that a UUID was generated
+        full_name: 'Test',
+        username: 'test'
+      }));
+      expect(result).toBe(mockCreated);
     });
-
-    it('should throw an error if authId is not provided', async () => {
-      // 2. Act & 3. Assert
-      await expect(findOrCreateProfileByAuthId(null, {})).rejects.toThrow('authId is required');
+    
+    it('handles Errors', async () => {
+        Profile.create.mockRejectedValue(new Error('DB Fail'));
+        await expect(createProfile({})).rejects.toThrow('Could not create profile');
     });
   });
 

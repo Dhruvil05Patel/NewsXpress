@@ -1,20 +1,24 @@
+const { sync } = require('../authController'); // This is fine (sibling folder)
 
+// CHANGE 1: Go up 3 levels to find config
+const admin = require('../../../config/firebaseAdmin'); 
 
-
-const { sync } = require('../authController');
-const admin = require('../../config/firebaseAdmin');
-const { findOrCreateProfileByAuthId } = require('../../services/ProfileService');
+// CHANGE 2: Go up 3 levels to find services
+const { findOrCreateProfileByAuthId } = require('../../../services/ProfileService');
 
 
 // Import necessary modules and functions
 // Mock dependencies
-jest.mock("../../config/firebaseAdmin", () => ({
+
+// CHANGE 3: Update mock path
+jest.mock("../../../config/firebaseAdmin", () => ({
   auth: jest.fn().mockReturnValue({
     verifyIdToken: jest.fn(),
   }),
 }));
 
-jest.mock("../../services/ProfileService", () => ({
+// CHANGE 4: Update mock path
+jest.mock("../../../services/ProfileService", () => ({
   findOrCreateProfileByAuthId: jest.fn(),
 }));
 
@@ -110,5 +114,72 @@ describe('sync() sync method', () => {
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ message: 'Internal server error' });
     });
+  });
+  // ==========================================================
+  // NEW: Tests for Username/Fullname Resolution (Lines 35-36)
+  // ==========================================================
+  describe('Username & Profile Resolution', () => {
+    
+    it('should use the username provided in the request body', async () => {
+      // Arrange
+      req.body.idToken = 'validToken';
+      // WE PROVIDE A CUSTOM USERNAME HERE
+      req.body.username = 'custom_user_123'; 
+      req.body.full_name = 'Custom Name';
+
+      const decodedToken = { uid: '123', email: 'test@test.com' }; // No name in token
+      admin.auth().verifyIdToken.mockResolvedValue(decodedToken);
+      
+      findOrCreateProfileByAuthId.mockResolvedValue({ id: 'p1' });
+
+      // Act
+      await sync(req, res);
+
+      // Assert
+      expect(findOrCreateProfileByAuthId).toHaveBeenCalledWith('123', expect.objectContaining({
+        username: 'custom_user_123', // Should match req.body
+        full_name: 'Custom Name'
+      }));
+    });
+
+    it('should fallback to token name if request username is missing', async () => {
+      // Arrange
+      req.body.idToken = 'validToken';
+      req.body.username = undefined; // MISSING
+
+      // Token has a name with spaces
+      const decodedToken = { uid: '123', name: 'John Doe Smith', email: 'test@test.com' };
+      admin.auth().verifyIdToken.mockResolvedValue(decodedToken);
+      
+      findOrCreateProfileByAuthId.mockResolvedValue({ id: 'p1' });
+
+      // Act
+      await sync(req, res);
+
+      // Assert
+      expect(findOrCreateProfileByAuthId).toHaveBeenCalledWith('123', expect.objectContaining({
+        username: 'JohnDoeSmith', // Should be token name with spaces removed
+        full_name: 'John Doe Smith'
+      }));
+    });
+
+    it('should fallback to email if both username and name are missing', async () => {
+        // Arrange
+        req.body.idToken = 'validToken';
+        req.body.username = undefined;
+  
+        const decodedToken = { uid: '123', name: null, email: 'fallback@test.com' };
+        admin.auth().verifyIdToken.mockResolvedValue(decodedToken);
+        
+        findOrCreateProfileByAuthId.mockResolvedValue({ id: 'p1' });
+  
+        // Act
+        await sync(req, res);
+  
+        // Assert
+        expect(findOrCreateProfileByAuthId).toHaveBeenCalledWith('123', expect.objectContaining({
+          username: 'fallback', // Should be email prefix
+        }));
+      });
   });
 });

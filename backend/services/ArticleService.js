@@ -73,11 +73,8 @@ async function saveArticle(articleData) {
     console.log(`✅ Saved article: ${article.title}`);
     return article;
   } catch (error) {
-    console.error(
-      `Error saving article "${articleData.title}":`,
-      error.message
-    );
-    return null;
+    // CHANGED: Re-throw error so saveArticles loop can handle it
+    throw error;
   }
 }
 
@@ -95,6 +92,7 @@ async function saveArticles(articlesArray) {
         savedArticles.push(saved);
       }
     } catch (error) {
+      // This block is now reachable because saveArticle throws
       errors.push({ article: articleData.title, error: error.message });
     }
   }
