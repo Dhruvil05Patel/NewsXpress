@@ -16,10 +16,17 @@ import {
     Search,
     Home,
 } from "lucide-react";
+import notify from "../utils/toast";
 
 // Navbar: handles logo, categories, search, and mobile navigation.
 // Profile panel is external; this component notifies parent via onToggleProfile.
-export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
+export default function Navbar({
+    onLoginClick,
+    userProfile,
+    onToggleProfile,
+    searchQuery = "",
+    onSearchChange,
+}) {
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -57,7 +64,7 @@ export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
         color: "#fff",
     };
 
-    const [searchQuery, setSearchQuery] = useState("");
+    // Navbar acts as a controlled search input when parent provides handlers
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isSidebarVisible, setIsSidebarVisible] = useState(false);
 
@@ -97,8 +104,8 @@ export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
                                     key={category.name}
                                     onClick={() => handleCategoryClick(category.name)}
                                     className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full border transition-all whitespace-nowrap ${isActive
-                                            ? "border-transparent"
-                                            : "text-gray-700 border-gray-200 hover:border-[#ff9fb3]"
+                                        ? "border-transparent"
+                                        : "text-gray-700 border-gray-200 hover:border-[#ff9fb3]"
                                         }`}
                                     style={isActive ? gradientStyle : undefined}
                                 >
@@ -125,8 +132,21 @@ export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
                                 type="text"
                                 placeholder="Search headlines..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onClick={() => {
+                                    if (!userProfile) {
+                                        notify.info("🔒 Please login to search headlines");
+                                        if (onLoginClick) onLoginClick();
+                                    }
+                                }}
+                                onChange={(e) => {
+                                    if (!userProfile) {
+                                        e.preventDefault();
+                                        return;
+                                    }
+                                    onSearchChange ? onSearchChange(e.target.value) : undefined;
+                                }}
                                 onFocus={(e) => {
+                                    if (!userProfile) return;
                                     e.currentTarget.style.borderColor = "#ef4444";
                                     e.currentTarget.style.boxShadow =
                                         "0 0 0 3px rgba(239, 68, 68, 0.1)";
@@ -137,6 +157,7 @@ export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
                                 }}
                                 className="w-full px-4 py-2 pr-10 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 hover:bg-white focus:bg-white transition-all duration-200"
                                 aria-label="Search headlines"
+                                readOnly={!userProfile}
                             />
                             <Search className="absolute right-3 pb-3 top-1/2 -translate-y-1/2 w-5 h-50 text-gray-400 pointer-events-none" />
                         </div>
@@ -148,8 +169,21 @@ export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
                                 type="text"
                                 placeholder="Search Headlines..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onClick={() => {
+                                    if (!userProfile) {
+                                        notify.info("🔒 Please login to search headlines");
+                                        if (onLoginClick) onLoginClick();
+                                    }
+                                }}
+                                onChange={(e) => {
+                                    if (!userProfile) {
+                                        e.preventDefault();
+                                        return;
+                                    }
+                                    onSearchChange ? onSearchChange(e.target.value) : undefined;
+                                }}
                                 onFocus={(e) => {
+                                    if (!userProfile) return;
                                     e.currentTarget.style.borderColor = "#ef4444";
                                     e.currentTarget.style.boxShadow =
                                         "0 0 0 3px rgba(239, 68, 68, 0.1)";
@@ -160,6 +194,7 @@ export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
                                 }}
                                 className="w-full px-3 py-1.5 pr-9 border border-gray-200 rounded-lg outline-none text-sm bg-gray-50 hover:bg-white focus:bg-white transition-all duration-200"
                                 aria-label="Search headlines"
+                                readOnly={!userProfile}
                             />
                             <Search className="absolute right-2.5 pb-3 top-1/2 -translate-y-1/2 w-4 h-40 text-gray-400 pointer-events-none" />
                         </div>
@@ -214,8 +249,8 @@ export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
                                         key={category.name}
                                         onClick={() => handleCategoryClick(category.name)}
                                         className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
-                                                ? "bg-red-50 text-red-600"
-                                                : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                                            ? "bg-red-50 text-red-600"
+                                            : "text-gray-600 hover:text-red-600 hover:bg-red-50"
                                             }`}
                                     >
                                         {IconComponent ? (
@@ -255,8 +290,8 @@ export default function Navbar({ onLoginClick, userProfile, onToggleProfile }) {
                             if (sidebarOpen) setSidebarOpen(false);
                         }}
                         className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${location.pathname === "/"
-                                ? "text-red-600 scale-105"
-                                : "text-gray-600"
+                            ? "text-red-600 scale-105"
+                            : "text-gray-600"
                             }`}
                     >
                         <Home className="w-6 h-6" />

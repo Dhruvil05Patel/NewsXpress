@@ -1,7 +1,7 @@
 // PersonalizedFeed.jsx
 // Hybrid/content-based personalized recommendation feed with ReelView launcher.
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { usePersonalizedRecommendations } from "../hooks/useRecommendations";
 import SmartRecommendations from "./SmartRecommendations";
 import NewsCard from "./NewsCard";
@@ -17,6 +17,11 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
   const [reelOpen, setReelOpen] = useState(false);
   const [reelIndex, setReelIndex] = useState(0);
   const [reelNews, setReelNews] = useState([]);
+
+  // Update page title
+  useEffect(() => {
+    document.title = "Personalized Feed | NewsXpress";
+  }, []);
 
   const handleArticleClick = async (articleId) => {
     // Track click on personalized recommendation

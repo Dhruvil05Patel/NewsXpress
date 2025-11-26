@@ -33,6 +33,11 @@ export default function Bookmarks() {
   const profile = getSavedProfile(); // { id, full_name, username, ... } or null
   const profileId = profile?.id;
 
+  // Update page title
+  useEffect(() => {
+    document.title = "Bookmarks | NewsXpress";
+  }, []);
+
   // Load bookmarks (server if profile present, else local) on mount
   useEffect(() => {
     let mounted = true;

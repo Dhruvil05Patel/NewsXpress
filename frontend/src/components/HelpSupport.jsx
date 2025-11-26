@@ -20,6 +20,11 @@ const HelpSupport = () => {
   const [submitted, setSubmitted] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
+  // Update page title
+  useEffect(() => {
+    document.title = "Help & Support | NewsXpress";
+  }, []);
+
   // After showing success, display countdown and return to form
   useEffect(() => {
     if (!submitted) return;

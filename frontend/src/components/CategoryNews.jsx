@@ -19,11 +19,17 @@ export default function CategoryNews({
   subtitle,
   userProfile,
   onLoginClick,
+  searchQuery = "",
 }) {
   // --- State Management ---
   const [news, setNews] = useState([]); // Holds the filtered list of news articles.
   const [loading, setLoading] = useState(true); // Manages the loading state.
   const [reelState, setReelState] = useState({ isOpen: false, index: 0 }); // Manages the reel view modal.
+
+  // Update page title based on category
+  useEffect(() => {
+    document.title = `${category} | NewsXpress`;
+  }, [category]);
 
   // --- Side Effects (useEffect) ---
   // Fetch category-specific news from backend when `category` changes.
@@ -176,56 +182,91 @@ export default function CategoryNews({
             </div>
             <hr className="border-stone-300 mb-10" />
 
-            {/* News Card Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {news.length > 0 ? (
-                (userProfile ? news : news.slice(0, 6)).map((item, index) => (
-                  <NewsCard
-                    key={item.id || item.title}
-                    {...item}
-                    userProfile={userProfile}
-                    onCardClick={() => handleCardClick(index)}
-                  />
-                ))
-              ) : (
-                <p className="text-stone-500 text-center">
-                  No {category} news available at the moment.
-                </p>
-              )}
-            </div>
+            {(() => {
+              const q = (searchQuery || "").trim().toLowerCase();
+              const filteredNews = q
+                ? news.filter(
+                  (n) =>
+                    (n.title || "").toLowerCase().includes(q) ||
+                    (n.summary || "").toLowerCase().includes(q)
+                )
+                : news;
+              const visibleNews = userProfile
+                ? filteredNews
+                : filteredNews.slice(0, 6);
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredNews.length > 0 ? (
+                    visibleNews.map((item, index) => (
+                      <NewsCard
+                        key={item.id || item.title}
+                        {...item}
+                        userProfile={userProfile}
+                        onCardClick={() => handleCardClick(index)}
+                      />
+                    ))
+                  ) : (
+                    <p className="text-stone-500 text-center">
+                      No matching {category} headlines.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
-            {!userProfile && news.length > 6 && (
-              <div className="flex justify-center mt-8">
-                <button
-                  onClick={() => {
-                    if (onLoginClick) onLoginClick();
-                  }}
-                  className="px-6 py-3 rounded-full text-white transition-colors"
-                  style={{
-                    background:
-                      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
-                    boxShadow:
-                      "0 4px 14px -2px rgba(255,0,80,0.45),0 2px 6px -1px rgba(0,0,0,0.25)",
-                  }}
-                >
-                  View More
-                </button>
-              </div>
-            )}
+            {(() => {
+              const q = (searchQuery || "").trim().toLowerCase();
+              const filteredLen = q
+                ? news.filter(
+                  (n) =>
+                    (n.title || "").toLowerCase().includes(q) ||
+                    (n.summary || "").toLowerCase().includes(q)
+                ).length
+                : news.length;
+              return !userProfile && filteredLen > 6 ? (
+                <div className="flex justify-center mt-8">
+                  <button
+                    onClick={() => {
+                      if (onLoginClick) onLoginClick();
+                    }}
+                    className="px-6 py-3 rounded-full text-white transition-colors"
+                    style={{
+                      background:
+                        "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+                      boxShadow:
+                        "0 4px 14px -2px rgba(255,0,80,0.45),0 2px 6px -1px rgba(0,0,0,0.25)",
+                    }}
+                  >
+                    View More
+                  </button>
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
       </main>
 
       {/* Conditionally renders the ReelView overlay when a card is clicked. */}
-      {reelState.isOpen && (
-        <ReelView
-          news={news}
-          initialIndex={reelState.index}
-          onClose={handleCloseReel}
-          userProfile={userProfile}
-          onRequireLogin={onLoginClick}
-        />
-      )}
+      {reelState.isOpen &&
+        (() => {
+          const q = (searchQuery || "").trim().toLowerCase();
+          const filteredNews = q
+            ? news.filter(
+              (n) =>
+                (n.title || "").toLowerCase().includes(q) ||
+                (n.summary || "").toLowerCase().includes(q)
+            )
+            : news;
+          return (
+            <ReelView
+              news={filteredNews}
+              initialIndex={reelState.index}
+              onClose={handleCloseReel}
+              userProfile={userProfile}
+              onRequireLogin={onLoginClick}
+            />
+          );
+        })()}
     </>
   );
 }

@@ -72,6 +72,8 @@ function AppContent() {
   // --- State --- Login/Signup modal visibility.
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
+  // Global search query controlled by Navbar
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Auth context: firebaseUser = raw auth user, userProfile = enriched profile doc.
   const { user: firebaseUser, profile: userProfile, loading } = useAuth();
@@ -163,6 +165,8 @@ function AppContent() {
           onLoginClick={openLogin}
           userProfile={userProfile}
           onToggleProfile={() => setProfileOpen((p) => !p)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
         />
         <Profile
           isOpen={profileOpen}
@@ -186,6 +190,7 @@ function AppContent() {
                 subtitle="Stay updated with global headlines"
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -203,6 +208,7 @@ function AppContent() {
                 {...categories.technology}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -214,6 +220,7 @@ function AppContent() {
                 {...categories.business}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -225,6 +232,7 @@ function AppContent() {
                 {...categories.science}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -236,6 +244,7 @@ function AppContent() {
                 {...categories.sports}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -247,6 +256,7 @@ function AppContent() {
                 {...categories.environment}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -258,6 +268,7 @@ function AppContent() {
                 {...categories.politics}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -269,6 +280,7 @@ function AppContent() {
                 {...categories.health}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -280,6 +292,7 @@ function AppContent() {
                 {...categories.entertainment}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
@@ -293,6 +306,7 @@ function AppContent() {
                 {...categories.crime}
                 userProfile={userProfile}
                 onLoginClick={openLogin}
+                searchQuery={searchQuery}
               />
             }
           />
