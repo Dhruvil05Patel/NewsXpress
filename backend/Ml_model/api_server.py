@@ -151,7 +151,53 @@ def register_routes(app):
 
     @app.route('/api/recommendations/similar/<article_id>', methods=['GET'])
     def get_similar_articles(article_id):
-        return get_recommendations()
+        """Content-based recommendations for a given article_id (SPA-friendly)."""
+        try:
+            svc = current_app.recommendation_service
+            cache = current_app.cache_manager
+
+            top_n = int(request.args.get('top_n', 10))
+            exclude_ids = request.args.getlist('exclude')
+
+            # Force content method and build cache key aligned with cache manager patterns
+            method = 'content'
+            cache_key = f"rec:{method}:a={article_id}:n={top_n}"
+
+            cached_result = cache.get(cache_key)
+            if cached_result:
+                logger.info(f"Cache hit: {cache_key}")
+                return jsonify({
+                    "success": True,
+                    "recommendations": cached_result,
+                    "method": method,
+                    "from_cache": True
+                })
+
+            recommendations = svc.get_similar_articles(
+                article_id=article_id,
+                top_n=top_n,
+                exclude_ids=exclude_ids
+            )
+
+            # Cache for 30 minutes (content-based)
+            cache.set(cache_key, recommendations, ttl_seconds=1800)
+
+            return jsonify({
+                "success": True,
+                "recommendations": recommendations,
+                "method": method,
+                "from_cache": False
+            })
+
+        except Exception as e:
+            logger.error(f"Error in get_similar_articles: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({
+                "success": False,
+                "error": str(e),
+                "message": "Failed to fetch similar articles"
+            }), 500
 
 
 
