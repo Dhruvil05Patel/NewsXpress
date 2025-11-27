@@ -62,8 +62,9 @@ describe('AllNews Component', () => {
 
   // --- Test 1: Initial Loading State ---
   it('renders loading state initially', () => {
-    render(<AllNews userProfile={null} />);
-    expect(screen.getByText(/Loading Headlines.../i)).toBeInTheDocument();
+    const { container } = render(<AllNews userProfile={null} />);
+    // Component uses skeleton loaders; assert skeleton present
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
 
   // --- Test 2: Successful Fetch & Rendering (Guest User) ---
@@ -72,14 +73,14 @@ describe('AllNews Component', () => {
 
     // 1. Wait for loading to disappear
     await waitFor(() => {
-      expect(screen.queryByText(/Loading Headlines.../i)).not.toBeInTheDocument();
+      expect(document.querySelectorAll('.animate-pulse').length).toBe(0);
     });
 
     // Debug: If this fails, print what IS on the screen
     // screen.debug(); 
 
     // 2. Check if we hit the "No news" state by mistake
-    const noNews = screen.queryByText(/No news available/i);
+    const noNews = screen.queryByText(/No matching headlines/i);
     if (noNews) {
       console.error("TEST FAILURE DEBUG: Component rendered 'No news available'. Fetch might have failed.");
     }
@@ -113,7 +114,7 @@ describe('AllNews Component', () => {
     render(<AllNews userProfile={userProfile} />);
 
     await waitFor(() => {
-      expect(screen.queryByText(/Loading Headlines.../i)).not.toBeInTheDocument();
+      expect(document.querySelectorAll('.animate-pulse').length).toBe(0);
     });
 
     const cards = screen.getAllByTestId('news-card');
@@ -154,9 +155,9 @@ describe('AllNews Component', () => {
     render(<AllNews userProfile={null} />);
 
     await waitFor(() => {
-      expect(screen.queryByText(/Loading Headlines.../i)).not.toBeInTheDocument();
+      expect(document.querySelectorAll('.animate-pulse').length).toBe(0);
     });
 
-    expect(screen.getByText('No news available')).toBeInTheDocument();
+    expect(screen.getByText('No matching headlines')).toBeInTheDocument();
   });
 });

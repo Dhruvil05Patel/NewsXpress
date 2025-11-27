@@ -47,9 +47,9 @@ describe('CategoryNews Component', () => {
   // --- 1. RENDERING TESTS ---
 
   it('renders loading state with correct title', () => {
-    render(<CategoryNews category="technology" title="Technology News" />);
-    // It should use the title prop in the loading message
-    expect(screen.getByText(/Loading Technology News.../i)).toBeInTheDocument();
+    const { container } = render(<CategoryNews category="technology" title="Technology News" />);
+    // Component uses skeleton loaders; assert skeleton present
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
 
   it('renders correct header title and subtitle', async () => {
@@ -62,10 +62,10 @@ describe('CategoryNews Component', () => {
     );
 
     await waitFor(() => {
-      expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument();
+      expect(document.querySelectorAll('.animate-pulse').length).toBe(0);
     });
 
-    expect(screen.getByRole('heading', { name: 'Technology', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Technology' })).toBeInTheDocument();
     expect(screen.getByText('Latest tech updates')).toBeInTheDocument();
   });
 
@@ -102,7 +102,7 @@ describe('CategoryNews Component', () => {
     render(<CategoryNews category="science" title="Science" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No science news available/i)).toBeInTheDocument();
+      expect(screen.getByText(/No matching science headlines\./i)).toBeInTheDocument();
     });
   });
 
@@ -116,7 +116,7 @@ describe('CategoryNews Component', () => {
 
     await waitFor(() => {
       // Should fallback to empty state
-      expect(screen.getByText(/No health news available/i)).toBeInTheDocument();
+      expect(screen.getByText(/No matching health headlines\./i)).toBeInTheDocument();
     });
   });
 

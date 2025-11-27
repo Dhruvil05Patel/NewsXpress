@@ -78,8 +78,9 @@ describe('Bookmarks Component', () => {
     // Return a promise that never resolves immediately to hold the loading state
     api.getBookmarksForProfile.mockReturnValue(new Promise(() => {}));
 
-    render(<Bookmarks />);
-    expect(screen.getByText(/Loading bookmarks.../i)).toBeInTheDocument();
+    const { container } = render(<Bookmarks />);
+    // Component shows skeleton loaders during loading
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
 
   it('renders Empty State if no bookmarks found', async () => {

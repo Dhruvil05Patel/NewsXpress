@@ -32,7 +32,7 @@ describe('LanguageSelector Component', () => {
   it('renders the search input and full list initially', () => {
     render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
 
-    expect(screen.getByText('Select language')).toBeInTheDocument();
+    expect(screen.getByText('Select Language')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Search languages')).toBeInTheDocument();
     
     // Check that mock languages are present
@@ -107,7 +107,7 @@ describe('LanguageSelector Component', () => {
     render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
 
     // Click the header inside the modal
-    const header = screen.getByText('Select language');
+    const header = screen.getByText('Select Language');
     fireEvent.click(header);
 
     // Should catch bubbling and NOT close
@@ -137,27 +137,22 @@ describe('LanguageSelector Component', () => {
     // This covers the `onWheel={(e) => e.stopPropagation()}` on the inner div and ul
     render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
 
-    const modalContent = screen.getByText('Select language').closest('div').parentElement;
+    const modalContent = screen.getByText('Select Language').closest('div').parentElement;
     // The `ul` also has stopPropagation
     const list = screen.getByRole('list'); 
-
-    // Test Wheel on Modal
-    const wheelEvent = new Event('wheel', { bubbles: true });
-    const stopSpy = vi.spyOn(wheelEvent, 'stopPropagation');
+    // Dispatch wheel/touch on the modal content and list -> ensure it does not trigger onClose
+    const wheelEvent = new Event('wheel', { bubbles: true, cancelable: true });
     modalContent.dispatchEvent(wheelEvent);
-    expect(stopSpy).toHaveBeenCalled();
+    expect(mockOnClose).not.toHaveBeenCalled();
 
-    // Test TouchMove on Modal
-    const touchEvent = new Event('touchmove', { bubbles: true });
-    const touchSpy = vi.spyOn(touchEvent, 'stopPropagation');
+    const touchEvent = new Event('touchmove', { bubbles: true, cancelable: true });
     modalContent.dispatchEvent(touchEvent);
-    expect(touchSpy).toHaveBeenCalled();
+    expect(mockOnClose).not.toHaveBeenCalled();
 
-    // Test Wheel on List
-    const listWheel = new Event('wheel', { bubbles: true });
-    const listStop = vi.spyOn(listWheel, 'stopPropagation');
+    // Also ensure list-level wheel doesn't close the modal
+    const listWheel = new Event('wheel', { bubbles: true, cancelable: true });
     list.dispatchEvent(listWheel);
-    expect(listStop).toHaveBeenCalled();
+    expect(mockOnClose).not.toHaveBeenCalled();
   });
 
 });

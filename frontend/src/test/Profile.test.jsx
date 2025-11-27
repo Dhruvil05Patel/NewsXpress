@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import Profile from '../components/Profile';
 import * as api from '../services/api';
 import * as authContext from '../contexts/AuthContext';
@@ -25,6 +25,11 @@ vi.mock('../utils/toast', () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+// Mock logoutUser (used by the component)
+vi.mock('../components/auth/controller/authController', () => ({
+  logoutUser: vi.fn(),
 }));
 
 const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
@@ -57,7 +62,7 @@ describe('Profile Component', () => {
   // --- 1. RENDERING TESTS ---
 
   it('renders user profile information correctly', () => {
-    render(<Profile />);
+    render(<Profile userProfile={mockUser} />);
     
     // FIX: Use getAllByText because name/email appear in Profile Card AND Settings
     const names = screen.getAllByText('Test User');
@@ -70,30 +75,35 @@ describe('Profile Component', () => {
     const emails = screen.getAllByText('test@example.com'); // Might appear as email field value too
     expect(emails[0]).toBeInTheDocument();
     
-    const avatar = screen.getByAltText('Profile');
-    expect(avatar).toHaveAttribute('src', 'http://pic.com/avatar.jpg');
+    const avatars = screen.getAllByAltText('Profile');
+    expect(avatars[0]).toHaveAttribute('src', 'http://pic.com/avatar.jpg');
   });
 
   it('renders Guest User state if no profile', () => {
     authContext.useAuth.mockReturnValue({ profile: null });
-    render(<Profile />);
+    render(<Profile userProfile={null} />);
     
-    expect(screen.getByText('Guest User')).toBeInTheDocument();
-    expect(screen.getByText('@unknown')).toBeInTheDocument();
-    expect(screen.getByText('G')).toBeInTheDocument(); 
+    const guestNames = screen.getAllByText('Guest User');
+    expect(guestNames[0]).toBeInTheDocument();
+    const unknowns = screen.getAllByText('@unknown');
+    expect(unknowns[0]).toBeInTheDocument();
+    const initials = screen.getAllByText('G');
+    expect(initials[0]).toBeInTheDocument();
   });
 
   // --- 2. NAVIGATION TESTS ---
 
   it('navigates to Bookmarks', () => {
-    render(<Profile />);
-    fireEvent.click(screen.getByText('Bookmarks'));
+    render(<Profile userProfile={mockUser} />);
+    const btn = screen.getAllByText('Bookmarks')[0].closest('button');
+    fireEvent.click(btn);
     expect(mockNavigate).toHaveBeenCalledWith('/bookmarks');
   });
 
   it('navigates to Personalized Feed', () => {
-    render(<Profile />);
-    fireEvent.click(screen.getByText('Personalized Feed'));
+    render(<Profile userProfile={mockUser} />);
+    const feedBtn = screen.getAllByText('Personalized Feed')[0].closest('button');
+    fireEvent.click(feedBtn);
     expect(mockNavigate).toHaveBeenCalledWith('/feed/personalized');
   });
 
@@ -101,15 +111,22 @@ describe('Profile Component', () => {
 
   it('edits and saves Full Name successfully', async () => {
     api.updateProfile.mockResolvedValue(true);
-    render(<Profile />);
+    render(<Profile userProfile={mockUser} />);
 
+    // Open the settings panel first so Edit buttons become visible
+    // Multiple "Open" buttons exist (mobile + desktop). Click the first one.
+    const openBtns = screen.getAllByText('Open');
+    // Click the desktop variant (second in DOM) to reliably open settings
+    fireEvent.click(openBtns[1]);
+    await waitFor(() => screen.getAllByText('Edit'));
     const editBtns = screen.getAllByText('Edit');
     fireEvent.click(editBtns[0]); // Edit Name
 
-    const input = screen.getByLabelText('Edit full name');
+    const input = screen.getAllByLabelText('Edit full name')[0];
     fireEvent.change(input, { target: { value: 'New Name' } });
 
-    fireEvent.click(screen.getByText('Save'));
+    const saveBtn = screen.getAllByText('Save')[1];
+    fireEvent.click(saveBtn);
 
     await waitFor(() => {
       expect(api.updateProfile).toHaveBeenCalledWith('user-123', { full_name: 'New Name' });
@@ -121,68 +138,63 @@ describe('Profile Component', () => {
 // --- 4. EDIT USERNAME TESTS (Complex - Uses Timers) ---
 
   it('checks availability and saves valid username', async () => {
-    // 1. Enable Fake Timers to control the debounce
-    vi.useFakeTimers();
+    // Use real timers (avoid fake timers for the debounce here)
+    vi.useRealTimers();
     
     api.checkUsernameAvailability.mockResolvedValue({ available: true });
     api.updateProfile.mockResolvedValue(true);
     
-    render(<Profile />);
+    render(<Profile userProfile={mockUser} />);
+    // Open the settings panel (use the same reliable approach as the Name test)
+    const openBtns = screen.getAllByText('Open');
+    fireEvent.click(openBtns[1]);
+    await waitFor(() => screen.getAllByText('Username')[1]);
 
-    const editBtns = screen.getAllByText('Edit');
-    fireEvent.click(editBtns[1]); // Edit Username
+    const usernameRow = screen.getAllByText('Username')[1].parentElement; // header container
+    const editBtn = within(usernameRow).getByText('Edit');
+    fireEvent.click(editBtn);
 
-    const input = screen.getByLabelText('Edit username');
+    const input = screen.getAllByLabelText('Edit username')[1];
     fireEvent.change(input, { target: { value: 'new_handle' } });
 
-    // 2. Fast-forward time to trigger the debounce (500ms + buffer)
-    act(() => {
-      vi.advanceTimersByTime(600);
-    });
-
-    // 3. CRITICAL FIX: Switch back to Real Timers
-    // This allows the async API call (Promise) to resolve and 'waitFor' to poll correctly.
-    vi.useRealTimers();
-
+    // Wait for the debounce (component uses 500ms). Use a slightly generous timeout.
     await waitFor(() => {
       expect(api.checkUsernameAvailability).toHaveBeenCalledWith('new_handle', 'user-123');
-      expect(screen.getByText('✓ Username is available')).toBeInTheDocument();
-    });
+      expect(screen.getAllByText('✓ Username is available')[1]).toBeInTheDocument();
+    }, { timeout: 5000 });
 
-    fireEvent.click(screen.getByText('Save'));
+    const saveBtn2 = screen.getAllByText('Save')[1];
+    fireEvent.click(saveBtn2);
 
     await waitFor(() => {
       expect(api.updateProfile).toHaveBeenCalledWith('user-123', { username: 'new_handle' });
       expect(notify.success).toHaveBeenCalled();
     });
-  });
+  }, 10000);
 
   it('shows error if username is taken', async () => {
-    // 1. Enable Fake Timers
-    vi.useFakeTimers();
-
-    api.checkUsernameAvailability.mockResolvedValue({ available: false });
-    render(<Profile />);
-
-    const editBtns = screen.getAllByText('Edit');
-    fireEvent.click(editBtns[1]);
-
-    const input = screen.getByLabelText('Edit username');
-    fireEvent.change(input, { target: { value: 'taken_user' } });
-
-    // 2. Fast-forward
-    act(() => {
-      vi.advanceTimersByTime(600);
-    });
-
-    // 3. CRITICAL FIX: Switch back to Real Timers
+    // Use real timers to allow the component debounce to run naturally
     vi.useRealTimers();
 
+    api.checkUsernameAvailability.mockResolvedValue({ available: false });
+    render(<Profile userProfile={mockUser} />);
+    const openBtns2 = screen.getAllByText('Open');
+    fireEvent.click(openBtns2[1]);
+    await waitFor(() => screen.getAllByText('Username')[1]);
+    const usernameRow2 = screen.getAllByText('Username')[1].parentElement; // header container
+    const editBtn2 = within(usernameRow2).getByText('Edit');
+    fireEvent.click(editBtn2);
+
+    const input = screen.getAllByLabelText('Edit username')[1];
+    fireEvent.change(input, { target: { value: 'taken_user' } });
+
+    // Wait for debounce to complete and the UI to reflect availability
     await waitFor(() => {
-      expect(screen.getByText('✗ Username is already taken')).toBeInTheDocument();
-      expect(screen.getByText('Save')).toBeDisabled();
-    });
-  });
+      const saveBtn3 = screen.getAllByText('Save')[1];
+      expect(screen.getAllByText('✗ Username is already taken')[1]).toBeInTheDocument();
+      expect(saveBtn3).toBeDisabled();
+    }, { timeout: 5000 });
+  }, 10000);
 
   // --- 5. ERROR HANDLING TESTS (Uses Real Timers) ---
 
@@ -191,20 +203,37 @@ describe('Profile Component', () => {
     vi.useRealTimers(); 
     
     api.updateProfile.mockRejectedValue(new Error('Network Error'));
-    render(<Profile />);
-
+    render(<Profile userProfile={mockUser} />);
+    const openBtns4 = screen.getAllByText('Open');
+    fireEvent.click(openBtns4[1]);
+    await waitFor(() => screen.getAllByText('Edit'));
     const editBtns = screen.getAllByText('Edit');
     fireEvent.click(editBtns[0]); // Edit Name
 
-    const input = screen.getByLabelText('Edit full name');
+    const input = screen.getAllByLabelText('Edit full name')[0];
     fireEvent.change(input, { target: { value: 'Error Name' } });
 
-    fireEvent.click(screen.getByText('Save'));
-
+    const saveBtn4 = screen.getAllByText('Save')[1];
+    fireEvent.click(saveBtn4);
     await waitFor(() => {
       // Verify the toast error was called
       expect(notify.error).toHaveBeenCalledWith('Failed to save full name');
     });
+  });
+
+  it('calls logoutUser on Logout button click', async () => {
+    const authController = await import('../components/auth/controller/authController');
+    authController.logoutUser.mockResolvedValue();
+
+    const { container } = render(<Profile userProfile={mockUser} />);
+    const aside = container.querySelector('aside');
+    const logoutBtn = within(aside).getByText('Logout').closest('button');
+
+    await act(async () => {
+      fireEvent.click(logoutBtn);
+    });
+
+    expect(authController.logoutUser).toHaveBeenCalled();
   });
 
 });
