@@ -11,7 +11,7 @@ const cors = require("cors");
 const { handleTextToSpeech } = require("./translation-and-speech/controller/textToSpeechController");
 
 const { getProfileById, updateProfile, createProfile } = require("./services/ProfileService");
-const { sync } = require('./auth/controllers/authController');
+const { sync, deleteUser } = require('./auth/controllers/authController');
 const { addBookmark, removeBookmark, getBookmarksByProfile } = require("./services/UserInteractionService");
 const { fetchLiveStreams } = require("./services/youtube-service/youtubeController");
 const { sendVerification, sendPasswordReset } = require("./auth/controllers/emailController");
@@ -295,9 +295,14 @@ app.get("/api/profiles/check-username/:username", async (req, res) => {
   }
 });
 
+//USER DELETION ROUTE 
+app.delete("/api/auth/delete-user", deleteUser);
+
+
 // =================== EMAIL ROUTES =================== //
 app.post("/api/auth/send-verification-email", sendVerification);
 app.post("/api/auth/send-password-reset-email", sendPasswordReset);
+
 
 
 // =================== (NEW) BOOKMARK ROUTES =================== //

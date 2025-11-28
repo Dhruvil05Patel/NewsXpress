@@ -245,5 +245,6 @@ module.exports = {
   updateProfile,
   findOrCreateProfileByAuthId,
   createProfile,
-  isUsernameTaken
+  isUsernameTaken,
+  firebaseUidToUuid
 };

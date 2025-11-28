@@ -1,4 +1,4 @@
-const admin = require("firebase-admin");
+const admin = require("../../config/firebaseAdmin");
 
 // Make sure Firebase admin is initialized
 // admin.initializeApp({...})

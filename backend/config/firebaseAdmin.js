@@ -1,7 +1,5 @@
 const admin = require('firebase-admin');
 
-// Initialize Firebase Admin SDK using either a JSON string (FIREBASE_ADMIN_SDK)
-// or a file path (FIREBASE_ADMIN_KEY_PATH). This keeps secrets out of the repo.
 function initFirebaseAdmin() {
   if (admin.apps && admin.apps.length) return admin;
 
@@ -21,8 +19,13 @@ function initFirebaseAdmin() {
   }
 
 
+  const databaseURL = process.env.FIREBASE_REALTIME_DATABASE_URL;
+  
   if (credential) {
-    admin.initializeApp({ credential });
+    admin.initializeApp({ 
+      credential,
+      databaseURL: databaseURL 
+    });
   } else {
     // initialize without credential so that admin SDK methods will throw explicitly
     admin.initializeApp();

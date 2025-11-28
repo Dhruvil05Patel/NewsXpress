@@ -85,6 +85,16 @@ export async function registerUser(email, password, profile = {}) {
     // Call backend to create/find profile
     const createdProfile = await syncUser(idToken, backendProfile);
 
+    // Send verification email after successful registration
+    try {
+      await sendVerificationEmail(user.email, profile.full_name || "User");
+      console.log("✅ Verification email sent to", user.email);
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      // Don't fail registration if email sending fails
+      notify.warn("⚠️ Account created but verification email failed. Please try resending.");
+    }
+
     return { success: true, profile: createdProfile, email: user.email };
   } catch (error) {
     console.error("registerUser error:", error);
@@ -182,5 +192,52 @@ export const signInWithGoogle = async () => {
     console.error("Google sign-in failed:", err);
     notify.error("❌ Google sign-in failed");
     throw err;
+  }
+};
+
+/**
+ * Delete user account - removes from Firebase Auth and backend database.
+ * This will cascade delete all related data (bookmarks, interactions, etc.)
+ * 
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+export const deleteUserAccount = async () => {
+  try {
+    const user = auth.currentUser;
+    
+    if (!user) {
+      notify.error("❌ No user logged in");
+      return { success: false, message: "No user logged in" };
+    }
+
+    // Get fresh ID token
+    const idToken = await user.getIdToken(true);
+
+    // Import API function dynamically to avoid circular dependencies
+    const { deleteUserAccount: deleteUserApi } = await import("../../../services/api");
+    
+    // Call backend to delete from database and Firebase
+    const result = await deleteUserApi(idToken);
+
+    // Sign out locally
+    await signOut(auth);
+    
+    notify.success("✅ Account deleted successfully");
+    
+    // Trigger auth state change
+    window.dispatchEvent(new Event("auth-state-changed"));
+    
+    return { success: true, message: result.message };
+  } catch (error) {
+    console.error("Delete account error:", error);
+    
+    // If backend deletion failed but we still want to try Firebase deletion
+    if (error.response?.status === 500) {
+      notify.error("❌ Failed to delete account from server");
+    } else {
+      notify.error("❌ Failed to delete account. Please try again.");
+    }
+    
+    return { success: false, message: error.message };
   }
 };
