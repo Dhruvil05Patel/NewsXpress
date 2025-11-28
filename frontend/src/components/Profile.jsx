@@ -32,11 +32,46 @@ export default function Profile({
     const fileInputRef = useRef(null);
     const [uploadPreview, setUploadPreview] = useState(null);
     const [selectedFileName, setSelectedFileName] = useState(null);
+    const nameInputRef = useRef(null);
+    const usernameInputRef = useRef(null);
 
     useEffect(() => {
         setNewName(userProfile?.full_name || "");
         setNewUsername(userProfile?.username || "");
     }, [userProfile?.full_name, userProfile?.username]);
+
+    // When the side panel closes, also close settings and discard unsaved changes
+    useEffect(() => {
+        if (!isOpen) {
+            setShowSettingsPanel(false);
+            setEditingName(false);
+            setEditingUsername(false);
+            setCheckingUsername(false);
+            setNewName(userProfile?.full_name || "");
+            setNewUsername(userProfile?.username || "");
+        }
+    }, [isOpen, userProfile?.full_name, userProfile?.username]);
+
+    // Keep focus in inputs while editing so typing doesn't stop
+    useEffect(() => {
+        if (editingName && nameInputRef.current) {
+            try {
+                nameInputRef.current.focus();
+                const v = nameInputRef.current.value || "";
+                nameInputRef.current.setSelectionRange(v.length, v.length);
+            } catch { }
+        }
+    }, [editingName]);
+
+    useEffect(() => {
+        if (editingUsername && usernameInputRef.current) {
+            try {
+                usernameInputRef.current.focus();
+                const v = usernameInputRef.current.value || "";
+                usernameInputRef.current.setSelectionRange(v.length, v.length);
+            } catch { }
+        }
+    }, [editingUsername]);
 
     // Delete account handler
     // Simulated delete account (demo only)
@@ -125,6 +160,43 @@ export default function Profile({
         }, 500);
         return () => clearTimeout(timeoutId);
     }, [newUsername, editingUsername, userProfile?.username, userProfile?.id]);
+
+    // Username validation (same rules as SignUp)
+    const usernameChecks = [
+        {
+            id: 1,
+            label: "Only letters, numbers, underscores, periods",
+            valid: newUsername ? /^[A-Za-z0-9._]+$/.test(newUsername) : false,
+        },
+        {
+            id: 2,
+            label: "No spaces",
+            valid: newUsername ? !/\s/.test(newUsername) : false,
+        },
+        {
+            id: 3,
+            label: "Does not start or end with a period",
+            valid: newUsername
+                ? !newUsername.startsWith(".") && !newUsername.endsWith(".")
+                : false,
+        },
+        {
+            id: 4,
+            label: "No consecutive periods",
+            valid: newUsername ? !/\.{2,}/.test(newUsername) : false,
+        },
+        {
+            id: 5,
+            label: "Max 30 characters",
+            valid: newUsername ? newUsername.length <= 30 : false,
+        },
+        {
+            id: 6,
+            label: "Starts with letter or number",
+            valid: newUsername ? /^[A-Za-z0-9]/.test(newUsername) : false,
+        },
+    ];
+    const usernameValid = newUsername && usernameChecks.every((c) => c.valid);
 
     const handleHelpClick = () => {
         navigate("/help");
@@ -243,6 +315,8 @@ export default function Profile({
                                     <input
                                         value={newName}
                                         onChange={(e) => setNewName(e.target.value)}
+                                        ref={nameInputRef}
+                                        autoFocus
                                         className="flex-1 px-3 py-2 border rounded-md text-sm"
                                         aria-label="Edit full name"
                                         placeholder="Enter your full name"
@@ -256,7 +330,18 @@ export default function Profile({
                                     </button>
                                 </div>
                             ) : (
-                                <div className="text-sm text-gray-700">
+                                <div
+                                    className="text-sm text-gray-700 cursor-pointer"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setEditingName(true)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            setEditingName(true);
+                                        }
+                                    }}
+                                >
                                     {userProfile?.full_name || "Not set"}
                                 </div>
                             )}
@@ -276,11 +361,13 @@ export default function Profile({
                                     <div className="flex gap-2">
                                         <input
                                             value={newUsername}
-                                            onChange={(e) => setNewUsername(e.target.value)}
+                                            onChange={(e) => setNewUsername(e.target.value.trim())}
+                                            ref={usernameInputRef}
+                                            autoFocus
                                             className={`flex-1 px-3 py-2 border rounded-md text-sm ${checkingUsername
                                                     ? "border-gray-300"
                                                     : newUsername && newUsername !== userProfile?.username
-                                                        ? usernameAvailable
+                                                        ? usernameAvailable && usernameValid
                                                             ? "border-green-500 focus:ring-green-500"
                                                             : "border-red-500 focus:ring-red-500"
                                                         : "border-gray-300"
@@ -294,6 +381,7 @@ export default function Profile({
                                             disabled={
                                                 saving ||
                                                 !usernameAvailable ||
+                                                !usernameValid ||
                                                 checkingUsername ||
                                                 !newUsername.trim()
                                             }
@@ -301,6 +389,16 @@ export default function Profile({
                                             Save
                                         </button>
                                     </div>
+                                    {/* Validation messages (same style cues as SignUp) */}
+                                    {newUsername && !usernameValid && (
+                                        <ul className="text-xs text-gray-600 space-y-1">
+                                            {usernameChecks
+                                                .filter((c) => !c.valid)
+                                                .map((c) => (
+                                                    <li key={c.id}>❌ {c.label}</li>
+                                                ))}
+                                        </ul>
+                                    )}
                                     {checkingUsername &&
                                         newUsername &&
                                         newUsername !== userProfile?.username && (
@@ -312,17 +410,32 @@ export default function Profile({
                                         newUsername &&
                                         newUsername !== userProfile?.username && (
                                             <p
-                                                className={`text-xs ${usernameAvailable ? "text-green-600" : "text-red-600"
+                                                className={`text-xs ${usernameAvailable && usernameValid
+                                                        ? "text-green-600"
+                                                        : "text-red-600"
                                                     }`}
                                             >
-                                                {usernameAvailable
+                                                {usernameAvailable && usernameValid
                                                     ? "✓ Username is available"
-                                                    : "✗ Username is already taken"}
+                                                    : usernameAvailable && !usernameValid
+                                                        ? "✗ Username does not meet requirements"
+                                                        : "✗ Username is already taken"}
                                             </p>
                                         )}
                                 </div>
                             ) : (
-                                <div className="text-sm text-gray-700">
+                                <div
+                                    className="text-sm text-gray-700 cursor-pointer"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setEditingUsername(true)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            setEditingUsername(true);
+                                        }
+                                    }}
+                                >
                                     @{userProfile?.username || "Not set"}
                                 </div>
                             )}

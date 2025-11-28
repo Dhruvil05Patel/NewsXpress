@@ -1,6 +1,8 @@
 // HelpSupport: user assistance hub with locked profile autofill and countdown
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { postData } from "../services/api";
+import notify from "../utils/toast";
 import {
   HelpCircle,
   CheckCircle2,
@@ -19,6 +21,7 @@ const HelpSupport = () => {
 
   const [submitted, setSubmitted] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
   // Update page title
   useEffect(() => {
@@ -65,7 +68,7 @@ const HelpSupport = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     // Ensure submission uses the locked profile values
     const payload = {
@@ -73,8 +76,18 @@ const HelpSupport = () => {
       email: profile?.email || firebaseUser?.email || formData.email,
       message: formData.message,
     };
-    console.log("📩 Form Submitted Data:", payload);
-    setSubmitted(true);
+
+    try {
+      setSubmitting(true);
+      await postData("/api/support/request", payload);
+      notify.success("Support request submitted. Check your email.");
+      setSubmitted(true);
+    } catch (error) {
+      console.error("Failed to submit support request:", error);
+      notify.error("Failed to submit support request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -173,7 +186,8 @@ const HelpSupport = () => {
                 <div className="space-y-2">
                   <button
                     type="submit"
-                    className="w-full text-white font-semibold py-3 rounded-lg transition-colors"
+                    disabled={submitting}
+                    className="w-full text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-60"
                     style={{
                       background:
                         "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 40%,#ff0066 85%)",
@@ -181,7 +195,7 @@ const HelpSupport = () => {
                         "0 4px 14px -2px rgba(255,0,80,0.45),0 2px 6px -1px rgba(0,0,0,0.25)",
                     }}
                   >
-                    Submit
+                    {submitting ? "Submitting..." : "Submit"}
                   </button>
                   <p className="text-xs text-gray-500 text-center">
                     We usually respond within 24 hours.

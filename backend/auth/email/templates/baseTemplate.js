@@ -13,6 +13,7 @@ exports.baseTemplate = (contentHtml) => `
   <style>
     body {
       ${styles.body}
+      background: linear-gradient(135deg, #fff6f7, #ffe9ec);
     }
 
     /* Core Reset */
@@ -45,11 +46,15 @@ exports.baseTemplate = (contentHtml) => `
     /* Card container */
     .card {
       ${styles.card}
+      background: #fff7f8; /* subtle light reddish instead of pure white */
+      border: 1px solid ${colors.border};
     }
 
     /* Footer */
     .footer {
       ${styles.footer}
+      background: #fff1f3; /* very light reddish footer */
+      border-top: 1px solid ${colors.border};
     }
 
     .footer-links a {
@@ -95,19 +100,19 @@ exports.baseTemplate = (contentHtml) => `
           <!-- Footer -->
           <tr>
             <td class="footer">
-              <div style="margin-bottom: 10px;">Connect with us</div>
-
-              <div class="footer-links">
-                ${social
-                  .map(
-                    (entry) =>
-                      `<a href="${entry.href}" target="_blank">${entry.label}</a>`
-                  )
-                  .join("")}
+              <div style="margin-top: 18px; color: ${
+                colors.muted
+              }; font-size: 12px;">
+                Need help? Email us at
+                <a href="mailto:news10express@gmail.com" style="color:${
+                  colors.brand
+                }; text-decoration:none; font-weight:600;">
+                  news10express@gmail.com
+                </a>
               </div>
 
-              <div style="margin-top: 18px;">
-                © ${new Date().getFullYear()} NewsXpress — Crafted in India
+              <div style="margin-top: 10px;">
+                &copy; ${new Date().getFullYear()} NewsXpress — Crafted in India
               </div>
             </td>
           </tr>
