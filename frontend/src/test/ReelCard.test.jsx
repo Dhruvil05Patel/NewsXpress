@@ -71,7 +71,7 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 
 describe('ReelCard Component', () => {
-  
+
   // Default Props
   const defaultProps = {
     title: 'Test Title',
@@ -111,11 +111,11 @@ describe('ReelCard Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorageMock.clear();
-    
+
     // CRITICAL FIX: Reset getItem to return null by default.
     // This ensures 'isBookmarked' starts as false for every test.
     localStorageMock.getItem.mockReturnValue(null);
-    
+
     // Reset default mock implementations
     useTextToSpeech.mockReturnValue(mockTTS);
     useTranslation.mockReturnValue(mockTranslation);
@@ -127,7 +127,7 @@ describe('ReelCard Component', () => {
 
   it('renders article content correctly', () => {
     render(<ReelCard {...defaultProps} />);
-    
+
     expect(screen.getByText('Test Title')).toBeInTheDocument();
     expect(screen.getByText('Test Summary')).toBeInTheDocument();
     expect(screen.getByText('CNN')).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe('ReelCard Component', () => {
     });
 
     render(<ReelCard {...defaultProps} />);
-    
+
     expect(screen.getByText('Titulo')).toBeInTheDocument();
     expect(screen.getByText('Resumen')).toBeInTheDocument();
     expect(screen.queryByText('Test Title')).not.toBeInTheDocument();
@@ -166,10 +166,10 @@ describe('ReelCard Component', () => {
 
   it('pauses audio when card becomes inactive', () => {
     const pauseSpy = vi.fn();
-    const ttsMock = { 
-      ...mockTTS, 
-      isSpeaking: true, 
-      audioPlayer: { current: { pause: pauseSpy } } 
+    const ttsMock = {
+      ...mockTTS,
+      isSpeaking: true,
+      audioPlayer: { current: { pause: pauseSpy } }
     };
     useTextToSpeech.mockReturnValue(ttsMock);
 
@@ -177,7 +177,7 @@ describe('ReelCard Component', () => {
     expect(pauseSpy).not.toHaveBeenCalled();
 
     rerender(<ReelCard {...defaultProps} isActive={false} />);
-    
+
     expect(pauseSpy).toHaveBeenCalled();
     expect(ttsMock.handleListen).toHaveBeenCalled();
   });
@@ -190,7 +190,7 @@ describe('ReelCard Component', () => {
 
   it('handles Listen Click (Auth Guard)', async () => {
     render(<ReelCard {...defaultProps} userProfile={null} />);
-    
+
     const listenBtn = screen.getByLabelText('Listen to news summary');
     fireEvent.click(listenBtn);
 
@@ -259,7 +259,7 @@ describe('ReelCard Component', () => {
     localStorageMock.getItem.mockReturnValue(JSON.stringify(existing));
 
     render(<ReelCard {...defaultProps} />);
-    
+
     // FIX: Label should be 'Remove bookmark' because localStorage found it
     const removeBtn = screen.getByLabelText('Remove bookmark');
     fireEvent.click(removeBtn);
@@ -270,7 +270,7 @@ describe('ReelCard Component', () => {
 
   it('saves Bookmark with Note', () => {
     render(<ReelCard {...defaultProps} />);
-    
+
     // 1. Open Modal
     fireEvent.click(screen.getByLabelText('Add bookmark'));
 
@@ -282,7 +282,7 @@ describe('ReelCard Component', () => {
     fireEvent.click(screen.getByText('Save'));
 
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'bookmarks', 
+      'bookmarks',
       expect.stringContaining('"note":"My Note"')
     );
     expect(notify.success).toHaveBeenCalledWith(expect.stringContaining('Added to bookmarks'));
@@ -291,11 +291,46 @@ describe('ReelCard Component', () => {
 
   it('closes Bookmark Modal on Cancel', () => {
     render(<ReelCard {...defaultProps} />);
-    
+
     fireEvent.click(screen.getByLabelText('Add bookmark'));
     fireEvent.click(screen.getByText('Cancel'));
-    
+
     expect(screen.queryByText('Save Bookmark')).not.toBeInTheDocument();
+  });
+
+  it('handles localStorage JSON parse error gracefully', () => {
+    localStorageMock.getItem.mockReturnValue('invalid-json');
+    render(<ReelCard {...defaultProps} />);
+    // Should render without crashing and not be bookmarked
+    expect(screen.getByLabelText('Add bookmark')).toBeInTheDocument();
+  });
+
+  it('handles missing audioPlayersRef', () => {
+    render(<ReelCard {...defaultProps} audioPlayersRef={null} />);
+    // Should render without crashing
+    expect(screen.getByText('Test Title')).toBeInTheDocument();
+  });
+
+  it('formats time correctly', () => {
+    // We can test the helper function indirectly via the rendered output
+    // or export it if we want unit tests. Here we test via UI.
+
+    // 1. < 1 min
+    useInteractionTimer.mockReturnValue({ timeSpent: 45 });
+    const { unmount } = render(<ReelCard {...defaultProps} />);
+    expect(screen.getByText('45s')).toBeInTheDocument();
+    unmount();
+
+    // 2. > 1 min
+    useInteractionTimer.mockReturnValue({ timeSpent: 125 });
+    render(<ReelCard {...defaultProps} />);
+    expect(screen.getByText('2m 5s')).toBeInTheDocument();
+
+    // 3. 0s or negative
+    // Note: The component might not render the time badge if timeSpent is 0 depending on logic,
+    // but the helper returns "0s".
+    // Let's check negative/zero via helper logic if exposed, or just rely on UI.
+    // The UI renders {formatTime(timeSpent)}.
   });
 
 });

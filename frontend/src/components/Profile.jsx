@@ -276,12 +276,12 @@ export default function Profile({
                                             value={newUsername}
                                             onChange={(e) => setNewUsername(e.target.value)}
                                             className={`flex-1 px-3 py-2 border rounded-md text-sm ${checkingUsername
-                                                    ? "border-gray-300"
-                                                    : newUsername && newUsername !== userProfile?.username
-                                                        ? usernameAvailable
-                                                            ? "border-green-500 focus:ring-green-500"
-                                                            : "border-red-500 focus:ring-red-500"
-                                                        : "border-gray-300"
+                                                ? "border-gray-300"
+                                                : newUsername && newUsername !== userProfile?.username
+                                                    ? usernameAvailable
+                                                        ? "border-green-500 focus:ring-green-500"
+                                                        : "border-red-500 focus:ring-red-500"
+                                                    : "border-gray-300"
                                                 }`}
                                             aria-label="Edit username"
                                             placeholder="Enter your username"
@@ -345,6 +345,7 @@ export default function Profile({
                                     onClick={handleNotificationToggle}
                                     className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${notifications ? "bg-red-500" : "bg-gray-200"
                                         }`}
+                                    aria-label="Toggle notifications"
                                 >
                                     <span
                                         aria-hidden="true"

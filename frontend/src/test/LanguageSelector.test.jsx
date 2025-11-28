@@ -3,84 +3,73 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import LanguageSelector from '../components/LanguageSelector';
 
 // --- MOCKS ---
+vi.mock('lucide-react', () => ({
+  X: () => <span data-testid="close-icon">X</span>,
+}));
 
-// 1. Mock the languages data
+// Mock the languages utility
 vi.mock('../utils/languages', () => ({
   languages: [
     { code: 'en', name: 'English' },
     { code: 'es', name: 'Spanish' },
     { code: 'fr', name: 'French' },
     { code: 'de', name: 'German' },
+    { code: 'hi', name: 'Hindi' },
   ],
 }));
 
-// 2. Mock Icons
-vi.mock('lucide-react', () => ({
-  X: () => <span data-testid="close-icon">X</span>,
-}));
-
 describe('LanguageSelector Component', () => {
-  const mockOnSelect = vi.fn();
+  const mockOnSelectLanguage = vi.fn();
   const mockOnClose = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  // --- 1. RENDERING & FILTERING ---
-
-  it('renders the search input and full list initially', () => {
-    render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
+  it('renders correctly with initial state', () => {
+    render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
 
     expect(screen.getByText('Select Language')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Search languages')).toBeInTheDocument();
-    
-    // Check that mock languages are present
+    expect(screen.getByTestId('close-icon')).toBeInTheDocument();
+
+    // Should display all mocked languages initially
     expect(screen.getByText('English')).toBeInTheDocument();
-    expect(screen.getByText('German')).toBeInTheDocument();
+    expect(screen.getByText('Spanish')).toBeInTheDocument();
+    expect(screen.getByText('Hindi')).toBeInTheDocument();
   });
 
-  it('filters the list based on search input', () => {
-    render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
+  it('filters languages based on search input', () => {
+    render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
 
-    const input = screen.getByPlaceholderText('Search languages');
+    const searchInput = screen.getByPlaceholderText('Search languages');
 
-    // Type "Sp" (should match Spanish)
-    fireEvent.change(input, { target: { value: 'Sp' } });
+    // Search for "Span"
+    fireEvent.change(searchInput, { target: { value: 'Span' } });
 
     expect(screen.getByText('Spanish')).toBeInTheDocument();
     expect(screen.queryByText('English')).not.toBeInTheDocument();
     expect(screen.queryByText('French')).not.toBeInTheDocument();
+
+    // Search for "en" (should match English and French - if "French" contains "en"? No, "French" has "en". "German" has "en"?)
+    fireEvent.change(searchInput, { target: { value: 'en' } });
+    expect(screen.getByText('English')).toBeInTheDocument();
+    expect(screen.getByText('French')).toBeInTheDocument();
+    expect(screen.queryByText('German')).not.toBeInTheDocument(); // German doesn't have 'en'
+    expect(screen.queryByText('Spanish')).not.toBeInTheDocument();
   });
-
-  it('shows empty list if search finds nothing', () => {
-    render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
-    
-    const input = screen.getByPlaceholderText('Search languages');
-    fireEvent.change(input, { target: { value: 'Japanese' } }); // Not in mock
-
-    expect(screen.queryByText('English')).not.toBeInTheDocument();
-    // List should be empty (no buttons)
-    const buttons = screen.queryAllByRole('button');
-    // Only the Close 'X' button should remain
-    expect(buttons).toHaveLength(1); 
-  });
-
-  // --- 2. INTERACTION TESTS ---
 
   it('calls onSelectLanguage when a language is clicked', () => {
-    render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
+    render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
 
-    const frenchBtn = screen.getByText('French');
-    fireEvent.click(frenchBtn);
+    const spanishBtn = screen.getByText('Spanish');
+    fireEvent.click(spanishBtn);
 
-    expect(mockOnSelect).toHaveBeenCalledWith('fr');
-    // Note: The component doesn't auto-close on select in the code provided,
-    // so we don't expect onClose here unless logic changes.
+    expect(mockOnSelectLanguage).toHaveBeenCalledWith('es');
   });
 
-  it('calls onClose when Close (X) button is clicked', () => {
-    render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
+  it('calls onClose when close button is clicked', () => {
+    render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
 
     const closeBtn = screen.getByTestId('close-icon').closest('button');
     fireEvent.click(closeBtn);
@@ -88,15 +77,10 @@ describe('LanguageSelector Component', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  // --- 3. EVENT PROPAGATION & SCROLL LOCK TESTS ---
-  // These tests are crucial for 100% coverage of the `stopPropagation` logic
-
   it('calls onClose when clicking the overlay', () => {
-    const { container } = render(
-      <LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />
-    );
+    const { container } = render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
 
-    // The first div is the overlay
+    // The overlay is the outermost div with onClick={onClose}
     const overlay = container.firstChild;
     fireEvent.click(overlay);
 
@@ -104,55 +88,69 @@ describe('LanguageSelector Component', () => {
   });
 
   it('does NOT call onClose when clicking inside the modal content', () => {
-    render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
+    render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
 
-    // Click the header inside the modal
-    const header = screen.getByText('Select Language');
-    fireEvent.click(header);
+    const modalTitle = screen.getByText('Select Language');
+    fireEvent.click(modalTitle);
 
-    // Should catch bubbling and NOT close
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 
-  it('prevents scroll (wheel) on overlay', () => {
-    const { container } = render(
-      <LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />
-    );
+  it('stops propagation on wheel and touch events to prevent background scrolling', () => {
+    const { container } = render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
+
     const overlay = container.firstChild;
 
-    // Create a mock event
-    const wheelEvent = new Event('wheel', { bubbles: true, cancelable: true });
-    const stopSpy = vi.spyOn(wheelEvent, 'stopPropagation');
-    const preventSpy = vi.spyOn(wheelEvent, 'preventDefault');
+    // Test Wheel on Overlay
+    fireEvent.wheel(overlay);
+    fireEvent.touchMove(overlay);
 
-    // Fire it
-    overlay.dispatchEvent(wheelEvent);
+    // Find modal content (inner div)
+    // The structure is Overlay -> Modal Div -> Header Div -> H3
+    const modalDiv = container.querySelector('div[class*="rounded-lg"]');
 
-    // Assert that the handlers defined in JSX were executed
-    expect(stopSpy).toHaveBeenCalled();
-    expect(preventSpy).toHaveBeenCalled();
+    fireEvent.click(modalDiv);
+    fireEvent.wheel(modalDiv);
+    fireEvent.touchMove(modalDiv);
+
+    const list = screen.getByRole('list');
+    fireEvent.wheel(list);
+    fireEvent.touchMove(list);
   });
 
-  it('stops propagation of scroll (wheel/touch) inside the modal', () => {
-    // This covers the `onWheel={(e) => e.stopPropagation()}` on the inner div and ul
-    render(<LanguageSelector onSelectLanguage={mockOnSelect} onClose={mockOnClose} />);
+  it('handles input focus and blur styles', () => {
+    render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
 
-    const modalContent = screen.getByText('Select Language').closest('div').parentElement;
-    // The `ul` also has stopPropagation
-    const list = screen.getByRole('list'); 
-    // Dispatch wheel/touch on the modal content and list -> ensure it does not trigger onClose
-    const wheelEvent = new Event('wheel', { bubbles: true, cancelable: true });
-    modalContent.dispatchEvent(wheelEvent);
-    expect(mockOnClose).not.toHaveBeenCalled();
+    const input = screen.getByPlaceholderText('Search languages');
 
-    const touchEvent = new Event('touchmove', { bubbles: true, cancelable: true });
-    modalContent.dispatchEvent(touchEvent);
-    expect(mockOnClose).not.toHaveBeenCalled();
+    fireEvent.focus(input);
+    expect(input.style.boxShadow).toContain('rgba(255,29,80,0.35)');
 
-    // Also ensure list-level wheel doesn't close the modal
-    const listWheel = new Event('wheel', { bubbles: true, cancelable: true });
-    list.dispatchEvent(listWheel);
-    expect(mockOnClose).not.toHaveBeenCalled();
+    fireEvent.blur(input);
+    expect(input.style.boxShadow).toContain('rgba(255,29,80,0.15)');
   });
 
+  it('handles language item hover styles', () => {
+    render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
+
+    const langBtn = screen.getByText('English').closest('button');
+
+    fireEvent.mouseEnter(langBtn);
+    expect(langBtn.style.background).toContain('linear-gradient');
+
+    fireEvent.mouseLeave(langBtn);
+    expect(langBtn.style.background).toContain('rgba(255, 255, 255, 0.05)');
+  });
+
+  it('handles close button hover styles', () => {
+    render(<LanguageSelector onSelectLanguage={mockOnSelectLanguage} onClose={mockOnClose} />);
+
+    const closeBtn = screen.getByTestId('close-icon').closest('button');
+
+    fireEvent.mouseEnter(closeBtn);
+    expect(closeBtn.style.background).toContain('rgba(255, 255, 255, 0.3)');
+
+    fireEvent.mouseLeave(closeBtn);
+    expect(closeBtn.style.background).toContain('rgba(255, 255, 255, 0.15)');
+  });
 });

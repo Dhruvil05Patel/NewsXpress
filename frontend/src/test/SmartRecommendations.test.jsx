@@ -61,7 +61,7 @@ describe('SmartRecommendations Component', () => {
   it('renders Error/Empty state correctly', () => {
     setHookReturn({ error: new Error('Fail'), recommendations: [] });
     render(<SmartRecommendations userId="u1" />);
-    
+
     expect(screen.getByText('Keep Reading to Get Personalized Recommendations')).toBeInTheDocument();
     expect(screen.getByText(/Read at least 5 articles/)).toBeInTheDocument();
   });
@@ -109,7 +109,7 @@ describe('SmartRecommendations Component', () => {
     render(<SmartRecommendations userId="u1" />);
 
     const analyticsBtn = screen.getByText('Analytics');
-    
+
     // Initially analysis panel should be hidden
     expect(screen.queryByText('Your Reading Preferences')).not.toBeInTheDocument();
 
@@ -164,15 +164,15 @@ describe('SmartRecommendations Component', () => {
     // Check Categories
     expect(screen.getByText('Tech')).toBeInTheDocument();
     expect(screen.getByText('Sports')).toBeInTheDocument();
-    
+
     // Check Time Formatting (tests formatSeconds helper)
     expect(screen.getByText('1h 1m')).toBeInTheDocument(); // Total time
     expect(screen.getByText('1m 5s')).toBeInTheDocument();    // Sports (65s)
     expect(screen.getByText('5m 0s')).toBeInTheDocument();    // Tech (300s)
   });
-  
+
   it('renders 0s for empty time analysis', () => {
-     setHookReturn({
+    setHookReturn({
       recommendations: [{ id: '1', title: 'Rec 1' }],
       analysis: {
         total_interaction_count: 0,
@@ -187,7 +187,85 @@ describe('SmartRecommendations Component', () => {
     // Check specific zero stats
     // We look for text "0s" but scoped, or check the average calculation
     const avgTime = screen.getAllByText('0s');
-    expect(avgTime.length).toBeGreaterThan(0); 
+    expect(avgTime.length).toBeGreaterThan(0);
+  });
+
+  it('handles singular/plural text correctly', () => {
+    setHookReturn({
+      recommendations: [{ id: '1', title: 'Rec 1' }],
+      analysis: {
+        top_categories: [{ category: 'Tech', article_count: 1, total_time_seconds: 60 }]
+      }
+    });
+
+    render(<SmartRecommendations userId="u1" />);
+
+    // Check "1 personalized article" (singular)
+    expect(screen.getByText('Showing 1 personalized article')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Analytics'));
+    // Check "1 article" in category stats
+    expect(screen.getByText('1 article')).toBeInTheDocument();
+  });
+
+  it('normalizes article data correctly on click', () => {
+    const rawArticle = {
+      id: '1',
+      title: 'Raw Title',
+      summary: 'Raw Summary',
+      image_url: 'http://img.com',
+      original_url: 'http://orig.com', // url missing, use original_url
+      // source missing -> default
+      published_at: '2025-01-01T12:00:00Z',
+      topic: 'Science' // category missing, use topic
+    };
+
+    setHookReturn({
+      recommendations: [rawArticle],
+    });
+
+    render(<SmartRecommendations userId="u1" onArticleClick={mockOnArticleClick} />);
+
+    const cardWrapper = screen.getByTestId('news-card').parentElement;
+    fireEvent.click(cardWrapper);
+
+    expect(mockOnArticleClick).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          newsUrl: 'http://orig.com',
+          source: 'NewsXpress',
+          category: 'Science',
+          timestamp: expect.stringContaining('1/1/2025') // Depends on locale, but check partial match
+        })
+      ]),
+      0
+    );
+  });
+
+  it('formats seconds correctly (edge cases)', () => {
+    // Test via UI rendering of analysis panel
+    setHookReturn({
+      recommendations: [{ id: '1', title: 'Rec 1' }],
+      analysis: {
+        total_interaction_count: 1,
+        total_time_spent_seconds: 59, // < 1m -> 59s
+        top_categories: [
+          { category: 'A', article_count: 1, total_time_seconds: -10 }, // Negative -> 0s
+          { category: 'B', article_count: 1, total_time_seconds: 3661 }, // > 1h -> 1h 1m
+        ]
+      }
+    });
+
+    render(<SmartRecommendations userId="u1" />);
+    fireEvent.click(screen.getByText('Analytics'));
+
+    // The component displays TOTAL time spent (59s) and AVG time (59 / 1 = 59s)
+    // Since there are multiple '59s' (Total and Avg), we use getAllByText
+    const times = screen.getAllByText('59s');
+    expect(times.length).toBeGreaterThan(0);
+
+    expect(screen.getByText('0s')).toBeInTheDocument(); // Negative handled
+    expect(screen.getByText('1h 1m')).toBeInTheDocument();
   });
 
 });

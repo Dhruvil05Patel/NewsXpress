@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import SignUp from '../components/SignUp'; // Adjust path if needed
+import SignUp from '../components/SignUp';
 import * as authController from '../components/auth/controller/authController';
 import { auth } from '../components/auth/firebase';
 import notify from '../utils/toast';
@@ -64,8 +64,7 @@ describe('SignUp Component', () => {
 
     fireEvent.change(screen.getByPlaceholderText(/Enter your Full Name/i), { target: { value: data.name } });
     fireEvent.change(screen.getByPlaceholderText(/Choose a username/i), { target: { value: data.user } });
-    // DOB input in the component does not have an associated label 'for' attribute in DOM
-    // so query by input[type="date"] instead of label to make tests robust.
+
     const dobInput = document.querySelector('input[type="date"]');
     if (dobInput) {
       fireEvent.change(dobInput, { target: { value: data.dob } });
@@ -79,7 +78,7 @@ describe('SignUp Component', () => {
 
   it('renders Sign Up form correctly', () => {
     render(<SignUp onClose={mockOnClose} onSwitchToLogin={mockOnSwitchToLogin} />);
-    
+
     expect(screen.getByRole('heading', { name: /Create an/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Enter your Full Name/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign Up' })).toBeInTheDocument();
@@ -87,7 +86,7 @@ describe('SignUp Component', () => {
 
   it('switches to Login when link is clicked', () => {
     render(<SignUp onClose={mockOnClose} onSwitchToLogin={mockOnSwitchToLogin} />);
-    
+
     const loginLink = screen.getByText('Login');
     fireEvent.click(loginLink);
 
@@ -106,29 +105,54 @@ describe('SignUp Component', () => {
   it('validates Age (Too Young)', () => {
     render(<SignUp onClose={mockOnClose} />);
     const today = new Date().toISOString().split('T')[0];
-    
-    // Fill DOB only — the DOB input may not be associated with a label in DOM;
-    // query by input[type="date"] for robustness.
+
     const dobInputSingle = document.querySelector('input[type="date"]');
     if (dobInputSingle) {
       fireEvent.change(dobInputSingle, { target: { value: today } });
     }
-    
-    // Check Error
+
     expect(screen.getByText(/Must be 13 years or older/i)).toBeInTheDocument();
-    
-    // Check Button Disabled
     const btn = screen.getByRole('button', { name: 'Sign Up' });
     expect(btn).toBeDisabled();
 
     // Try Submit (should block and toast)
     fireEvent.click(btn);
-    // Note: Button is disabled, so click might not fire handler in DOM, but we check state logic via UI
+  });
+
+  it('prevents submission with Age Error (Force Submit)', () => {
+    render(<SignUp onClose={mockOnClose} />);
+    const today = new Date().toISOString().split('T')[0];
+    const dobInput = document.querySelector('input[type="date"]');
+    if (dobInput) fireEvent.change(dobInput, { target: { value: today } });
+
+    // Force submit form
+    const form = document.querySelector('form');
+    fireEvent.submit(form);
+
+    expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('at least 13 years old'));
+  });
+
+  it('validates Age Edge Case (Exactly 13 - 1 day)', () => {
+    render(<SignUp onClose={mockOnClose} />);
+    const today = new Date();
+    // Create date strictly: 13 years ago, plus 1 day (so they are 12 years, 364 days old)
+    const tooYoung = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate() + 1);
+
+    // Format as YYYY-MM-DD manually to avoid timezone issues with toISOString
+    const year = tooYoung.getFullYear();
+    const month = String(tooYoung.getMonth() + 1).padStart(2, '0');
+    const day = String(tooYoung.getDate()).padStart(2, '0');
+    const dobStr = `${year}-${month}-${day}`;
+
+    const dobInput = document.querySelector('input[type="date"]');
+    if (dobInput) fireEvent.change(dobInput, { target: { value: dobStr } });
+
+    expect(screen.getByText(/Must be 13 years or older/i)).toBeInTheDocument();
   });
 
   it('validates Password Mismatch', () => {
     render(<SignUp onClose={mockOnClose} />);
-    
+
     const passInput = screen.getByPlaceholderText(/Enter your password/i);
     const confInput = screen.getByPlaceholderText(/Confirm your password/i);
 
@@ -139,9 +163,68 @@ describe('SignUp Component', () => {
     expect(screen.getByRole('button', { name: 'Sign Up' })).toBeDisabled();
   });
 
+  it('prevents submission with Password Mismatch (Force Submit)', () => {
+    render(<SignUp onClose={mockOnClose} />);
+
+    // Fill valid DOB first to avoid Age error masking the Password error
+    const today = new Date();
+    const dobInput = document.querySelector('input[type="date"]');
+    if (dobInput) fireEvent.change(dobInput, { target: { value: '2000-01-01' } });
+
+    const passInput = screen.getByPlaceholderText(/Enter your password/i);
+    const confInput = screen.getByPlaceholderText(/Confirm your password/i);
+
+    fireEvent.change(passInput, { target: { value: 'Pass123!' } });
+    fireEvent.change(confInput, { target: { value: 'Different123!' } });
+
+    const form = document.querySelector('form');
+    fireEvent.submit(form);
+
+    expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('Passwords do not match'));
+  });
+
+  it('validates Password Complexity (Weak Password)', () => {
+    render(<SignUp onClose={mockOnClose} />);
+
+    const passInput = screen.getByPlaceholderText(/Enter your password/i);
+    fireEvent.change(passInput, { target: { value: 'weak' } });
+
+    // Check for specific complexity errors
+    expect(screen.getByText(/At least 8 characters/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 uppercase letter/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 number/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 special character/i)).toBeInTheDocument();
+  });
+
+  it('prevents submission with Weak Password (Fallback Check)', () => {
+    render(<SignUp onClose={mockOnClose} />);
+    fillForm({ pass: 'WeakPass1', conf: 'WeakPass1' }); // Missing special char
+
+    const btn = screen.getByRole('button', { name: 'Sign Up' });
+    // Button is NOT disabled by complexity in current implementation, so we can click it
+    fireEvent.click(btn);
+
+    expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('satisfy all password requirements'));
+    expect(authController.registerUser).not.toHaveBeenCalled();
+  });
+
+  it('toggles Show Password', () => {
+    render(<SignUp onClose={mockOnClose} />);
+    const passInput = screen.getByPlaceholderText(/Enter your password/i);
+    const checkbox = screen.getByLabelText('Show Password');
+
+    expect(passInput).toHaveAttribute('type', 'password');
+
+    fireEvent.click(checkbox);
+    expect(passInput).toHaveAttribute('type', 'text');
+
+    fireEvent.click(checkbox);
+    expect(passInput).toHaveAttribute('type', 'password');
+  });
+
   it('validates Username Format (Invalid)', () => {
     render(<SignUp onClose={mockOnClose} />);
-    
+
     const userInput = screen.getByPlaceholderText(/Choose a username/i);
     fireEvent.change(userInput, { target: { value: '.badstart' } });
 
@@ -151,7 +234,7 @@ describe('SignUp Component', () => {
 
   it('validates Username Format (Valid)', () => {
     render(<SignUp onClose={mockOnClose} />);
-    
+
     const userInput = screen.getByPlaceholderText(/Choose a username/i);
     fireEvent.change(userInput, { target: { value: 'good_user.1' } });
 
@@ -165,7 +248,7 @@ describe('SignUp Component', () => {
     render(<SignUp onClose={mockOnClose} />);
 
     fillForm(); // Fills with valid data
-    
+
     fireEvent.click(screen.getByRole('button', { name: 'Sign Up' }));
 
     await waitFor(() => {
@@ -178,21 +261,32 @@ describe('SignUp Component', () => {
     });
   });
 
+  it('handles Registration Failure', async () => {
+    authController.registerUser.mockResolvedValue({ success: false, error: 'Email taken' });
+    render(<SignUp onClose={mockOnClose} />);
+    fillForm();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign Up' }));
+
+    await waitFor(() => {
+      expect(authController.registerUser).toHaveBeenCalled();
+      // Should NOT show verification modal
+      expect(screen.queryByText(/Verify Your Email/i)).not.toBeInTheDocument();
+    });
+  });
+
   // --- 4. VERIFICATION MODAL FLOWS ---
 
   it('handles Verification Refresh (Success)', async () => {
-    // Setup: Start directly in verification mode (simulate successful register)
     authController.registerUser.mockResolvedValue({ success: true, email: 'new@test.com' });
     render(<SignUp onClose={mockOnClose} />);
     fillForm();
     fireEvent.click(screen.getByRole('button', { name: 'Sign Up' }));
     await waitFor(() => screen.getByText(/Verify Your Email/i));
 
-    // Mock Verification Success
     auth.currentUser.reload.mockResolvedValue();
     Object.defineProperty(auth.currentUser, 'emailVerified', { value: true, configurable: true });
 
-    // Click Refresh
     const refreshBtn = screen.getByText("✓ I've Verified - Refresh");
     fireEvent.click(refreshBtn);
 
@@ -209,7 +303,6 @@ describe('SignUp Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign Up' }));
     await waitFor(() => screen.getByText(/Verify Your Email/i));
 
-    // Mock Verification Failure (False)
     auth.currentUser.reload.mockResolvedValue();
     Object.defineProperty(auth.currentUser, 'emailVerified', { value: false, configurable: true });
 
@@ -238,6 +331,44 @@ describe('SignUp Component', () => {
     });
   });
 
+  it('handles Resend Verification Email (No Display Name)', async () => {
+    authController.registerUser.mockResolvedValue({ success: true, email: 'new@test.com' });
+    render(<SignUp onClose={mockOnClose} />);
+    fillForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign Up' }));
+    await waitFor(() => screen.getByText(/Verify Your Email/i));
+
+    // Mock currentUser with NO display name
+    auth.currentUser.displayName = null;
+
+    const { sendVerificationEmail } = await import('../services/api');
+    const resendBtn = screen.getByText(/Resend Verification Email/i);
+    fireEvent.click(resendBtn);
+
+    await waitFor(() => {
+      expect(sendVerificationEmail).toHaveBeenCalledWith('new@test.com', 'User');
+      expect(notify.success).toHaveBeenCalled();
+    });
+  });
+
+  it('handles Resend Verification Error', async () => {
+    authController.registerUser.mockResolvedValue({ success: true, email: 'new@test.com' });
+    render(<SignUp onClose={mockOnClose} />);
+    fillForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign Up' }));
+    await waitFor(() => screen.getByText(/Verify Your Email/i));
+
+    const { sendVerificationEmail } = await import('../services/api');
+    sendVerificationEmail.mockRejectedValue(new Error('Network Error'));
+
+    const resendBtn = screen.getByText(/Resend Verification Email/i);
+    fireEvent.click(resendBtn);
+
+    await waitFor(() => {
+      expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('Failed to resend email'));
+    });
+  });
+
   it('handles Back to Sign Up (Reset)', async () => {
     authController.registerUser.mockResolvedValue({ success: true, email: 'new@test.com' });
     render(<SignUp onClose={mockOnClose} />);
@@ -245,36 +376,9 @@ describe('SignUp Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign Up' }));
     await waitFor(() => screen.getByText(/Verify Your Email/i));
 
-    // Click Back
     const backBtn = screen.getByText(/Back to Sign Up/i);
-    // Wait, let's check the code:
-    // <button ...> ← Back to Login </button>  (Lines 273)
-    // Wait, line 273 says "Back to Login". Since this is SignUp.jsx, should it say "Back to Sign Up"?
-    // Or does it reset to Login mode?
-    // Line 269: setIsLogin(true); -> It resets to LOGIN mode.
-    
-    // Let's test what the code DOES.
     fireEvent.click(backBtn);
 
-    // It resets setIsLogin(true), but wait... 
-    // SignUp.jsx doesn't seem to have `isLogin` state?
-    // Looking at your pasted code...
-    // Line 11: const [isLogin, setIsLogin] = useState(true); 
-    // WAIT! Your pasted code for SignUp.jsx HAS `isLogin` state inside it?
-    // And it renders EITHER Login OR Signup?
-    
-    // RE-READING YOUR CODE:
-    // function SignUp({ onClose, onSwitchToLogin }) { ... }
-    // It seems you might have pasted `App.jsx` content AGAIN but renamed the function to `SignUp`?
-    // Or does `SignUp.jsx` contain a full copy of the Login logic?
-    
-    // If `SignUp.jsx` contains the full logic (Login/Signup toggle), then my test assumptions need to be adjusted.
-    // Assuming `SignUp.jsx` is intended to be JUST the Signup form, usually it wouldn't have `isLogin` state.
-    
-    // BUT based on the code you pasted, it DOES have `isLogin` state logic.
-    // So, clicking "Back to Login" (line 273) sets `isLogin(true)`.
-    
-    // Clicking back returns to the Sign Up modal
     expect(screen.getByRole('heading', { name: /Create an/i })).toBeInTheDocument();
   });
 

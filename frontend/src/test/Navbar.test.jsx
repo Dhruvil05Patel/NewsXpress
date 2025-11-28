@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import Navbar from '../components/Navbar';
 import * as api from '../services/api';
 import * as authController from '../components/auth/controller/authController';
@@ -78,6 +78,9 @@ describe('Navbar Component', () => {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     }));
+
+    // Reset pathname
+    mockPathname = '/all';
   });
 
   afterEach(() => {
@@ -215,8 +218,6 @@ describe('Navbar Component', () => {
     expect(techBtn).toBeInTheDocument();
     // active style uses a linear-gradient background
     expect(techBtn.style.background).toMatch(/linear-gradient/);
-    // reset
-    mockPathname = '/all';
   });
 
   it('calls onSearchChange when logged in and typing', () => {
@@ -255,6 +256,104 @@ describe('Navbar Component', () => {
     fireEvent.mouseLeave(btn);
     expect(btn.style.backgroundColor).toBe('transparent');
     expect(btn.style.transform).toBe('scale(1)');
+  });
+
+  it('navigates to Home when Home button is clicked in mobile bottom nav', () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({ matches: false }));
+    render(<Navbar userProfile={mockUserProfile} />);
+
+    const homeBtn = screen.getAllByText('Home')[0].closest('button');
+    fireEvent.click(homeBtn);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  it('closes sidebar when clicking the overlay', async () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({ matches: false }));
+    const { container } = render(<Navbar userProfile={mockUserProfile} />);
+
+    // Open Sidebar
+    const menuBtn = screen.getByText('Categories').closest('button');
+    fireEvent.click(menuBtn);
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Find overlay and click it
+    const fixedEls = container.querySelectorAll('div[class*="fixed"][class*="inset-0"]');
+    let overlay = null;
+    fixedEls.forEach((el) => {
+      if (el.className && el.className.includes('transition-opacity')) overlay = el;
+    });
+
+    expect(overlay).toBeTruthy();
+    fireEvent.click(overlay);
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    const sidebar = container.querySelector('div[class*="relative"][class*="w-64"]');
+    expect(sidebar).toBeNull();
+  });
+
+  it('renders dot for categories without icon (e.g., All)', () => {
+    render(<Navbar userProfile={mockUserProfile} />);
+    // "All" category has no icon in the mock, so it should render a dot (span with rounded-full)
+    // Since mockPathname is /all, it is active, so it has white background (inline style)
+    const allBtn = screen.getByText('All').closest('button');
+    const dot = allBtn.querySelector('.rounded-full');
+    expect(dot).toBeInTheDocument();
+  });
+
+  // --- MOBILE SEARCH TESTS ---
+
+  it('handles mobile search input changes', () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({ matches: false })); // Mobile
+    const mockOnSearchChange = vi.fn();
+    render(<Navbar userProfile={mockUserProfile} onSearchChange={mockOnSearchChange} />);
+
+    // Mobile search input has placeholder "Search Headlines..." (Capital H)
+    const input = screen.getByPlaceholderText('Search Headlines...');
+    fireEvent.change(input, { target: { value: 'mobile search' } });
+
+    expect(mockOnSearchChange).toHaveBeenCalledWith('mobile search');
+  });
+
+  it('handles mobile search focus and blur styles', () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({ matches: false })); // Mobile
+    render(<Navbar userProfile={mockUserProfile} />);
+
+    const input = screen.getByPlaceholderText('Search Headlines...');
+
+    fireEvent.focus(input);
+    expect(input.style.borderColor).toBe('rgb(239, 68, 68)');
+
+    fireEvent.blur(input);
+    expect(input.style.borderColor).toBe('rgb(229, 231, 235)');
+  });
+
+  it('prevents mobile search interaction for guest', () => {
+    window.matchMedia = vi.fn().mockImplementation(() => ({ matches: false })); // Mobile
+    const mockOnLoginClick = vi.fn();
+    const mockOnSearchChange = vi.fn();
+
+    render(<Navbar userProfile={null} onLoginClick={mockOnLoginClick} onSearchChange={mockOnSearchChange} />);
+
+    const input = screen.getByPlaceholderText('Search Headlines...');
+
+    // Click
+    fireEvent.click(input);
+    expect(mockOnLoginClick).toHaveBeenCalled();
+
+    // Type
+    fireEvent.change(input, { target: { value: 'test' } });
+    expect(mockOnSearchChange).not.toHaveBeenCalled();
+
+    // Focus (should return early)
+    fireEvent.focus(input);
+    expect(input.style.borderColor).not.toBe('rgb(239, 68, 68)');
   });
 
 });
