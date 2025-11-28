@@ -12,7 +12,6 @@ import {
   VolumeX,
   LoaderCircle,
   Bookmark,
-  Clock,
 } from "lucide-react";
 import LanguageSelector from "./LanguageSelector";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
@@ -32,17 +31,13 @@ export default function ReelCard({
   userProfile,
   isActive,
   audioPlayersRef,
+  cleanupFunctionsRef,
   cardIndex,
   onOverlayChange,
   articleId,
 }) {
-  // Track time spent on article when user is viewing it
-  const { timeSpent } = useInteractionTimer(
-    userProfile?.id,
-    articleId,
-    category,
-    isActive
-  );
+  // Track time spent on article for analytics (value not displayed)
+  useInteractionTimer(userProfile?.id, articleId, category, isActive);
 
   // Use custom hooks for translation + TTS.
   const {
@@ -56,7 +51,7 @@ export default function ReelCard({
     performTranslation,
   } = useTranslation();
 
-  const { isSpeaking, isFetchingAudio, handleListen, audioPlayer } =
+  const { isSpeaking, isFetchingAudio, handleListen, audioPlayer, cleanup } =
     useTextToSpeech(selectedLanguage);
 
   // Bookmark local state + note modal.
@@ -91,20 +86,25 @@ export default function ReelCard({
     }
   }, [audioPlayersRef, audioPlayer, cardIndex]);
 
-  // Stop TTS playback when card leaves active viewport.
+  // Register this card's cleanup function in the parent ref array
   useEffect(() => {
-    if (!isActive && isSpeaking && audioPlayer.current) {
-      audioPlayer.current.pause();
-      // Trigger handleListen to properly update state
-      handleListen();
+    if (cleanupFunctionsRef) {
+      cleanupFunctionsRef.current[cardIndex] = cleanup;
     }
-  }, [isActive, isSpeaking, audioPlayer, handleListen]);
+  }, [cleanupFunctionsRef, cleanup, cardIndex]);
+
+  // Stop TTS playback and abort fetch when card leaves active viewport.
+  useEffect(() => {
+    if (!isActive && (isSpeaking || isFetchingAudio)) {
+      cleanup();
+    }
+  }, [isActive, isSpeaking, isFetchingAudio, cleanup]);
 
   // Translation click handler: auth gate + toggle language selector.
   const onTranslateClick = (e) => {
     e.stopPropagation();
     if (!userProfile) {
-      notify.warn("🔒 Please login to use translation feature");
+      notify.warn("Please log in to use the translation feature");
       return;
     }
     handleTranslateClick();
@@ -124,7 +124,7 @@ export default function ReelCard({
   const onListenClick = async (e) => {
     e.stopPropagation();
     if (!userProfile) {
-      notify.warn("🔒 Please login to use text-to-speech feature");
+      notify.warn("Please log in to use text-to-speech");
       return;
     }
     const textToSpeak =
@@ -136,7 +136,7 @@ export default function ReelCard({
   const onBookmarkClick = (e) => {
     e.stopPropagation();
     if (!userProfile) {
-      notify.warn("🔒 Please login to bookmark articles");
+      notify.warn("Please log in to bookmark articles");
       return;
     }
 
@@ -148,7 +148,7 @@ export default function ReelCard({
       localStorage.setItem("bookmarks", JSON.stringify(next));
       setIsBookmarked(false);
       setBookmarkNote("");
-      notify.success("✅ Bookmark removed");
+      notify.success("Bookmark removed successfully");
       return;
     }
     // Open themed modal for note entry when adding.
@@ -176,7 +176,8 @@ export default function ReelCard({
     setBookmarkNote(bookmarkNoteDraft.trim());
     setShowBookmarkModal(false);
     notify.success(
-      "🔖 Added to bookmarks" + (bookmarkNoteDraft.trim() ? " with note" : "")
+      "Article bookmarked" +
+        (bookmarkNoteDraft.trim() ? " with note" : " successfully")
     );
   };
 
@@ -233,19 +234,15 @@ export default function ReelCard({
               <span className="font-semibold">{source}</span> •{" "}
               <span>{timestamp}</span>
             </div>
-            {userProfile && (
-              <div className="flex items-center gap-1 px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-xs text-gray-300">
-                <Clock size={14} />
-                <span>{formatTime(timeSpent)}</span>
-              </div>
-            )}
+            {/* Timer display removed per request */}
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={onBookmarkClick}
-              className={`flex items-center gap-2 p-2.5 rounded-full backdrop-blur-sm transition-colors ${isBookmarked ? "" : "bg-white/10 hover:bg-white/20"
-                }`}
+              className={`flex items-center gap-2 p-2.5 rounded-full backdrop-blur-sm transition-colors ${
+                isBookmarked ? "" : "bg-white/10 hover:bg-white/20"
+              }`}
               style={isBookmarked ? gradientStyle : undefined}
               aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
             >
@@ -266,8 +263,9 @@ export default function ReelCard({
             <button
               onClick={onListenClick}
               disabled={isFetchingAudio}
-              className={`p-2.5 rounded-full backdrop-blur-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${isSpeaking ? "" : "bg-white/10 hover:bg-white/20"
-                }`}
+              className={`p-2.5 rounded-full backdrop-blur-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${
+                isSpeaking ? "" : "bg-white/10 hover:bg-white/20"
+              }`}
               style={isSpeaking ? gradientStyle : undefined}
               aria-label="Listen to news summary"
             >
@@ -355,20 +353,4 @@ export default function ReelCard({
   );
 }
 
-/**
- * Helper function to format seconds into human-readable time
- * @param {number} seconds - Time in seconds
- * @returns {string} Formatted time (e.g., "2m 30s", "45s")
- */
-function formatTime(seconds) {
-  if (!seconds || seconds < 0) return "0s";
-
-  const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-
-  if (minutes > 0) {
-    return `${minutes}m ${secs}s`;
-  } else {
-    return `${secs}s`;
-  }
-}
+// formatTime helper removed (not displayed anymore)

@@ -1,6 +1,12 @@
 // src/auth/controllers/emailController.js
-const { sendVerificationEmail , sendResetPasswordEmail } = require("../service/emailService");
-const {generateVerificationLink, generatePasswordResetLink} = require("../service/firebaseService");
+const {
+  sendVerificationEmail,
+  sendResetPasswordEmail,
+} = require("../service/emailService");
+const {
+  generateVerificationLink,
+  generatePasswordResetLink,
+} = require("../service/firebaseService");
 
 exports.sendVerification = async (req, res) => {
   try {
@@ -12,8 +18,7 @@ exports.sendVerification = async (req, res) => {
 
     await sendVerificationEmail(email, name, link);
 
-    res.json({ success: true, message: "Verification email sent" });
-
+    res.json({ success: true, message: "✅ Verification email sent" });
   } catch (err) {
     console.error("Email send error:", err);
     res.status(500).json({ error: err.message });
@@ -30,8 +35,7 @@ exports.sendPasswordReset = async (req, res) => {
 
     await sendResetPasswordEmail(email, name, resetUrl);
 
-    res.json({ success: true, message: "Password reset email sent" });
-
+    res.json({ success: true, message: "📧 Password reset email sent" });
   } catch (err) {
     console.error("Email send error:", err);
     res.status(500).json({ error: err.message });

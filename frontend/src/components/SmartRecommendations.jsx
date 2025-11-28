@@ -64,11 +64,11 @@ const SmartRecommendations = ({
             animation: "shimmer 1.5s infinite",
           }}
         ></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[...Array(6)].map((_, i) => (
             <div key={i} className="rounded-lg overflow-hidden shadow-md">
               <div
-                className="h-48 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 animate-pulse"
+                className="h-64 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 animate-pulse"
                 style={{
                   backgroundSize: "200% 100%",
                   animation: "shimmer 1.5s infinite",
@@ -250,9 +250,9 @@ const SmartRecommendations = ({
                 {formatSeconds(
                   analysis.total_interaction_count > 0
                     ? Math.round(
-                      analysis.total_time_spent_seconds /
-                      analysis.total_interaction_count
-                    )
+                        analysis.total_time_spent_seconds /
+                          analysis.total_interaction_count
+                      )
                     : 0
                 )}
               </p>
@@ -262,7 +262,7 @@ const SmartRecommendations = ({
       )}
 
       {/* Recommendations Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {recommendations.map((article, index) => {
           // Map backend fields to NewsCard props
           const mappedArticle = {
@@ -305,9 +305,9 @@ const SmartRecommendations = ({
             <span className="font-semibold text-gray-800 dark:text-white">
               {analysis.top_categories && analysis.top_categories.length > 0
                 ? analysis.top_categories
-                  .slice(0, 2)
-                  .map((c) => c.category)
-                  .join(" & ")
+                    .slice(0, 2)
+                    .map((c) => c.category)
+                    .join(" & ")
                 : "various categories"}
             </span>
           </p>

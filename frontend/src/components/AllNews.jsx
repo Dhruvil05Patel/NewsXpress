@@ -51,7 +51,8 @@ export default function AllNews({
       try {
         // Fetch summarized news from backend (DB-first endpoint)
         const resp = await fetch(
-          `${import.meta.env.VITE_API_BASE || "http://localhost:4000"
+          `${
+            import.meta.env.VITE_API_BASE || "http://localhost:4000"
           }/get-summarized-news`
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -229,10 +230,10 @@ export default function AllNews({
             const q = (searchQuery || "").trim().toLowerCase();
             const filteredNews = q
               ? news.filter(
-                (n) =>
-                  (n.title || "").toLowerCase().includes(q) ||
-                  (n.summary || "").toLowerCase().includes(q)
-              )
+                  (n) =>
+                    (n.title || "").toLowerCase().includes(q) ||
+                    (n.summary || "").toLowerCase().includes(q)
+                )
               : news;
             const visibleNews = userProfile
               ? filteredNews
@@ -260,16 +261,16 @@ export default function AllNews({
             const q = (searchQuery || "").trim().toLowerCase();
             const filteredLen = q
               ? news.filter(
-                (n) =>
-                  (n.title || "").toLowerCase().includes(q) ||
-                  (n.summary || "").toLowerCase().includes(q)
-              ).length
+                  (n) =>
+                    (n.title || "").toLowerCase().includes(q) ||
+                    (n.summary || "").toLowerCase().includes(q)
+                ).length
               : news.length;
             return !userProfile && filteredLen > 6 ? (
-              <div className="flex justify-center mt-8">
+              <div className="flex justify-center mt-12 mb-8">
                 <button
                   onClick={() => {
-                    notify.info("🔒 Please login to view more headlines");
+                    notify.info("Please log in to view more headlines");
                     if (onLoginClick) onLoginClick();
                   }}
                   className="px-6 py-3 rounded-full text-white transition-colors"
@@ -294,10 +295,10 @@ export default function AllNews({
           const q = (searchQuery || "").trim().toLowerCase();
           const filteredNews = q
             ? news.filter(
-              (n) =>
-                (n.title || "").toLowerCase().includes(q) ||
-                (n.summary || "").toLowerCase().includes(q)
-            )
+                (n) =>
+                  (n.title || "").toLowerCase().includes(q) ||
+                  (n.summary || "").toLowerCase().includes(q)
+              )
             : news;
           return (
             <ReelView

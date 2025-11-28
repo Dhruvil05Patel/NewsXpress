@@ -74,6 +74,10 @@ function AppContent() {
   const [showSignup, setShowSignup] = useState(false);
   // Global search query controlled by Navbar
   const [searchQuery, setSearchQuery] = useState("");
+  // Loading state for resend verification email button
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  // Cooldown timer for resend verification email (in seconds)
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   // Auth context: firebaseUser = raw auth user, userProfile = enriched profile doc.
   const { user: firebaseUser, profile: userProfile, loading } = useAuth();
@@ -96,6 +100,16 @@ function AppContent() {
       }
     }
   }, [userProfile, unverifiedUser]);
+
+  // Countdown timer for resend verification email cooldown
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [resendCooldown]);
 
   // Lock body scroll whenever a blocking modal (login / signup / verify) is active.
   useEffect(() => {
@@ -380,123 +394,145 @@ function AppContent() {
 
         {/* Verification prompt for unverified users */}
         {unverifiedUser && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 9999,
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: "white",
-                padding: "30px",
-                borderRadius: "10px",
-                maxWidth: "500px",
-                textAlign: "center",
-                boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-              }}
-            >
-              <h2 style={{ color: "#ff9800", marginBottom: "20px" }}>
-                ⚠️ Email Not Verified
-              </h2>
-              <p
-                style={{
-                  fontSize: "16px",
-                  marginBottom: "15px",
-                  lineHeight: "1.6",
-                }}
-              >
-                Your email <strong>{unverifiedUser.email}</strong> is not
-                verified yet.
-              </p>
-              <p style={{ color: "#666", marginBottom: "25px" }}>
-                Please check your inbox and click the verification link, then
-                refresh this page.
-              </p>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+              {/* Header with gradient background */}
               <div
+                className="text-white p-8 text-center"
                 style={{
-                  display: "flex",
-                  gap: "10px",
-                  justifyContent: "center",
-                  flexWrap: "wrap",
+                  background:
+                    "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
                 }}
               >
-                <button
-                  onClick={async () => {
-                    await unverifiedUser.reload();
-                    if (unverifiedUser.emailVerified) {
-                      notify.success("✅ Email verified!");
-                      window.location.reload();
-                    } else {
-                      notify.warn("⚠️ Please verify your email first");
-                    }
-                  }}
-                  style={{
-                    padding: "12px 24px",
-                    backgroundColor: "#4CAF50",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    fontSize: "16px",
-                  }}
-                >
-                  ✓ I've Verified - Refresh
-                </button>
-                <button
-                  onClick={async () => {
-                    const { sendEmailVerification } = await import(
-                      "firebase/auth"
-                    );
-                    // Use custom backend-powered verification email instead of Firebase default template
-                    const { sendVerificationEmail } = await import(
-                      "./services/api"
-                    );
-                    await sendVerificationEmail(
-                      unverifiedUser.email,
-                      unverifiedUser.displayName || "User"
-                    );
-                    notify.success("📧 Verification email resent!");
-                  }}
-                  style={{
-                    padding: "12px 24px",
-                    backgroundColor: "#2196F3",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    fontSize: "16px",
-                  }}
-                >
-                  📧 Resend Email
-                </button>
-                <button
-                  onClick={async () => {
-                    const { signOut } = await import("firebase/auth");
-                    const { auth } = await import("./components/auth/firebase");
-                    await signOut(auth);
-                    notify.info("👋 Logged out");
-                  }}
-                  style={{
-                    padding: "12px 24px",
-                    backgroundColor: "#f44336",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    fontSize: "16px",
-                  }}
-                >
-                  Logout
-                </button>
+                <div className="w-20 h-20 mx-auto mb-4 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-5xl">
+                  📧
+                </div>
+                <h2 className="text-2xl font-bold mb-2">Verify Your Email</h2>
+                <p className="text-white/90 text-sm">We're almost there!</p>
+              </div>
+
+              {/* Content */}
+              <div className="p-8">
+                <p className="text-gray-700 text-center mb-2 leading-relaxed">
+                  A verification link has been sent to:
+                </p>
+                <p className="text-center mb-6">
+                  <strong
+                    className="text-lg font-semibold"
+                    style={{
+                      background:
+                        "linear-gradient(135deg,#ff1e1e,#ff4d4d,#ff0066)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                    }}
+                  >
+                    {unverifiedUser.email}
+                  </strong>
+                </p>
+                <p className="text-gray-500 text-sm text-center mb-8">
+                  Please check your inbox (and spam folder) and click the
+                  verification link to continue.
+                </p>
+
+                {/* Buttons */}
+                <div className="space-y-3">
+                  <button
+                    onClick={async () => {
+                      await unverifiedUser.reload();
+                      if (unverifiedUser.emailVerified) {
+                        notify.success("Email successfully verified!");
+                        window.location.reload();
+                      } else {
+                        notify.warn(
+                          "Email verification pending. Please check your inbox"
+                        );
+                      }
+                    }}
+                    className="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-sm"
+                  >
+                    ✓ I've Verified - Refresh
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      setIsResendingVerification(true);
+                      try {
+                        const { sendEmailVerification } = await import(
+                          "firebase/auth"
+                        );
+                        const { sendVerificationEmail } = await import(
+                          "./services/api"
+                        );
+                        await sendVerificationEmail(
+                          unverifiedUser.email,
+                          unverifiedUser.displayName || "User"
+                        );
+                        notify.success(
+                          "Verification email has been sent successfully"
+                        );
+                        setResendCooldown(30); // Start 30-second cooldown
+                      } catch (error) {
+                        notify.error(
+                          "Failed to send verification email. Please try again"
+                        );
+                      } finally {
+                        setIsResendingVerification(false);
+                      }
+                    }}
+                    disabled={isResendingVerification || resendCooldown > 0}
+                    className="w-full py-3 px-6 text-white font-semibold rounded-lg transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{
+                      background:
+                        isResendingVerification || resendCooldown > 0
+                          ? "#999"
+                          : "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+                    }}
+                  >
+                    {isResendingVerification ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg
+                          className="animate-spin h-5 w-5"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                        Sending...
+                      </span>
+                    ) : resendCooldown > 0 ? (
+                      `Resend in ${resendCooldown}s`
+                    ) : (
+                      "📧 Resend Verification Email"
+                    )}
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      const { signOut } = await import("firebase/auth");
+                      const { auth } = await import(
+                        "./components/auth/firebase"
+                      );
+                      await signOut(auth);
+                      notify.success("Successfully logged out");
+                    }}
+                    className="w-full py-3 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
               </div>
             </div>
           </div>

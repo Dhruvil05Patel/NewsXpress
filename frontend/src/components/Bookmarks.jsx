@@ -65,7 +65,7 @@ export default function Bookmarks() {
           if (mounted) setBookmarks(normalized);
         } catch (err) {
           console.error("Failed to load bookmarks from server", err);
-          notify.error("Could not load bookmarks — falling back to saved list");
+          notify.error("Failed to load bookmarks. Using locally saved data");
           const raw = localStorage.getItem("bookmarks");
           const parsed = raw ? JSON.parse(raw) : [];
           setBookmarks(normalizeLocalBookmarks(parsed));

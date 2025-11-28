@@ -19,6 +19,7 @@ export default function ReelView({
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0);
   const scrollTimeout = useRef(null);
   const audioPlayersRef = useRef([]);
+  const cleanupFunctionsRef = useRef([]); // Store cleanup functions from all cards
   const containerRef = useRef(null); // needed for non-passive wheel listener
   const [childOverlayOpen, setChildOverlayOpen] = useState(false); // disable scroll when a child modal is open
 
@@ -100,7 +101,11 @@ export default function ReelView({
         <div className="w-full lg:w-[80%] h-full bg-black relative mx-auto">
           <button
             onClick={() => {
-              // pause audio players
+              // Cleanup TTS for all cards (abort fetches, stop playback)
+              cleanupFunctionsRef.current.forEach((cleanup) => {
+                if (cleanup) cleanup();
+              });
+              // pause audio players (fallback)
               audioPlayersRef.current.forEach((audioPlayer) => {
                 if (audioPlayer && audioPlayer.current)
                   audioPlayer.current.pause();
@@ -134,6 +139,7 @@ export default function ReelView({
                     userProfile={userProfile}
                     isActive={index === currentIndex}
                     audioPlayersRef={audioPlayersRef}
+                    cleanupFunctionsRef={cleanupFunctionsRef}
                     cardIndex={index}
                     onOverlayChange={setChildOverlayOpen}
                   />

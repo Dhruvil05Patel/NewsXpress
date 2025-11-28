@@ -39,7 +39,8 @@ export default function CategoryNews({
     const loadCategory = async () => {
       try {
         const resp = await fetch(
-          `${import.meta.env.VITE_API_BASE || "http://localhost:4000"
+          `${
+            import.meta.env.VITE_API_BASE || "http://localhost:4000"
           }/get-summarized-news/${encodeURIComponent(category)}`
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -186,10 +187,10 @@ export default function CategoryNews({
               const q = (searchQuery || "").trim().toLowerCase();
               const filteredNews = q
                 ? news.filter(
-                  (n) =>
-                    (n.title || "").toLowerCase().includes(q) ||
-                    (n.summary || "").toLowerCase().includes(q)
-                )
+                    (n) =>
+                      (n.title || "").toLowerCase().includes(q) ||
+                      (n.summary || "").toLowerCase().includes(q)
+                  )
                 : news;
               const visibleNews = userProfile
                 ? filteredNews
@@ -218,13 +219,13 @@ export default function CategoryNews({
               const q = (searchQuery || "").trim().toLowerCase();
               const filteredLen = q
                 ? news.filter(
-                  (n) =>
-                    (n.title || "").toLowerCase().includes(q) ||
-                    (n.summary || "").toLowerCase().includes(q)
-                ).length
+                    (n) =>
+                      (n.title || "").toLowerCase().includes(q) ||
+                      (n.summary || "").toLowerCase().includes(q)
+                  ).length
                 : news.length;
               return !userProfile && filteredLen > 6 ? (
-                <div className="flex justify-center mt-8">
+                <div className="flex justify-center mt-12 mb-8">
                   <button
                     onClick={() => {
                       if (onLoginClick) onLoginClick();
@@ -252,10 +253,10 @@ export default function CategoryNews({
           const q = (searchQuery || "").trim().toLowerCase();
           const filteredNews = q
             ? news.filter(
-              (n) =>
-                (n.title || "").toLowerCase().includes(q) ||
-                (n.summary || "").toLowerCase().includes(q)
-            )
+                (n) =>
+                  (n.title || "").toLowerCase().includes(q) ||
+                  (n.summary || "").toLowerCase().includes(q)
+              )
             : news;
           return (
             <ReelView

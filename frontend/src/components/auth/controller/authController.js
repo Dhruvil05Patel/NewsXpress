@@ -10,7 +10,10 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import { syncUser } from "../../../services/api";
-import { sendVerificationEmail, sendResetPasswordEmail } from "../../../services/api";
+import {
+  sendVerificationEmail,
+  sendResetPasswordEmail,
+} from "../../../services/api";
 
 /**
  * Central auth state listener - syncs Firebase user to backend whenever auth state changes.
@@ -33,8 +36,11 @@ export const initAuthListener = (onUserSynced) => {
       }
 
       // Force token refresh to avoid stale tokens
-      const idToken = await user.getIdToken(true).catch(err => {
-        console.warn("⚠️ Token refresh failed, trying cached token:", err.message);
+      const idToken = await user.getIdToken(true).catch((err) => {
+        console.warn(
+          "⚠️ Token refresh failed, trying cached token:",
+          err.message
+        );
         return user.getIdToken(false); // Fallback to cached token
       });
 
@@ -60,7 +66,11 @@ export const initAuthListener = (onUserSynced) => {
 export async function registerUser(email, password, profile = {}) {
   // profile: { username, full_name }
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     const user = userCredential.user;
 
     // Optionally set display name in Firebase
@@ -105,7 +115,7 @@ export async function registerUser(email, password, profile = {}) {
 
 export const loginUser = async (email, password) => {
   if (!email || !password) {
-    notify.error("❌ Both Email and Password are required");
+    notify.error("Both Email and Password are required");
     return { success: false };
   }
 
@@ -126,22 +136,22 @@ export const loginUser = async (email, password) => {
     }
 
     // Email is verified
-    notify.success(`✅ Logged in as ${email}`);
+    notify.success(`Logged in as ${email}`);
     return { success: true, emailVerified: true };
   } catch (error) {
     switch (error.code) {
       case "auth/user-not-found":
       case "auth/invalid-credential":
-        notify.error("❌ Please enter email or password correctly.");
+        notify.error("Please enter email or password correctly.");
         break;
       case "auth/wrong-password":
-        notify.error("❌ Incorrect Password! Please Try Again");
+        notify.error("Incorrect Password! Please Try Again");
         break;
       case "auth/too-many-requests":
-        notify.error("⌛ Server is busy. Please try again later");
+        notify.error("Server is busy. Please try again later");
         break;
       default:
-        notify.error(`❌ Error: ${error.code}`);
+        notify.error(`Error: ${error.code}`);
     }
     console.error(error);
     return { success: false };
@@ -151,17 +161,17 @@ export const loginUser = async (email, password) => {
 export const logoutUser = async () => {
   try {
     await signOut(auth);
-    notify.success("✅ Logged out successfully");
+    notify.success("Logged out successfully");
     return true;
   } catch (error) {
-    notify.error("❌ Unable to logout. Please try again.");
+    notify.error("Unable to logout. Please try again.");
     return false;
   }
 };
 
 export const resetPassword = async (email) => {
   if (!email) {
-    notify.error("❌ Email Required!");
+    notify.error("Email Required!");
     return false;
   }
 
@@ -169,7 +179,7 @@ export const resetPassword = async (email) => {
     await sendResetPasswordEmail(email, "User");
     return true;
   } catch (error) {
-    notify.error(`❌ Server error. Please try again later!`);
+    notify.error(`Server error. Please try again later!`);
     console.error(error);
     return false;
   }
@@ -190,7 +200,7 @@ export const signInWithGoogle = async () => {
     return result;
   } catch (err) {
     console.error("Google sign-in failed:", err);
-    notify.error("❌ Google sign-in failed");
+    notify.error("Google sign-in failed. Please try again");
     throw err;
   }
 };

@@ -42,13 +42,13 @@ export default function Profile({
     // Simulated delete account (demo only)
     const handleDeleteAccount = () => {
         if (!userProfile?.id) {
-            notify.error("Login required before deleting account");
+            notify.error("Please log in to delete your account");
             return;
         }
-        notify.warn("Deleting account...");
+        notify.warn("Account deletion in progress...");
         // Simulate async delete
         setTimeout(() => {
-            notify.success("Account deleted");
+            notify.success("Account has been successfully deleted");
             window.dispatchEvent(new Event("account-deleted"));
         }, 500);
     };
@@ -62,15 +62,15 @@ export default function Profile({
     // Save full name change
     const handleSaveName = async () => {
         if (!userProfile?.id)
-            return notify.error("No profile found. Please login.");
+            return notify.error("Profile not found. Please log in again");
         setSaving(true);
         try {
             await apiUpdateProfile(userProfile.id, { full_name: newName });
-            notify.success("Full name updated");
+            notify.success("Full name updated successfully");
             window.dispatchEvent(new Event("profile-updated"));
             setEditingName(false);
         } catch (err) {
-            notify.error("Failed to save full name");
+            notify.error("Failed to update full name. Please try again");
         } finally {
             setSaving(false);
         }
@@ -79,8 +79,8 @@ export default function Profile({
     // Save username after availability validation
     const handleSaveUsername = async () => {
         if (!userProfile?.id)
-            return notify.error("No profile found. Please login.");
-        if (!usernameAvailable) return notify.error("Username already taken");
+            return notify.error("Profile not found. Please log in again");
+        if (!usernameAvailable) return notify.error("Username is already taken");
         if (!newUsername.trim()) return notify.error("Username cannot be empty");
         setSaving(true);
         try {
@@ -89,7 +89,7 @@ export default function Profile({
             window.dispatchEvent(new Event("profile-updated"));
             setEditingUsername(false);
         } catch (err) {
-            notify.error("Failed to save username");
+            notify.error("Failed to update username. Please try again");
         } finally {
             setSaving(false);
         }
@@ -136,7 +136,9 @@ export default function Profile({
         setNotifications((prev) => {
             const next = !prev;
             notify.info(
-                next ? "🔔 Notifications enabled" : "🔕 Notifications disabled"
+                next
+                    ? "Notifications have been enabled"
+                    : "Notifications have been disabled"
             );
             return next;
         });
@@ -276,12 +278,12 @@ export default function Profile({
                                             value={newUsername}
                                             onChange={(e) => setNewUsername(e.target.value)}
                                             className={`flex-1 px-3 py-2 border rounded-md text-sm ${checkingUsername
-                                                ? "border-gray-300"
-                                                : newUsername && newUsername !== userProfile?.username
-                                                    ? usernameAvailable
-                                                        ? "border-green-500 focus:ring-green-500"
-                                                        : "border-red-500 focus:ring-red-500"
-                                                    : "border-gray-300"
+                                                    ? "border-gray-300"
+                                                    : newUsername && newUsername !== userProfile?.username
+                                                        ? usernameAvailable
+                                                            ? "border-green-500 focus:ring-green-500"
+                                                            : "border-red-500 focus:ring-red-500"
+                                                        : "border-gray-300"
                                                 }`}
                                             aria-label="Edit username"
                                             placeholder="Enter your username"
