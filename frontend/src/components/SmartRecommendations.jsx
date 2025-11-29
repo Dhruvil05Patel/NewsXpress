@@ -1,12 +1,8 @@
+// SmartRecommendations: personalized list + optional analytics panel
 import React, { useState } from "react";
 import { useSmartRecommendations } from "../hooks/useInteractionTimer";
 import NewsCard from "./NewsCard";
 import { BarChart3, Clock, BookOpen } from "lucide-react";
-
-/**
- * SmartRecommendations Component
- * Displays personalized recommendations based on user's reading behavior and time spent on articles
- */
 const SmartRecommendations = ({
   userId,
   limit = 10,
@@ -18,7 +14,7 @@ const SmartRecommendations = ({
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // Update timestamp when recommendations change
+  // Update timestamp when list changes
   React.useEffect(() => {
     if (recommendations.length > 0) {
       setLastUpdated(new Date());
@@ -26,12 +22,14 @@ const SmartRecommendations = ({
   }, [recommendations]);
 
   const handleRefresh = async () => {
+    // manual refetch
     console.log("🔄 Manual refresh triggered");
     await refetch();
     setLastUpdated(new Date());
   };
 
   const handleCardClick = (index) => {
+    // open reel
     if (!onArticleClick) return;
     // Normalize articles for ReelView format
     const normalizedArticles = recommendations.map((article) => ({
@@ -53,7 +51,7 @@ const SmartRecommendations = ({
     return null;
   }
 
-  // Loading state with shimmer effect
+  // Loading skeleton
   if (loading) {
     return (
       <div className="my-8 px-4">
@@ -103,7 +101,7 @@ const SmartRecommendations = ({
     );
   }
 
-  // Error or no recommendations state
+  // Empty state
   if (error || !recommendations || recommendations.length === 0) {
     return (
       <div className="my-8 px-4">
@@ -135,7 +133,7 @@ const SmartRecommendations = ({
     );
   }
 
-  // Recommendations available
+  // Render recommendations
   return (
     <div className="my-8 px-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
@@ -250,9 +248,9 @@ const SmartRecommendations = ({
                 {formatSeconds(
                   analysis.total_interaction_count > 0
                     ? Math.round(
-                        analysis.total_time_spent_seconds /
-                          analysis.total_interaction_count
-                      )
+                      analysis.total_time_spent_seconds /
+                      analysis.total_interaction_count
+                    )
                     : 0
                 )}
               </p>
@@ -305,9 +303,9 @@ const SmartRecommendations = ({
             <span className="font-semibold text-gray-800 dark:text-white">
               {analysis.top_categories && analysis.top_categories.length > 0
                 ? analysis.top_categories
-                    .slice(0, 2)
-                    .map((c) => c.category)
-                    .join(" & ")
+                  .slice(0, 2)
+                  .map((c) => c.category)
+                  .join(" & ")
                 : "various categories"}
             </span>
           </p>
@@ -318,6 +316,7 @@ const SmartRecommendations = ({
 };
 
 function formatSeconds(seconds) {
+  // format duration
   if (!seconds || seconds < 0) return "0s";
 
   const hours = Math.floor(seconds / 3600);

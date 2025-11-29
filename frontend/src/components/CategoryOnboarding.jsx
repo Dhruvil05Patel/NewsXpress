@@ -1,8 +1,10 @@
+// CategoryOnboarding: choose notification categories + optionally capture FCM token
 import { useMemo, useState, useEffect } from "react";
 import { updateProfile } from "../services/api";
 import { getFCMToken } from "../utils/getFCMToken";
 import notify from "../utils/toast";
 
+// Available categories
 const DEFAULT_CATEGORIES = [
   "Technology",
   "Business",
@@ -28,12 +30,14 @@ export default function CategoryOnboarding({
   );
   const [selected, setSelected] = useState(Array.from(selectedSet));
 
+  // Toggle selection
   const toggle = (name) => {
     setSelected((prev) =>
       prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]
     );
   };
 
+  // Save selections (lowercase + optional FCM token)
   const save = async () => {
     if (selected.length === 0) {
       notify.warn("Please select at least one category");

@@ -1,12 +1,5 @@
-// --- Imports ---
-// Import necessary components and hooks from their respective libraries.
+// App root: routing, auth gating, global modals, verification flow
 import { useState, useEffect } from "react";
-// App.jsx: Root application shell.
-// Responsibilities:
-// 1. Provides routing map and lazy auth gating for protected pages.
-// 2. Wraps content with global providers (Auth + Toast).
-// 3. Manages transient UI state: login modal, onboarding, email verification.
-// 4. Applies body scroll lock when overlays/modal are open.
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import CategoryOnboarding from "./components/CategoryOnboarding";
 import Navbar from "./components/Navbar";
@@ -18,15 +11,14 @@ import SignUp from "./components/SignUp";
 import Bookmarks from "./components/Bookmarks";
 import PersonalizedFeed from "./components/PersonalizedFeed";
 import HelpSupport from "./components/HelpSupport";
+import LiveFeed from "./components/LiveFeed";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import notify from "./utils/toast";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Lock } from "lucide-react";
 
-// --- Category Configuration ---
-// A centralized object to store titles and subtitles for each news category.
-// This makes it easy to manage content and pass props consistently.
+// Category display metadata
 const categories = {
   technology: {
     title: "Technology News",
@@ -66,10 +58,9 @@ const categories = {
   },
 };
 
-// AppContent: inner component separated so <AuthProvider> only wraps once at root.
-// Contains all runtime logic; extracted from default export for clarity/testing.
+// Inner content separated so provider mounts once
 function AppContent() {
-  // --- State --- Login/Signup modal visibility.
+  // Auth + UI state
   const [showLogin, setShowLogin] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   // Global search query controlled by Navbar
@@ -79,17 +70,17 @@ function AppContent() {
   // Cooldown timer for resend verification email (in seconds)
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Auth context: firebaseUser = raw auth user, userProfile = enriched profile doc.
+  // Auth context values
   const { user: firebaseUser, profile: userProfile, loading } = useAuth();
 
-  // Track onboarding panel visibility (shown if profile has no categories).
+  // Onboarding visibility
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Determine if current user still needs email verification.
+  // Unverified user reference
   const unverifiedUser =
     firebaseUser && !firebaseUser.emailVerified ? firebaseUser : null;
 
-  // Show onboarding if profile exists but has no chosen categories.
+  // Open onboarding if profile has no categories
   useEffect(() => {
     if (userProfile?.id && !unverifiedUser) {
       const hasCategories =
@@ -101,7 +92,7 @@ function AppContent() {
     }
   }, [userProfile, unverifiedUser]);
 
-  // Countdown timer for resend verification email cooldown
+  // Resend cooldown tick
   useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setInterval(() => {
@@ -111,7 +102,7 @@ function AppContent() {
     }
   }, [resendCooldown]);
 
-  // Lock body scroll whenever a blocking modal (login / signup / verify) is active.
+  // Body scroll lock while any modal visible
   useEffect(() => {
     // Check if EITHER the Login Modal OR Signup Modal OR the Unverified User Prompt is visible
     const isAnyModalOpen = showLogin || showSignup || unverifiedUser;
@@ -129,7 +120,7 @@ function AppContent() {
     // Dependency array includes all state variables that trigger a modal/overlay
   }, [showLogin, showSignup, unverifiedUser]);
 
-  // Modal open/close handlers.
+  // Auth modal handlers
   const openLogin = () => {
     setShowSignup(false);
     setShowLogin(true);
@@ -143,10 +134,10 @@ function AppContent() {
     setShowSignup(false);
   };
 
-  // Profile panel state (replaces embedded sidebar profile logic)
+  // Profile sidebar state
   const [profileOpen, setProfileOpen] = useState(false);
 
-  // Auth gate component: lightweight inline guard for protected routes.
+  // Lightweight protected route gate
   const LoginRequired = ({
     title = "Login Required",
     description = "Please log in to continue.",
@@ -170,10 +161,10 @@ function AppContent() {
     </div>
   );
 
-  // --- Render --- Main router + conditional overlays.
+  // Render router + overlays
   return (
     <BrowserRouter>
-      {/* Main application container */}
+      {/* Main container */}
       <div className="min-h-screen bg-gray-50">
         <Navbar
           onLoginClick={openLogin}
@@ -189,13 +180,12 @@ function AppContent() {
           onLoginClick={openLogin}
         />
 
-        {/* The Routes component defines all possible navigation paths. */}
+        {/* Routes */}
         <Routes>
-          {/* --- Core Routes --- */}
-          {/* Redirect the root path "/" to "/all" for a default landing page. */}
+          {/* Core */}
           <Route path="/" element={<Navigate to="/all" replace />} />
 
-          {/* Route for the main news feed showing all categories. */}
+          {/* All news */}
           <Route
             path="/all"
             element={
@@ -209,10 +199,7 @@ function AppContent() {
             }
           />
 
-          {/* --- Category Routes --- */}
-          {/* Each route below renders the reusable CategoryNews component */}
-          {/* with props tailored to a specific news category. */}
-          {/* The spread operator `{...categories.technology}` passes both title and subtitle. */}
+          {/* Category routes */}
 
           <Route
             path="/technology"
@@ -310,7 +297,8 @@ function AppContent() {
               />
             }
           />
-          {/* Legacy redirect to maintain old links */}
+          <Route path="/live" element={<LiveFeed />} />
+          {/* Legacy redirect */}
           <Route path="/world-news" element={<Navigate to="/all" replace />} />
           <Route
             path="/crime"
@@ -365,18 +353,17 @@ function AppContent() {
           />
         </Routes>
 
-        {/* --- Modals --- */}
-        {/* The LoginPage is rendered conditionally based on the `showLogin` state. */}
+        {/* Auth modals */}
         {showLogin && (
           <LoginPage onClose={closeAuth} onSwitchToSignup={openSignup} />
         )}
 
-        {/* The SignUp page is rendered conditionally based on the `showSignup` state. */}
+        {/* Signup modal */}
         {showSignup && (
           <SignUp onClose={closeAuth} onSwitchToLogin={openLogin} />
         )}
 
-        {/* Onboarding modal for category preferences */}
+        {/* Onboarding */}
         {showOnboarding && userProfile?.id && !unverifiedUser && (
           <CategoryOnboarding
             profile={userProfile}
@@ -392,11 +379,11 @@ function AppContent() {
           />
         )}
 
-        {/* Verification prompt for unverified users */}
+        {/* Email verification prompt */}
         {unverifiedUser && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
             <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
-              {/* Header with gradient background */}
+              {/* Header */}
               <div
                 className="text-white p-8 text-center"
                 style={{
@@ -411,7 +398,7 @@ function AppContent() {
                 <p className="text-white/90 text-sm">We're almost there!</p>
               </div>
 
-              {/* Content */}
+              {/* Body */}
               <div className="p-8">
                 <p className="text-gray-700 text-center mb-2 leading-relaxed">
                   A verification link has been sent to:
@@ -435,7 +422,7 @@ function AppContent() {
                   verification link to continue.
                 </p>
 
-                {/* Buttons */}
+                {/* Actions */}
                 <div className="space-y-3">
                   <button
                     onClick={async () => {

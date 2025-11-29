@@ -1,4 +1,4 @@
-// Login modal: handles sign-in and email verification flow
+// LoginPage: user sign-in + forgot password
 import React, { useState } from "react";
 import notify from "../utils/toast";
 import "../assets/LoginPage.css";
@@ -6,20 +6,20 @@ import { loginUser, resetPassword } from "./auth/controller/authController";
 import { auth } from "./auth/firebase";
 
 function LoginPage({ onClose, onSwitchToSignup }) {
-  // Form states
+  // Form state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // UI states
+  // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Submit: attempt login, show verification screen if needed
+  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Login flow
+    // Attempt login
     const result = await loginUser(email, password);
     setIsLoading(false);
 

@@ -1,14 +1,11 @@
-// ReelView.jsx
-// Full-screen vertical reel viewer with snap scrolling.
-// Responsibilities: manage active index, throttle wheel/touch navigation,
-// pause any playing audio on exit, and enforce guest limit (first 6 items).
+// ReelView: vertical snap reel container + navigation
 
-// --- Imports ---
+// Imports
 import React, { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import ReelCard from "./ReelCard";
 
-/** Overlay reel: maps normalized news array into stacked ReelCard slides. */
+// Props: news[], initialIndex, onClose, userProfile, onRequireLogin
 export default function ReelView({
   news = [],
   initialIndex = 0,
@@ -23,7 +20,7 @@ export default function ReelView({
   const containerRef = useRef(null); // needed for non-passive wheel listener
   const [childOverlayOpen, setChildOverlayOpen] = useState(false); // disable scroll when a child modal is open
 
-  // Lock body scroll while reel is open
+  // Lock body scroll
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -32,7 +29,7 @@ export default function ReelView({
     };
   }, []);
 
-  // Wheel handler (non-passive): we attach manually to allow preventDefault without warning.
+  // Wheel handler (throttled, guest limit)
   const handleWheel = (e) => {
     if (childOverlayOpen) return; // allow modal to handle its own scrolling
     e.preventDefault(); // suppress native scroll when no modal is open
@@ -52,7 +49,7 @@ export default function ReelView({
     }, 500);
   };
 
-  // Attach wheel listener with passive: false to avoid Chrome warning.
+  // Attach wheel listener
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -61,15 +58,17 @@ export default function ReelView({
       el.removeEventListener("wheel", handleWheel, { passive: false });
   }, [handleWheel]);
 
-  // Touch handling
+  // Touch swipe state
   const [touchStart, setTouchStart] = useState(null);
 
   const handleTouchStart = (e) => {
+    // record start
     if (childOverlayOpen) return;
     setTouchStart(e.touches[0].clientY);
   };
 
   const handleTouchEnd = (e) => {
+    // decide direction
     if (childOverlayOpen) return;
     if (touchStart === null) return;
     const touchEnd = e.changedTouches[0].clientY;
@@ -92,7 +91,7 @@ export default function ReelView({
     setTouchStart(null);
   };
 
-  // --- Render ---
+  // Render
   return (
     <div className="fixed top-16 bottom-0 left-0 right-0 z-50 bg-white">
       <div className="h-full w-full flex">

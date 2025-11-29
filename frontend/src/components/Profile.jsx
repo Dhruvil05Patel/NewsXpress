@@ -1,6 +1,4 @@
-// Profile.jsx
-// Right-side account/settings panel (mobile overlay + desktop slide-in).
-// Props: isOpen(boolean), onClose(callback), userProfile(object|null), onLoginClick(trigger).
+// Profile: account sidebar (edit name/username, notifications, links)
 import React, { useState, useEffect, useRef } from "react";
 import { X, Bookmark, TrendingUp, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -11,8 +9,7 @@ import {
 import notify from "../utils/toast";
 import { logoutUser } from "./auth/controller/authController";
 
-// Profile side panel (mobile overlay + desktop slide-in)
-// Controlled by parent via isOpen/onClose
+// Controlled externally via isOpen/onClose
 export default function Profile({
     isOpen, // visible state
     onClose, // close handler
@@ -41,7 +38,7 @@ export default function Profile({
         setNewUsername(userProfile?.username || "");
     }, [userProfile?.full_name, userProfile?.username]);
 
-    // When the side panel closes, also close settings and discard unsaved changes
+    // Reset state on close
     useEffect(() => {
         if (!isOpen) {
             setShowSettingsPanel(false);
@@ -53,7 +50,7 @@ export default function Profile({
         }
     }, [isOpen, userProfile?.full_name, userProfile?.username]);
 
-    // Keep focus in inputs while editing so typing doesn't stop
+    // Maintain cursor at end on focus
     useEffect(() => {
         if (editingName && nameInputRef.current) {
             try {
@@ -75,7 +72,7 @@ export default function Profile({
     }, [editingUsername]);
 
     // Delete account handler
-    // Simulated delete account (demo only)
+    // Simulated delete account
     const handleDeleteAccount = async () => {
         if (!userProfile?.email) {
             notify.error("Please log in to delete your account");
@@ -116,13 +113,13 @@ export default function Profile({
         }
     };
 
-    // Log to console whenever account-deleted event fires (demo listener)
+    // Demo deletion event log
     useEffect(() => {
         const handler = () => console.log("Account Deleted");
         window.addEventListener("account-deleted", handler);
         return () => window.removeEventListener("account-deleted", handler);
     }, []);
-    // Save full name change
+    // Save name
     const handleSaveName = async () => {
         if (!userProfile?.id)
             return notify.error("Profile not found. Please log in again");
@@ -139,7 +136,7 @@ export default function Profile({
         }
     };
 
-    // Save username after availability validation
+    // Save username
     const handleSaveUsername = async () => {
         if (!userProfile?.id)
             return notify.error("Profile not found. Please log in again");
@@ -158,7 +155,7 @@ export default function Profile({
         }
     };
 
-    // Debounced username availability check
+    // Debounced availability check
     useEffect(() => {
         if (
             !editingUsername ||
@@ -189,7 +186,7 @@ export default function Profile({
         return () => clearTimeout(timeoutId);
     }, [newUsername, editingUsername, userProfile?.username, userProfile?.id]);
 
-    // Username validation (same rules as SignUp)
+    // Validation rules
     const usernameChecks = [
         {
             id: 1,
@@ -231,7 +228,7 @@ export default function Profile({
         onClose();
     };
 
-    // Toggle notifications (UI-only demo)
+    // Toggle notifications
     const handleNotificationToggle = () => {
         setNotifications((prev) => {
             const next = !prev;
@@ -417,7 +414,7 @@ export default function Profile({
                                             Save
                                         </button>
                                     </div>
-                                    {/* Validation messages (same style cues as SignUp) */}
+                                    {/* Username validation messages */}
                                     {newUsername && !usernameValid && (
                                         <ul className="text-xs text-gray-600 space-y-1">
                                             {usernameChecks
@@ -497,7 +494,7 @@ export default function Profile({
                                     />
                                 </button>
                             </div>
-                            {/* Delete Account Demo (placed below notifications) */}
+                            {/* Delete account demo */}
                             <div className="pt-2">
                                 <button
                                     onClick={() => setShowDeleteConfirm(true)}

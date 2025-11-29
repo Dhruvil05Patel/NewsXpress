@@ -19,7 +19,7 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
   const [reelIndex, setReelIndex] = useState(0);
   const [reelNews, setReelNews] = useState([]);
 
-  // Update page title
+  // Title
   useEffect(() => {
     document.title = "Personalized Feed | NewsXpress";
   }, []);
@@ -28,6 +28,7 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
   // Handlers
   // -----------------------------------------
   const handleArticleClick = async (articleId) => {
+    // Track click
     await recommendationService.trackClick(
       articleId,
       userId,
@@ -36,12 +37,14 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
     );
   };
 
+  // Open reel
   const handleOpenReel = (articles, index) => {
     setReelNews(articles);
     setReelIndex(index);
     setReelOpen(true);
   };
 
+  // Close reel
   const handleCloseReel = () => {
     setReelOpen(false);
   };
@@ -57,6 +60,7 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
     );
   }
 
+  // Render smart recommendations + reel
   return (
     <>
       {/* ------------------------------------- */}

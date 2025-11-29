@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from "react";
-import defaultImg from "./Default.png"; // Fallback image for missing/failed loads
-// ReelCard: full-screen immersive article representation for vertical reel view.
-// Features: translation (language selector), text-to-speech playback, bookmarking with note modal,
-// active state coordination (pauses audio when swiped away), and gradient overlay for readability.
-// Props include: isActive (current viewport card), audioPlayersRef (parent-managed for global pause),
-// userProfile for gating advanced actions, and cardIndex for registration.
+import defaultImg from "./Default.png"; // fallback image
+// ReelCard: one full-screen article with translate, TTS, bookmark
 import {
   SquareArrowOutUpRight,
   Languages,
@@ -37,10 +33,10 @@ export default function ReelCard({
   onOverlayChange,
   articleId,
 }) {
-  // Track time spent on article for analytics (value not displayed)
+  // Track time spent
   useInteractionTimer(userProfile?.id, articleId, category, isActive);
 
-  // Use custom hooks for translation + TTS.
+  // Translation + TTS hooks
   const {
     isTranslated,
     translatedContent,
@@ -55,13 +51,13 @@ export default function ReelCard({
   const { isSpeaking, isFetchingAudio, handleListen, audioPlayer, cleanup } =
     useTextToSpeech(selectedLanguage);
 
-  // Bookmark local state + note modal.
+  // Bookmark state
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [bookmarkNote, setBookmarkNote] = useState("");
   const [showBookmarkModal, setShowBookmarkModal] = useState(false);
   const [bookmarkNoteDraft, setBookmarkNoteDraft] = useState("");
 
-  // Load existing bookmarks from localStorage to reflect state on mount.
+  // Load bookmark status
   useEffect(() => {
     try {
       const raw = localStorage.getItem("bookmarks");
@@ -80,28 +76,28 @@ export default function ReelCard({
     }
   }, [title]);
 
-  // Register this card's audio player in the parent ref array (for coordinated stop).
+  // Register audio player
   useEffect(() => {
     if (audioPlayersRef && audioPlayer) {
       audioPlayersRef.current[cardIndex] = audioPlayer;
     }
   }, [audioPlayersRef, audioPlayer, cardIndex]);
 
-  // Register this card's cleanup function in the parent ref array
+  // Register cleanup
   useEffect(() => {
     if (cleanupFunctionsRef) {
       cleanupFunctionsRef.current[cardIndex] = cleanup;
     }
   }, [cleanupFunctionsRef, cleanup, cardIndex]);
 
-  // Stop TTS playback and abort fetch when card leaves active viewport.
+  // Stop audio when inactive
   useEffect(() => {
     if (!isActive && (isSpeaking || isFetchingAudio)) {
       cleanup();
     }
   }, [isActive, isSpeaking, isFetchingAudio, cleanup]);
 
-  // Translation click handler: auth gate + toggle language selector.
+  // Translation click
   const onTranslateClick = (e) => {
     e.stopPropagation();
     if (!userProfile) {
@@ -111,17 +107,17 @@ export default function ReelCard({
     handleTranslateClick();
   };
 
-  // Inform parent (ReelView) when the language selector overlay opens/closes
+  // Notify parent about overlay
   useEffect(() => {
     if (onOverlayChange) onOverlayChange(!!isLangSelectorOpen);
   }, [isLangSelectorOpen, onOverlayChange]);
 
-  // Perform translation for selected language using current title/summary.
+  // Perform translation
   const onSelectLanguage = (targetLanguage) => {
     performTranslation(title, summary, targetLanguage);
   };
 
-  // TTS initiation using translated summary if available, else fallback order.
+  // Start TTS
   const onListenClick = async (e) => {
     e.stopPropagation();
     if (!userProfile) {
@@ -134,7 +130,8 @@ export default function ReelCard({
     await handleListen(textToSpeak);
   };
 
-  const onBookmarkClick = async (e) => {
+  const onBookmarkClick = (e) => {
+    // add/remove bookmark
     e.stopPropagation();
     if (!userProfile) {
       notify.warn("Please log in to bookmark articles");
@@ -143,24 +140,25 @@ export default function ReelCard({
 
     // If already bookmarked, remove it.
     if (isBookmarked) {
-      try {
-        // Remove from backend if user is logged in
-        if (userProfile?.id && articleId) {
-          await removeBookmarkApi(userProfile.id, articleId);
+      (async () => {
+        try {
+          // Remove from backend if user is logged in
+          if (userProfile?.id && articleId) {
+            await removeBookmarkApi(userProfile.id, articleId);
+          }
+          // Also remove from localStorage for backward compatibility
+          const raw = localStorage.getItem("bookmarks");
+          const existing = raw ? JSON.parse(raw) : [];
+          const next = existing.filter((b) => b.title !== title);
+          localStorage.setItem("bookmarks", JSON.stringify(next));
+          setIsBookmarked(false);
+          setBookmarkNote("");
+          notify.success("Bookmark removed successfully");
+        } catch (error) {
+          console.error("Failed to remove bookmark:", error);
+          notify.error("Failed to remove bookmark");
         }
-        // Also remove from localStorage for backward compatibility
-        const raw = localStorage.getItem("bookmarks");
-        const existing = raw ? JSON.parse(raw) : [];
-        const next = existing.filter((b) => b.title !== title);
-        localStorage.setItem("bookmarks", JSON.stringify(next));
-        
-        setIsBookmarked(false);
-        setBookmarkNote("");
-        notify.success("Bookmark removed successfully");
-      } catch (error) {
-        console.error("Failed to remove bookmark:", error);
-        notify.error("Failed to remove bookmark");
-      }
+      })();
       return;
     }
     // Open themed modal for note entry when adding.
@@ -171,7 +169,7 @@ export default function ReelCard({
   const finalizeBookmark = async () => {
     try {
       const noteText = bookmarkNoteDraft.trim();
-      
+
       // Save to backend if user is logged in
       if (userProfile?.id && articleId) {
         const articleData = {
@@ -184,10 +182,10 @@ export default function ReelCard({
           timestamp,
           category,
         };
-        
+
         await addBookmark(userProfile.id, articleId, noteText, articleData);
       }
-      
+
       // Also save to localStorage for backward compatibility
       const raw = localStorage.getItem("bookmarks");
       const existing = raw ? JSON.parse(raw) : [];
@@ -204,7 +202,7 @@ export default function ReelCard({
       };
       existing.push(entry);
       localStorage.setItem("bookmarks", JSON.stringify(existing));
-      
+
       setIsBookmarked(true);
       setBookmarkNote(noteText);
       setShowBookmarkModal(false);
@@ -219,11 +217,12 @@ export default function ReelCard({
   };
 
   const cancelBookmarkModal = () => {
+    // cancel bookmark modal
     setShowBookmarkModal(false);
     setBookmarkNoteDraft("");
   };
 
-  // --- RENDER --- Full-screen layout with overlay meta + action ribbon.
+  // Render
   const [imgError, setImgError] = useState(false);
 
   const resolvedImage =

@@ -1,4 +1,4 @@
-// Signup modal: handles registration and email verification flow
+// SignUp: registration + validation + email verify prompt after creation
 import React, { useState } from "react";
 import notify from "../utils/toast";
 import "../assets/LoginPage.css";
@@ -19,7 +19,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [ageError, setAgeError] = useState("");
 
-  // Password validation checks
+  // Password rules
   const passwordChecks = [
     { id: 1, label: "At least 8 characters", valid: password.length >= 8 },
     { id: 2, label: "1 uppercase letter (A-Z)", valid: /[A-Z]/.test(password) },
@@ -32,7 +32,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
     },
   ];
 
-  // Username validation
+  // Username rules
   const usernameChecks = [
     {
       id: 1,
@@ -74,7 +74,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
   ];
   const usernameValid = username && usernameChecks.every((c) => c.valid);
 
-  // Age validation
+  // Age check
   const isOldEnough = (dobString) => {
     if (!dobString) return false;
     const today = new Date();
@@ -87,7 +87,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
     return age >= 13;
   };
 
-  // Submit: validate inputs then register
+  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -129,7 +129,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
     }
   };
 
-  // Form UI
+  // Render
   return (
     <>
       <div className="overlay">

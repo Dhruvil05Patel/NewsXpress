@@ -1,18 +1,11 @@
-// CategoryNews.jsx
-// Category-scoped feed. Fetches summarized articles for a single category on change,
-// normalizes structure, limits guest visibility, and integrates ReelView overlay.
+// CategoryNews: fetch and render one category + reel view
 
-// --- Imports ---
+// Imports
 import { useState, useEffect } from "react";
 import NewsCard from "./NewsCard";
 import ReelView from "./ReelView";
 
-// --- Component Definition ---
-/** CategoryNews props:
- *  - category: backend category key for fetch
- *  - title/subtitle: display metadata
- *  - userProfile/onLoginClick: auth gating + login trigger
- */
+// Props: category, title, subtitle, userProfile, onLoginClick, searchQuery
 export default function CategoryNews({
   category,
   title,
@@ -21,26 +14,24 @@ export default function CategoryNews({
   onLoginClick,
   searchQuery = "",
 }) {
-  // --- State Management ---
-  const [news, setNews] = useState([]); // Holds the filtered list of news articles.
-  const [loading, setLoading] = useState(true); // Manages the loading state.
-  const [reelState, setReelState] = useState({ isOpen: false, index: 0 }); // Manages the reel view modal.
+  // State
+  const [news, setNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [reelState, setReelState] = useState({ isOpen: false, index: 0 });
 
-  // Update page title based on category
+  // Dynamic page title
   useEffect(() => {
     document.title = `${category} | NewsXpress`;
   }, [category]);
 
-  // --- Side Effects (useEffect) ---
-  // Fetch category-specific news from backend when `category` changes.
+  // Fetch when category changes
   useEffect(() => {
     setLoading(true);
 
     const loadCategory = async () => {
       try {
         const resp = await fetch(
-          `${
-            import.meta.env.VITE_API_BASE || "http://localhost:4000"
+          `${import.meta.env.VITE_API_BASE || "http://localhost:4000"
           }/get-summarized-news/${encodeURIComponent(category)}`
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -79,30 +70,23 @@ export default function CategoryNews({
     loadCategory();
   }, [category]); // The key dependency: this effect re-runs if `category` changes.
 
-  // --- Event Handlers ---
-  /**
-   * Opens the ReelView, starting at the article that was clicked.
-   * @param {number} index - The index of the clicked news card.
-   */
+  // Open reel at index
   const handleCardClick = (index) => {
     setReelState({ isOpen: true, index: index });
   };
 
-  /**
-   * Closes the ReelView and resets its state.
-   */
+  // Close reel
   const handleCloseReel = () => {
     setReelState({ isOpen: false, index: 0 });
   };
 
-  // --- Conditional Rendering: Loading State ---
-  // Displays animated skeleton cards while the news is being filtered.
+  // Loading skeleton
   if (loading) {
     return (
       <main className="bg-newspaper min-h-screen pt-24">
         <div className="px-4 lg:px-10 py-12 w-full">
           <div className="w-full mx-auto">
-            {/* Skeleton Header */}
+            {/* Skeleton header */}
             <div className="mb-10 text-center">
               <div
                 className="h-14 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded-lg mb-3 mx-auto max-w-lg animate-pulse"
@@ -120,7 +104,7 @@ export default function CategoryNews({
               ></div>
             </div>
             <hr className="border-stone-300 mb-10" />
-            {/* Skeleton Cards Grid */}
+            {/* Skeleton cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="rounded-lg overflow-hidden shadow-md">
@@ -169,14 +153,14 @@ export default function CategoryNews({
     );
   }
 
-  // --- Render ---
+  // Render
   return (
     // Using a React Fragment `<>` to return multiple elements without a wrapper div.
     <>
       <main className="bg-newspaper text-zinc-900 pt-24">
         <div className="px-4 lg:px-10 py-12 w-full">
           <div className="w-full mx-auto">
-            {/* Header section dynamically displays the title and subtitle from props. */}
+            {/* Header */}
             <div className="mb-10 text-center">
               <h1 className="font-serif text-5xl font-bold mb-2">{title}</h1>
               <p className="text-stone-600">{subtitle}</p>
@@ -187,10 +171,10 @@ export default function CategoryNews({
               const q = (searchQuery || "").trim().toLowerCase();
               const filteredNews = q
                 ? news.filter(
-                    (n) =>
-                      (n.title || "").toLowerCase().includes(q) ||
-                      (n.summary || "").toLowerCase().includes(q)
-                  )
+                  (n) =>
+                    (n.title || "").toLowerCase().includes(q) ||
+                    (n.summary || "").toLowerCase().includes(q)
+                )
                 : news;
               const visibleNews = userProfile
                 ? filteredNews
@@ -219,10 +203,10 @@ export default function CategoryNews({
               const q = (searchQuery || "").trim().toLowerCase();
               const filteredLen = q
                 ? news.filter(
-                    (n) =>
-                      (n.title || "").toLowerCase().includes(q) ||
-                      (n.summary || "").toLowerCase().includes(q)
-                  ).length
+                  (n) =>
+                    (n.title || "").toLowerCase().includes(q) ||
+                    (n.summary || "").toLowerCase().includes(q)
+                ).length
                 : news.length;
               return !userProfile && filteredLen > 6 ? (
                 <div className="flex justify-center mt-12 mb-8">
@@ -247,16 +231,16 @@ export default function CategoryNews({
         </div>
       </main>
 
-      {/* Conditionally renders the ReelView overlay when a card is clicked. */}
+      {/* Reel overlay */}
       {reelState.isOpen &&
         (() => {
           const q = (searchQuery || "").trim().toLowerCase();
           const filteredNews = q
             ? news.filter(
-                (n) =>
-                  (n.title || "").toLowerCase().includes(q) ||
-                  (n.summary || "").toLowerCase().includes(q)
-              )
+              (n) =>
+                (n.title || "").toLowerCase().includes(q) ||
+                (n.summary || "").toLowerCase().includes(q)
+            )
             : news;
           return (
             <ReelView

@@ -16,10 +16,9 @@ import {
   Search,
   Home,
 } from "lucide-react";
-import notify from "../utils/toast";
+import notify from "../utils/toast"; // toast helper
 
-// Navbar: handles logo, categories, search, and mobile navigation.
-// Profile panel is external; this component notifies parent via onToggleProfile.
+// Navbar: categories, search, profile trigger, mobile menus
 export default function Navbar({
   onLoginClick,
   userProfile,
@@ -41,6 +40,7 @@ export default function Navbar({
     Health: "/health",
     Entertainment: "/entertainment",
     Crime: "/crime",
+    Live: "/live",
   };
 
   const categories = [
@@ -54,6 +54,8 @@ export default function Navbar({
     { name: "Health", icon: Heart },
     { name: "Entertainment", icon: Film },
     { name: "Crime", icon: Shield },
+    // Live moved to the end
+    { name: "Live", icon: Film },
   ];
 
   const gradientStyle = {
@@ -64,7 +66,7 @@ export default function Navbar({
     color: "#fff",
   };
 
-  // Navbar acts as a controlled search input when parent provides handlers
+  // Controlled search input
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
 
@@ -78,6 +80,7 @@ export default function Navbar({
   }, [sidebarOpen]);
 
   const handleCategoryClick = (categoryName) => {
+    // navigate to category
     const route = categoryRoutes[categoryName] || "/all";
     navigate(route);
     if (sidebarOpen) setSidebarOpen(false);
@@ -87,6 +90,8 @@ export default function Navbar({
     <>
       {/* Top Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-30 bg-white shadow-sm border-b border-gray-200">
+        {/* Inline style for blinking LIVE label (kept minimal and scoped) */}
+        <style>{`@keyframes liveBlink{0%,45%{opacity:1}50%,95%{opacity:.35}100%{opacity:1}} .live-blink{animation:liveBlink 1s linear infinite;}`}</style>
         <div className="flex items-center h-16 px-4 lg:px-6 gap-3 lg:gap-4">
           <a
             href="/"
@@ -99,32 +104,42 @@ export default function Navbar({
               const IconComponent = category.icon;
               const route = categoryRoutes[category.name] || "/all";
               const isActive = location.pathname === route;
+              const isLive = category.name === "Live";
               return (
                 <button
                   key={category.name}
                   onClick={() => handleCategoryClick(category.name)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full border transition-all whitespace-nowrap ${
-                    isActive
+                  className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full border transition-all whitespace-nowrap ${isActive
                       ? "border-transparent"
-                      : "text-gray-700 border-gray-200 hover:border-[#ff9fb3]"
-                  }`}
-                  style={isActive ? gradientStyle : undefined}
+                      : isLive
+                        ? "text-red-600 border-red-300 hover:border-red-400"
+                        : "text-gray-700 border-gray-200 hover:border-[#ff9fb3]"
+                    } ${isLive ? "relative" : ""}`}
+                  style={
+                    isActive
+                      ? gradientStyle
+                      : isLive
+                        ? { background: "#fff5f5" }
+                        : undefined
+                  }
                 >
                   {IconComponent ? (
                     <IconComponent
-                      className={`w-4 h-4 ${
-                        isActive ? "text-white" : "text-gray-500"
-                      }`}
+                      className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-500"
+                        }`}
                     />
                   ) : (
                     <span
-                      className={`inline-block w-2 h-2 rounded-full ${
-                        isActive ? "" : "bg-gray-400"
-                      }`}
+                      className={`inline-block w-2 h-2 rounded-full ${isActive ? "" : "bg-gray-400"
+                        }`}
                       style={isActive ? { background: "#fff" } : undefined}
                     />
                   )}
-                  <span>{category.name}</span>
+                  <span
+                    className={`${isLive ? "live-blink font-semibold" : ""}`}
+                  >
+                    {category.name}
+                  </span>
                 </button>
               );
             })}
@@ -225,15 +240,13 @@ export default function Navbar({
       {isSidebarVisible && (
         <div className="lg:hidden fixed inset-0 z-40 flex">
           <div
-            className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${
-              sidebarOpen ? "bg-opacity-40" : "bg-opacity-0"
-            }`}
+            className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${sidebarOpen ? "bg-opacity-40" : "bg-opacity-0"
+              }`}
             onClick={() => setSidebarOpen(false)}
           />
           <div
-            className={`relative w-64 bg-white shadow-xl h-full p-4 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
-              sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
+            className={`relative w-64 bg-white shadow-xl h-full p-4 flex flex-col z-50 transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+              }`}
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-base font-bold text-gray-900">Categories</h3>
@@ -249,30 +262,39 @@ export default function Navbar({
                 const IconComponent = category.icon;
                 const route = categoryRoutes[category.name] || "/all";
                 const isActive = location.pathname === route;
+                const isLive = category.name === "Live";
                 return (
                   <button
                     key={category.name}
                     onClick={() => handleCategoryClick(category.name)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                      isActive
+                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
                         ? "bg-red-50 text-red-600"
-                        : "text-gray-600 hover:text-red-600 hover:bg-red-50"
-                    }`}
+                        : isLive
+                          ? "text-red-600 hover:bg-red-50"
+                          : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                      }`}
                   >
                     {IconComponent ? (
                       <IconComponent
-                        className={`w-4 h-4 flex-shrink-0 ${
-                          isActive ? "text-red-500" : "text-gray-600"
-                        }`}
+                        className={`w-4 h-4 flex-shrink-0 ${isActive
+                            ? "text-red-500"
+                            : isLive
+                              ? "text-red-600"
+                              : "text-gray-600"
+                          }`}
                       />
                     ) : (
                       <div
-                        className={`w-4 h-4 rounded-full flex-shrink-0 ${
-                          isActive ? "bg-red-500" : "bg-gray-400"
-                        }`}
+                        className={`w-4 h-4 rounded-full flex-shrink-0 ${isActive ? "bg-red-500" : "bg-gray-400"
+                          }`}
                       />
                     )}
-                    <span className="text-left">{category.name}</span>
+                    <span
+                      className={`text-left ${isLive ? "live-blink font-semibold" : ""
+                        }`}
+                    >
+                      {category.name}
+                    </span>
                   </button>
                 );
               })}
@@ -286,9 +308,8 @@ export default function Navbar({
         <div className="flex justify-around items-center h-16">
           <button
             onClick={() => setSidebarOpen(true)}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${
-              sidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
-            }`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${sidebarOpen ? "text-red-600 scale-105" : "text-gray-600"
+              }`}
           >
             <Menu className="w-6 h-6" />
             <span className="text-xs font-medium">Categories</span>
@@ -298,11 +319,10 @@ export default function Navbar({
               navigate("/");
               if (sidebarOpen) setSidebarOpen(false);
             }}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${
-              location.pathname === "/"
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${location.pathname === "/"
                 ? "text-red-600 scale-105"
                 : "text-gray-600"
-            }`}
+              }`}
           >
             <Home className="w-6 h-6" />
             <span className="text-xs font-medium">Home</span>

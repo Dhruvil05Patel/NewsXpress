@@ -1,4 +1,4 @@
-// HelpSupport: user assistance hub with locked profile autofill and countdown
+// HelpSupport: support form (name/email locked), success auto-reset
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { postData } from "../services/api";
@@ -23,12 +23,12 @@ const HelpSupport = () => {
   const [countdown, setCountdown] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  // Update page title
+  // Title
   useEffect(() => {
     document.title = "Help & Support | NewsXpress";
   }, []);
 
-  // After showing success, display countdown and return to form
+  // Success countdown
   useEffect(() => {
     if (!submitted) return;
     setCountdown(10);
@@ -48,7 +48,7 @@ const HelpSupport = () => {
     return () => clearInterval(intervalId);
   }, [submitted]);
 
-  // Sync locked fields (name, email) from authenticated profile
+  // Sync locked profile fields
   useEffect(() => {
     const lockedName = profile?.full_name || firebaseUser?.displayName || "";
     const lockedEmail = profile?.email || firebaseUser?.email || "";
@@ -62,7 +62,7 @@ const HelpSupport = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Only allow changing message; name/email are locked from profile
+    // Only message editable
     if (name === "message") {
       setFormData((prev) => ({ ...prev, message: value }));
     }
@@ -70,7 +70,7 @@ const HelpSupport = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Ensure submission uses the locked profile values
+    // Use locked values
     const payload = {
       name: profile?.full_name || firebaseUser?.displayName || formData.name,
       email: profile?.email || firebaseUser?.email || formData.email,

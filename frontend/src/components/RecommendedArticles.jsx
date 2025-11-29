@@ -1,21 +1,31 @@
-// React Component Example: Recommended Articles Section
+// RecommendedArticles: show similar articles under current article
 
-import React from 'react';
-import { useSimilarArticles, useArticleTracking } from '../hooks/useRecommendations';
-import NewsCard from './NewsCard';
-import recommendationService from '../services/recommendations';
+import React from "react";
+import {
+  useSimilarArticles,
+  useArticleTracking,
+} from "../hooks/useRecommendations";
+import NewsCard from "./NewsCard";
+import recommendationService from "../services/recommendations";
 
-const RecommendedArticles = ({ currentArticleId, userId, title = "You May Also Like" }) => {
-  const { recommendations, loading, error } = useSimilarArticles(currentArticleId, 6);
+const RecommendedArticles = ({
+  currentArticleId,
+  userId,
+  title = "You May Also Like",
+}) => {
+  const { recommendations, loading, error } = useSimilarArticles(
+    currentArticleId,
+    6
+  );
   const { trackClick } = useArticleTracking();
 
   const handleArticleClick = async (articleId) => {
-    // Track click on recommendation
+    // Track click
     await recommendationService.trackClick(
       articleId,
       userId,
-      'recommended_section',
-      'content'
+      "recommended_section",
+      "content"
     );
     // Delegate to parent or routing logic
   };
@@ -52,8 +62,8 @@ const RecommendedArticles = ({ currentArticleId, userId, title = "You May Also L
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {recommendations.map((article) => (
-          <div 
-            key={article.id} 
+          <div
+            key={article.id}
             onClick={() => handleArticleClick(article.id)}
             className="cursor-pointer"
           >

@@ -1,5 +1,4 @@
-// Bookmarks.jsx
-// Displays saved bookmarks; uses server when logged in, localStorage fallback for guests.
+// Bookmarks: load from server if logged in else local storage
 import React, { useState, useEffect } from "react";
 import {
   getBookmarksForProfile,
@@ -8,7 +7,7 @@ import {
 } from "../services/api"; // adjust path as needed
 import notify from "../utils/toast";
 
-// Helper to get profile from localStorage (or replace with context)
+// Read saved profile (guest fallback)
 function getSavedProfile() {
   try {
     const raw = localStorage.getItem("currentProfile");
@@ -18,7 +17,7 @@ function getSavedProfile() {
   }
 }
 
-// Ensure each bookmark item has a unique `key` string for React lists
+// Ensure stable React keys
 function normalizeLocalBookmarks(arr = []) {
   return arr.map((item, idx) => {
     const key =
@@ -33,12 +32,12 @@ export default function Bookmarks() {
   const profile = getSavedProfile(); // { id, full_name, username, ... } or null
   const profileId = profile?.id;
 
-  // Update page title
+  // Title
   useEffect(() => {
     document.title = "Bookmarks | NewsXpress";
   }, []);
 
-  // Load bookmarks (server if profile present, else local) on mount
+  // Load bookmarks on mount
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -86,6 +85,7 @@ export default function Bookmarks() {
   }, [profileId]);
 
   const removeBookmark = async (keyOrArticleId) => {
+    // remove one bookmark
     const item = bookmarks.find(
       (b) => b.key === keyOrArticleId || b.id === keyOrArticleId
     );
@@ -110,6 +110,7 @@ export default function Bookmarks() {
   };
 
   const saveNote = async (articleId, note) => {
+    // save note to bookmark
     if (!profileId) {
       notify.info("Login to save notes with your bookmarks");
       return;
@@ -131,7 +132,7 @@ export default function Bookmarks() {
       <main className="bg-newspaper text-zinc-900 lg:ml-64 xl:mr-80 pt-24">
         <div className="px-4 lg:px-10 py-12 w-full">
           <div className="w-full mx-auto">
-            {/* Skeleton Header */}
+            {/* Skeleton header */}
             <div className="text-center mb-10">
               <div
                 className="h-12 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded-lg mb-3 mx-auto max-w-md animate-pulse"
@@ -148,7 +149,7 @@ export default function Bookmarks() {
                 }}
               ></div>
             </div>
-            {/* Skeleton Cards Grid */}
+            {/* Skeleton cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="rounded-lg overflow-hidden shadow-md">
@@ -283,7 +284,7 @@ export default function Bookmarks() {
                     </button>
                   </div>
 
-                  {/* Note UI */}
+                  {/* Note */}
                   <div className="mt-3">
                     <textarea
                       placeholder="Add a private note..."

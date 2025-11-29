@@ -1,28 +1,20 @@
-// --- Imports ---
+// LanguageSelector: modal language picker
 import React, { useState } from "react";
-import { languages } from "../utils/languages"; // A predefined list of languages
-import { X } from "lucide-react"; // Icon for the close button
+import { languages } from "../utils/languages";
+import { X } from "lucide-react";
 
-/**
- * A modal component that allows users to search for and select a language.
- * @param {object} props - The component's properties.
- * @param {Function} props.onSelectLanguage - Callback function triggered with the selected language code.
- * @param {Function} props.onClose - Callback function to close the modal.
- */
+// Props: onSelectLanguage(code), onClose()
 export default function LanguageSelector({ onSelectLanguage, onClose }) {
-  // --- State Management ---
-  // State to hold the user's input from the search box.
+  // Search term
   const [searchTerm, setSearchTerm] = useState("");
 
-  // --- Logic ---
-  // Filter the master language list based on the current search term.
+  // Filter list
   const filteredLanguages = languages.filter((lang) =>
     lang.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- Render ---
+  // Render
   return (
-    // Main overlay. Clicking this area will close the modal.
     <div
       className="absolute inset-0 z-20 bg-black/70 backdrop-blur-sm flex items-center justify-center"
       onClick={onClose}
@@ -35,7 +27,6 @@ export default function LanguageSelector({ onSelectLanguage, onClose }) {
         e.stopPropagation();
       }}
     >
-      {/* Modal content. Clicking inside this box will NOT close the modal. */}
       <div
         className="rounded-lg shadow-xl w-72 max-h-[60vh] flex flex-col"
         style={{
@@ -49,7 +40,6 @@ export default function LanguageSelector({ onSelectLanguage, onClose }) {
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
-        {/* Header with Title and Close Button */}
         <div
           className="flex items-center justify-between p-4"
           style={{

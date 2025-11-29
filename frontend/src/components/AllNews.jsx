@@ -1,18 +1,11 @@
-// AllNews.jsx
-// Aggregated "latest" feed across all categories.
-// Responsibilities: fetch summarized articles once on mount, normalize backend payload
-// for card/reel consumption, gate extra results for guests, and launch ReelView overlay.
+// AllNews: fetch latest summarized articles, display grid + reel view
 
-// --- Imports ---
+// Imports
 import { useState, useEffect } from "react";
 import NewsCard from "./NewsCard";
 import ReelView from "./ReelView"; // Component for the full-screen story view
 
-// --- Helper Functions ---
-/**
- * A simple helper to get the current date in a long format.
- * @returns {string} The formatted date string (e.g., "Sunday, October 12, 2025").
- */
+// Current date formatted
 const getFormattedDate = () => {
   return new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -22,7 +15,7 @@ const getFormattedDate = () => {
   });
 };
 
-// Component: fetches + renders all news; manages ReelView open/index state.
+// Fetch + reel state
 import notify from "../utils/toast";
 
 export default function AllNews({
@@ -30,29 +23,26 @@ export default function AllNews({
   onLoginClick,
   searchQuery = "",
 }) {
-  // --- State Management ---
+  // State
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // State to manage the reel view modal.
-  // `isOpen` toggles visibility, `index` tracks the starting article.
+  // Reel modal state
   const [reelState, setReelState] = useState({ isOpen: false, index: 0 });
 
-  // Update page title
+  // Page title
   useEffect(() => {
     document.title = "Home | NewsXpress";
   }, []);
 
-  // --- Data Fetching ---
-  // Fetches news data from backend DB when the component mounts.
+  // Initial fetch
   useEffect(() => {
     const fetchNewsFromApi = async () => {
       setLoading(true);
       try {
         // Fetch summarized news from backend (DB-first endpoint)
         const resp = await fetch(
-          `${
-            import.meta.env.VITE_API_BASE || "http://localhost:4000"
+          `${import.meta.env.VITE_API_BASE || "http://localhost:4000"
           }/get-summarized-news`
         );
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -94,30 +84,23 @@ export default function AllNews({
     fetchNewsFromApi();
   }, []); // Empty dependency array ensures this runs only once on mount.
 
-  // --- Event Handlers ---
-  /**
-   * Opens the ReelView, starting at the article that was clicked.
-   * @param {number} index - The index of the clicked news card.
-   */
+  // Open reel at index
   const handleCardClick = (index) => {
     setReelState({ isOpen: true, index: index });
   };
 
-  /**
-   * Closes the ReelView and resets its state.
-   */
+  // Close reel
   const handleCloseReel = () => {
     setReelState({ isOpen: false, index: 0 });
   };
 
-  // --- Conditional Rendering: Loading State ---
-  // Display skeleton cards while data is being fetched.
+  // Loading skeleton
   if (loading) {
     return (
       <main className="bg-newspaper min-h-screen pt-24">
         <div className="px-4 lg:px-10 py-12 w-full">
           <div className="w-full mx-auto">
-            {/* Skeleton Header */}
+            {/* Skeleton header */}
             <div className="text-center mb-10">
               <div
                 className="h-16 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded-lg mb-4 mx-auto max-w-xl animate-pulse"
@@ -141,7 +124,7 @@ export default function AllNews({
                 }}
               ></div>
             </div>
-            {/* Skeleton Cards Grid */}
+            {/* Skeleton cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="rounded-lg overflow-hidden shadow-md">
@@ -190,12 +173,12 @@ export default function AllNews({
     );
   }
 
-  // --- Render ---
+  // Render
   return (
     <main className="bg-newspaper text-zinc-900 pt-24">
       <div className="px-4 lg:px-10 py-12 w-full">
         <div className="w-full mx-auto">
-          {/* Page Header */}
+          {/* Header */}
           <div className="text-center mb-10">
             <h1 className="font-serif text-5xl md:text-6xl font-bold mb-3">
               Today's Headlines
@@ -230,10 +213,10 @@ export default function AllNews({
             const q = (searchQuery || "").trim().toLowerCase();
             const filteredNews = q
               ? news.filter(
-                  (n) =>
-                    (n.title || "").toLowerCase().includes(q) ||
-                    (n.summary || "").toLowerCase().includes(q)
-                )
+                (n) =>
+                  (n.title || "").toLowerCase().includes(q) ||
+                  (n.summary || "").toLowerCase().includes(q)
+              )
               : news;
             const visibleNews = userProfile
               ? filteredNews
@@ -256,15 +239,15 @@ export default function AllNews({
             );
           })()}
 
-          {/* View More for unauthenticated users */}
+          {/* Guest view more gate */}
           {(() => {
             const q = (searchQuery || "").trim().toLowerCase();
             const filteredLen = q
               ? news.filter(
-                  (n) =>
-                    (n.title || "").toLowerCase().includes(q) ||
-                    (n.summary || "").toLowerCase().includes(q)
-                ).length
+                (n) =>
+                  (n.title || "").toLowerCase().includes(q) ||
+                  (n.summary || "").toLowerCase().includes(q)
+              ).length
               : news.length;
             return !userProfile && filteredLen > 6 ? (
               <div className="flex justify-center mt-12 mb-8">
@@ -289,16 +272,16 @@ export default function AllNews({
         </div>
       </div>
 
-      {/* Conditionally render the ReelView overlay when a card is clicked. */}
+      {/* Reel overlay */}
       {reelState.isOpen &&
         (() => {
           const q = (searchQuery || "").trim().toLowerCase();
           const filteredNews = q
             ? news.filter(
-                (n) =>
-                  (n.title || "").toLowerCase().includes(q) ||
-                  (n.summary || "").toLowerCase().includes(q)
-              )
+              (n) =>
+                (n.title || "").toLowerCase().includes(q) ||
+                (n.summary || "").toLowerCase().includes(q)
+            )
             : news;
           return (
             <ReelView
