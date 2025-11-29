@@ -19,6 +19,7 @@ import { useTranslation } from "../hooks/useTranslation";
 import { useInteractionTimer } from "../hooks/useInteractionTimer";
 import notify from "../utils/toast";
 import { isBadImage, markBadImage } from "../utils/badImageCache";
+import { addBookmark, removeBookmarkApi } from "../services/api";
 
 export default function ReelCard({
   title,
@@ -133,7 +134,7 @@ export default function ReelCard({
     await handleListen(textToSpeak);
   };
 
-  const onBookmarkClick = (e) => {
+  const onBookmarkClick = async (e) => {
     e.stopPropagation();
     if (!userProfile) {
       notify.warn("Please log in to bookmark articles");
@@ -141,14 +142,25 @@ export default function ReelCard({
     }
 
     // If already bookmarked, remove it.
-    const raw = localStorage.getItem("bookmarks");
-    const existing = raw ? JSON.parse(raw) : [];
     if (isBookmarked) {
-      const next = existing.filter((b) => b.title !== title);
-      localStorage.setItem("bookmarks", JSON.stringify(next));
-      setIsBookmarked(false);
-      setBookmarkNote("");
-      notify.success("Bookmark removed successfully");
+      try {
+        // Remove from backend if user is logged in
+        if (userProfile?.id && articleId) {
+          await removeBookmarkApi(userProfile.id, articleId);
+        }
+        // Also remove from localStorage for backward compatibility
+        const raw = localStorage.getItem("bookmarks");
+        const existing = raw ? JSON.parse(raw) : [];
+        const next = existing.filter((b) => b.title !== title);
+        localStorage.setItem("bookmarks", JSON.stringify(next));
+        
+        setIsBookmarked(false);
+        setBookmarkNote("");
+        notify.success("Bookmark removed successfully");
+      } catch (error) {
+        console.error("Failed to remove bookmark:", error);
+        notify.error("Failed to remove bookmark");
+      }
       return;
     }
     // Open themed modal for note entry when adding.
@@ -156,29 +168,54 @@ export default function ReelCard({
     setShowBookmarkModal(true);
   };
 
-  const finalizeBookmark = () => {
-    const raw = localStorage.getItem("bookmarks");
-    const existing = raw ? JSON.parse(raw) : [];
-    const entry = {
-      title,
-      summary,
-      imageUrl,
-      newsUrl,
-      source,
-      timestamp,
-      category,
-      note: bookmarkNoteDraft.trim(),
-      savedAt: Date.now(),
-    };
-    existing.push(entry);
-    localStorage.setItem("bookmarks", JSON.stringify(existing));
-    setIsBookmarked(true);
-    setBookmarkNote(bookmarkNoteDraft.trim());
-    setShowBookmarkModal(false);
-    notify.success(
-      "Article bookmarked" +
-        (bookmarkNoteDraft.trim() ? " with note" : " successfully")
-    );
+  const finalizeBookmark = async () => {
+    try {
+      const noteText = bookmarkNoteDraft.trim();
+      
+      // Save to backend if user is logged in
+      if (userProfile?.id && articleId) {
+        const articleData = {
+          id: articleId,
+          title,
+          summary,
+          imageUrl,
+          url: newsUrl,
+          source,
+          timestamp,
+          category,
+        };
+        
+        await addBookmark(userProfile.id, articleId, noteText, articleData);
+      }
+      
+      // Also save to localStorage for backward compatibility
+      const raw = localStorage.getItem("bookmarks");
+      const existing = raw ? JSON.parse(raw) : [];
+      const entry = {
+        title,
+        summary,
+        imageUrl,
+        newsUrl,
+        source,
+        timestamp,
+        category,
+        note: noteText,
+        savedAt: Date.now(),
+      };
+      existing.push(entry);
+      localStorage.setItem("bookmarks", JSON.stringify(existing));
+      
+      setIsBookmarked(true);
+      setBookmarkNote(noteText);
+      setShowBookmarkModal(false);
+      notify.success(
+        "Article bookmarked" + (noteText ? " with note" : " successfully")
+      );
+    } catch (error) {
+      console.error("Failed to save bookmark:", error);
+      notify.error("Failed to save bookmark");
+      setShowBookmarkModal(false);
+    }
   };
 
   const cancelBookmarkModal = () => {
@@ -330,6 +367,9 @@ export default function ReelCard({
               placeholder="e.g. Great insight on AI trends"
               className="w-full rounded-md bg-gray-800 border border-gray-700 focus:border-red-500 focus:ring-red-500 text-sm p-2 text-gray-200 placeholder-gray-500 resize-none"
               autoFocus
+              autoComplete="off"
+              data-lpignore="true"
+              data-form-type="other"
             />
             <div className="mt-5 flex justify-end gap-3">
               <button

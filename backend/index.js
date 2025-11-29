@@ -19,6 +19,7 @@ const {handleSupportRequest} = require("./support/controller/supportController")
 const recommendationsRouter = require("./routes/recommendations");
 const activitiesRouter = require("./routes/activities");
 const bookmarksRouter = require("./routes/bookmarks");
+const path = require("path");
 // ================================================================= //
 dotenv.config();
 
@@ -385,4 +386,15 @@ app.post("/cron/fetch-latest", async (req, res) => {
 
 // Start server after establishing DB connection
 startServer();
+
+// =================== SPA FALLBACK (NON-API ROUTES) =================== //
+// Serve frontend static assets from `frontend/dist` and return index.html for client-side routes.
+// This prevents 404s on refresh when requests hit the backend host.
+const distDir = path.join(__dirname, "..", "frontend", "dist");
+app.use(express.static(distDir));
+
+// Catch-all for non-API GET requests: serve the SPA index.html
+app.get(/^(?!\/api).*/, (req, res) => {
+  res.sendFile(path.join(distDir, "index.html"));
+});
 
