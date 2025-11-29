@@ -366,6 +366,49 @@ router.get('/smart/category-based', async (req, res) => {
 });
 
 /**
+ * Smart Recommendations - Returns only article IDs
+ * GET /api/recommendations/smart?userId=...&limit=...
+ * 
+ * Returns: { ids: ["uuid1", "uuid2", ...] }
+ */
+router.get('/smart', async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    const limit = parseInt(req.query.limit) || 200;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId query parameter is required'
+      });
+    }
+
+    // Get category-based recommendations
+    const recommendations = await UserInteractionService.getRecommendationsByCategory(userId, limit);
+
+    // Extract just the IDs
+    const ids = recommendations.map(article => article.id);
+
+    res.json({
+      ids: ids,
+      meta: {
+        count: ids.length,
+        user_id: userId,
+        limit: limit
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in smart recommendations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get smart recommendations',
+      message: error.message
+    });
+  }
+});
+
+/**
  * Get user's interaction statistics
  * GET /api/recommendations/smart/user-stats
  */

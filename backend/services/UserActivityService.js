@@ -140,10 +140,10 @@ async function getUserReadingStats(userId, days = 30) {
       .map(([category, stats]) => ({
         category,
         article_count: stats.articles.size,
-        total_duration: stats.totalDuration,
+        total_time_seconds: stats.totalDuration,
         avg_duration: stats.totalDuration / stats.articles.size,
       }))
-      .sort((a, b) => b.total_duration - a.total_duration);
+      .sort((a, b) => b.total_time_seconds - a.total_time_seconds);
 
     return {
       total_articles: totalArticles,

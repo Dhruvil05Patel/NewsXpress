@@ -1,5 +1,5 @@
 // PersonalizedFeed.jsx
-// Hybrid/content-based personalized recommendation feed with ReelView launcher.
+// Hybrid/content-based personalized recommendation feed with SmartRecommendations component and ReelView launcher.
 
 import React, { useState, useEffect } from "react";
 import { usePersonalizedRecommendations } from "../hooks/useRecommendations";
@@ -14,6 +14,7 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
     topN,
     method
   );
+
   const [reelOpen, setReelOpen] = useState(false);
   const [reelIndex, setReelIndex] = useState(0);
   const [reelNews, setReelNews] = useState([]);
@@ -23,32 +24,31 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
     document.title = "Personalized Feed | NewsXpress";
   }, []);
 
+  // -----------------------------------------
+  // Handlers
+  // -----------------------------------------
   const handleArticleClick = async (articleId) => {
-    // Track click on personalized recommendation
     await recommendationService.trackClick(
       articleId,
       userId,
       "personalized_feed",
       method
     );
-    // Delegate to parent or routing logic
   };
 
-  // Open ReelView at selected index
   const handleOpenReel = (articles, index) => {
     setReelNews(articles);
     setReelIndex(index);
     setReelOpen(true);
   };
 
-  // Close ReelView overlay
   const handleCloseReel = () => {
     setReelOpen(false);
   };
 
   if (!userId) {
     return (
-      <div className="personalized-feed lg:pt-10" style={{}}>
+      <div className="personalized-feed lg:pt-10">
         <h2 className="text-2xl font-bold mb-6">Recommended For You</h2>
         <p className="text-gray-600">
           Please sign in to see personalized recommendations.
@@ -57,9 +57,11 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
     );
   }
 
-  // Show smart recommendations first if available
   return (
     <>
+      {/* ------------------------------------- */}
+      {/* SMART RECOMMENDER SECTION */}
+      {/* ------------------------------------- */}
       <div className="w-full lg:pt-10">
         <SmartRecommendations
           userId={userId}
@@ -69,6 +71,27 @@ const PersonalizedFeed = ({ userId, method = "hybrid", topN = 10 }) => {
         />
       </div>
 
+      {/* ------------------------------------- */}
+      {/* FALLBACK PERSONALIZED FEED */}
+      {/* ------------------------------------- */}
+      {!loading && recommendations.length > 0 && (
+        <div className="mt-10 px-4">
+          <h2 className="text-xl font-bold mb-4">More for You</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recommendations.map((article) => (
+              <NewsCard
+                key={article.id}
+                article={article}
+                onClick={() => handleArticleClick(article.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------- */}
+      {/* REEL VIEW (Full Screen Vertical Swipe) */}
+      {/* ------------------------------------- */}
       {reelOpen && (
         <ReelView
           news={reelNews}
