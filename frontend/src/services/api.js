@@ -1,4 +1,6 @@
 import axios from "axios";
+import { auth } from "../components/auth/firebase";
+
 // Vite exposes env vars via `import.meta.env`. Do not use dotenv in browser code.
 // Read backend URL exposed by Vite. If not set (common in quick dev runs),
 // fall back to localhost:4000 which is the backend default in this project.
@@ -18,6 +20,25 @@ const api = axios.create({
 		"Content-Type": "application/json",
 	},
 });
+
+// Add request interceptor to attach Firebase auth token
+api.interceptors.request.use(
+	async (config) => {
+		try {
+			const user = auth.currentUser;
+			if (user) {
+				const token = await user.getIdToken();
+				config.headers.Authorization = `Bearer ${token}`;
+			}
+		} catch (error) {
+			console.warn("Failed to get auth token:", error);
+		}
+		return config;
+	},
+	(error) => {
+		return Promise.reject(error);
+	}
+);
 
 // Create axios instance for ML API
 const mlApi = axios.create({
