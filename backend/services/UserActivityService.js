@@ -55,7 +55,8 @@ async function trackActivity(userId, articleId, activityData = {}) {
 
     if (recentActivity) {
       // Update existing activity (accumulate duration)
-      recentActivity.duration_seconds = (recentActivity.duration_seconds || 0) + Math.round(durationSeconds);
+      const inc = Math.max(0, Math.round(Number(durationSeconds) || 0));
+      recentActivity.duration_seconds = Math.max(0, (recentActivity.duration_seconds || 0)) + inc;
       if (scrollPercentage !== null && scrollPercentage > (recentActivity.scroll_percentage || 0)) {
         recentActivity.scroll_percentage = scrollPercentage;
       }
@@ -64,7 +65,7 @@ async function trackActivity(userId, articleId, activityData = {}) {
       }
       await recentActivity.save();
       
-      console.log(`✅ Activity updated: ${articleId} (Total: ${recentActivity.duration_seconds}s, Scroll: ${recentActivity.scroll_percentage}%)`);
+      console.log(`✅ Activity updated: user=${userId} article=${articleId} type=${activityType} (+${inc}s => ${recentActivity.duration_seconds}s, scroll=${recentActivity.scroll_percentage}%)`);
       return recentActivity;
     }
 
@@ -80,7 +81,7 @@ async function trackActivity(userId, articleId, activityData = {}) {
       metadata,
     });
 
-    console.log(`✅ Activity created: ${articleId} (Type: ${activityType}, Duration: ${durationSeconds}s)`);
+    console.log(`✅ Activity created: user=${userId} article=${articleId} type=${activityType} (+${Math.round(durationSeconds)}s)`);
     return activity;
 
   } catch (error) {
