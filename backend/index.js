@@ -288,8 +288,8 @@ app.post("/cron/fetch-latest", async (req, res) => {
 // =============================================================
 const distDir = path.join(__dirname, "..", "frontend", "dist");
 app.use(express.static(distDir));
-app.get("*", (req, res, next) => {
-  if (req.path.startsWith("/api") || req.path.startsWith("/cron")) return next();
+
+app.get(/^\/(?!api|cron).*/, (req, res) => {
   res.sendFile(path.join(distDir, "index.html"));
 });
 
