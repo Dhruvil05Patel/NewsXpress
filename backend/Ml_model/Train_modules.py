@@ -35,6 +35,7 @@ class ModelTrainer:
     def __init__(self):
         self.articles = None
         self.users = None
+        self.user_activities = None
         self.tfv = None
         self.sig_matrix = None
         self.user_sim_matrix = None
@@ -69,7 +70,7 @@ class ModelTrainer:
             self.articles = pd.read_sql_query(articles_query, conn)
             logger.info(f"Loaded {len(self.articles)} articles")
             
-            # Load user profiles
+            # Load user profiles with preferences
             logger.info("Loading user profiles from database...")
             users_query = """
                 SELECT 
@@ -84,11 +85,34 @@ class ModelTrainer:
             self.users = pd.read_sql_query(users_query, conn)
             logger.info(f"Loaded {len(self.users)} user profiles")
             
+            # Load user activities for collaborative filtering
+            logger.info("Loading user activities from database...")
+            activities_query = """
+                SELECT 
+                    ua.user_id::text,
+                    ua.article_id::text,
+                    ua.duration_seconds,
+                    ua.scroll_percentage,
+                    ua.activity_type,
+                    a.topic,
+                    a.place,
+                    a.actors
+                FROM user_activities ua
+                INNER JOIN articles a ON ua.article_id = a.id
+                WHERE ua.duration_seconds > 5
+                ORDER BY ua.created_at DESC
+                LIMIT 50000
+            """
+            self.user_activities = pd.read_sql_query(activities_query, conn)
+            logger.info(f"Loaded {len(self.user_activities)} user activities")
+            
             conn.close()
             
             # Save to CSV for backup
             self.articles.to_csv(DATA_DIR / 'articles_export.csv', index=False)
             self.users.to_csv(DATA_DIR / 'users_export.csv', index=False)
+            if hasattr(self, 'user_activities') and self.user_activities is not None:
+                self.user_activities.to_csv(DATA_DIR / 'user_activities_export.csv', index=False)
             
             return True
             
@@ -102,6 +126,7 @@ class ModelTrainer:
         try:
             articles_path = DATA_DIR / 'articles_export.csv'
             users_path = DATA_DIR / 'users_export.csv'
+            activities_path = DATA_DIR / 'user_activities_export.csv'
             
             if articles_path.exists():
                 self.articles = pd.read_csv(articles_path)
@@ -115,6 +140,12 @@ class ModelTrainer:
                 logger.info(f"Loaded {len(self.users)} users from CSV")
             else:
                 logger.warning("No users CSV found, skipping collaborative filtering")
+            
+            if activities_path.exists():
+                self.user_activities = pd.read_csv(activities_path)
+                logger.info(f"Loaded {len(self.user_activities)} user activities from CSV")
+            else:
+                logger.warning("No user activities CSV found, collaborative filtering may be limited")
                 
             return True
             

@@ -64,20 +64,26 @@ export const useInteractionTimer = (userId, articleId, categoryName, isActive) =
 
 /**
  * Internal function to send tracking data to backend
+ * Uses the new user_activities table for ML algorithm
  * @private
  */
 async function trackInteraction(userId, articleId, timeSpentSeconds, categoryName) {
   try {
-    const response = await api.post('/api/recommendations/smart/track', {
-      user_id: userId,
-      article_id: articleId,
-      time_spent_seconds: timeSpentSeconds,
-      category_name: categoryName,
+    // Send to new activities endpoint for ML tracking
+    const response = await api.post('/api/activities/track', {
+      userId: userId,
+      articleId: articleId,
+      activityType: 'read',
+      durationSeconds: timeSpentSeconds,
+      scrollPercentage: null, // Could add scroll tracking later
+      source: 'app',
+      recommendationType: null,
+      metadata: { category: categoryName },
     });
 
     if (response.data.success) {
       console.log(
-        `✅ Tracked: ${timeSpentSeconds}s on article ${articleId} (${categoryName})`
+        `✅ Activity tracked: ${timeSpentSeconds}s on article ${articleId} (${categoryName})`
       );
       // Trigger a custom event to notify components to refetch recommendations
       console.log('🔔 Dispatching interactionTracked event for userId:', userId);
@@ -85,7 +91,7 @@ async function trackInteraction(userId, articleId, timeSpentSeconds, categoryNam
     }
   } catch (error) {
     const details = error?.response?.data || {};
-    console.warn('⚠️ Failed to track interaction:', error.message, details);
+    console.warn('⚠️ Failed to track activity:', error.message, details);
     // Silently fail - don't disrupt user experience
   }
 }

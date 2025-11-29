@@ -17,6 +17,8 @@ const { fetchLiveStreams } = require("./services/youtube-service/youtubeControll
 const { sendVerification, sendPasswordReset } = require("./auth/controllers/emailController");
 const {handleSupportRequest} = require("./support/controller/supportController");
 const recommendationsRouter = require("./routes/recommendations");
+const activitiesRouter = require("./routes/activities");
+const bookmarksRouter = require("./routes/bookmarks");
 // ================================================================= //
 dotenv.config();
 
@@ -304,60 +306,6 @@ app.post("/api/auth/send-verification-email", sendVerification);
 app.post("/api/auth/send-password-reset-email", sendPasswordReset);
 
 
-
-// =================== (NEW) BOOKMARK ROUTES =================== //
-// (These routes use new UserInteractionService)
-
-// GET all bookmarks for a user
-app.get("/api/bookmarks/:profileId", async (req, res) => {
-  try {
-    const { profileId } = req.params;
-    const bookmarks = await getBookmarksByProfile(profileId);
-    res.status(200).json(bookmarks);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error getting bookmarks", error: error.message });
-  }
-});
-
-// ADD a new bookmark
-app.post("/api/bookmarks", async (req, res) => {
-  try {
-    const { profile_id, article_id, note } = req.body;
-    if (!profile_id || !article_id) {
-      return res
-        .status(400)
-        .json({ message: "profile_id and article_id are required" });
-    }
-    const bookmark = await addBookmark(profile_id, article_id, note);
-    res.status(201).json(bookmark);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error adding bookmark", error: error.message });
-  }
-});
-
-// REMOVE a bookmark
-app.delete("/api/bookmarks", async (req, res) => {
-  try {
-    const { profile_id, article_id } = req.body;
-    if (!profile_id || !article_id) {
-      return res
-        .status(400)
-        .json({ message: "profile_id and article_id are required" });
-    }
-    await removeBookmark(profile_id, article_id);
-    res.status(200).json({ message: "Bookmark removed" });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error removing bookmark", error: error.message });
-  }
-});
-
-
 // =================== LIVE STREAM ROUTE =================== //
 app.get('/api/live-streams', fetchLiveStreams);
 
@@ -366,6 +314,12 @@ app.post('/api/support/request', handleSupportRequest);
 
 // =================== RECOMMENDATIONS ROUTES =================== //
 app.use('/api/recommendations', recommendationsRouter);
+
+// =================== USER ACTIVITIES ROUTES (ML Tracking) =================== //
+app.use(activitiesRouter);
+
+// =================== BOOKMARKS ROUTES =================== //
+app.use(bookmarksRouter);
 
 // =================== DEBUG NOTIFICATION ENDPOINTS =================== //
 // List subscriber token stats for a category

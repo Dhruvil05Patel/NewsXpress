@@ -67,6 +67,7 @@ db.Profile = require('../models/Profile')(sequelize);
 db.Source = require('../models/Source')(sequelize);
 db.Article = require('../models/Article')(sequelize);
 db.UserInteraction = require('../models/UserInteraction')(sequelize);
+db.UserActivity = require('../models/UserActivity')(sequelize);
 db.Notification = require('../models/Notification')(sequelize);
 
 // Set up all associations
@@ -82,6 +83,9 @@ if (db.Source.associate) {
 }
 if (db.UserInteraction.associate) {
   db.UserInteraction.associate(db);
+}
+if (db.UserActivity.associate) {
+  db.UserActivity.associate(db);
 }
 if (db.Notification.associate) {
   db.Notification.associate(db);
