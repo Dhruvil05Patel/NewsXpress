@@ -77,10 +77,9 @@ async function deleteUser(req, res) {
     const uid = userRecord.uid;
     const databaseUid = firebaseUidToUuid(uid);
 
-
-    // Delete from Firebase Auth
+    // Delete from Firebase Auth (use the real Firebase UID)
     try {
-      await admin.auth().deleteUser(databaseUid);
+      await admin.auth().deleteUser(uid);
       console.log(`✅ Deleted user ${uid} (${email}) from Firebase Auth`);
     } catch (firebaseErr) {
       console.error('Firebase user deletion failed:', firebaseErr.message);
@@ -92,19 +91,17 @@ async function deleteUser(req, res) {
 
     // Delete from backend database (cascading deletes handled by Sequelize associations)
     const { Profile } = require('../../config/db');
-    
-    const deleted = await Profile.destroy({
-      where: { id: uid }
-    });
+    // Profiles are stored with UUID derived from Firebase UID
+    const deleted = await Profile.destroy({ where: { id: databaseUid } });
 
     if (deleted) {
-      console.log(`✅ Deleted profile ${uid} from database (cascaded: bookmarks, interactions)`);
+      console.log(`✅ Deleted profile ${databaseUid} from database (cascaded: bookmarks, interactions)`);
       return res.status(200).json({ 
         success: true, 
         message: 'User account deleted successfully' 
       });
     } else {
-      console.log(`⚠️ No profile found for ${uid} in database`);
+      console.log(`⚠️ No profile found for ${databaseUid} in database`);
       return res.status(200).json({ 
         success: true, 
         message: 'User deleted from Firebase (no database record found)' 

@@ -57,6 +57,11 @@ function SignUp({ onClose, onSwitchToLogin }) {
       valid: username ? !/\.{2,}/.test(username) : false,
     },
     {
+      id: 4.5,
+      label: "Minimum 5 characters",
+      valid: username ? username.length >= 5 : false,
+    },
+    {
       id: 5,
       label: "Max 30 characters",
       valid: username ? username.length <= 30 : false,
@@ -151,7 +156,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
             <label>Username</label>
             <input
               type="text"
-              placeholder="Choose a username"
+              placeholder="Choose a username (min 5 chars)"
               value={username}
               onChange={(e) => setUsername(e.target.value.trim())}
               required
@@ -159,7 +164,10 @@ function SignUp({ onClose, onSwitchToLogin }) {
               formNoValidate
               maxLength={30}
             />
-            {username && (
+            {username && username.length < 5 && (
+              <p className="error-text" style={{ marginTop: "4px" }}>❌ Username must be at least 5 characters.</p>
+            )}
+            {username && username.length >= 5 && (
               <ul className="password-rules" style={{ marginTop: "6px" }}>
                 {usernameChecks
                   .filter((check) => !check.valid)

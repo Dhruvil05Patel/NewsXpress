@@ -34,6 +34,7 @@ export default function Profile({
     const [selectedFileName, setSelectedFileName] = useState(null);
     const nameInputRef = useRef(null);
     const usernameInputRef = useRef(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         setNewName(userProfile?.full_name || "");
@@ -75,17 +76,44 @@ export default function Profile({
 
     // Delete account handler
     // Simulated delete account (demo only)
-    const handleDeleteAccount = () => {
-        if (!userProfile?.id) {
+    const handleDeleteAccount = async () => {
+        if (!userProfile?.email) {
             notify.error("Please log in to delete your account");
             return;
         }
-        notify.warn("Account deletion in progress...");
-        // Simulate async delete
-        setTimeout(() => {
+        
+        try {
+            notify.warn("Account deletion in progress...");
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/auth/delete-user`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email: userProfile.email }),
+            });
+            
+            if (!res.ok) {
+                const text = await res.text();
+                let message = "Failed to delete account";
+                try {
+                    const data = JSON.parse(text);
+                    message = data?.message || message;
+                } catch {}
+                throw new Error(message);
+            }
+            
+            const data = await res.json();
             notify.success("Account has been successfully deleted");
             window.dispatchEvent(new Event("account-deleted"));
-        }, 500);
+            
+            try {
+                await logoutUser();
+            } catch {}
+            window.location.reload();
+        } catch (err) {
+            console.error("Delete account error:", err);
+            notify.error(err.message || "Failed to delete account. Please try again");
+        }
     };
 
     // Log to console whenever account-deleted event fires (demo listener)
@@ -472,7 +500,7 @@ export default function Profile({
                             {/* Delete Account Demo (placed below notifications) */}
                             <div className="pt-2">
                                 <button
-                                    onClick={handleDeleteAccount}
+                                    onClick={() => setShowDeleteConfirm(true)}
                                     className="w-full px-4 py-2 text-sm font-semibold rounded-md text-white shadow-sm transition-all"
                                     style={{
                                         background:
@@ -534,6 +562,66 @@ export default function Profile({
 
     return (
         <>
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                        {/* Header */}
+                        <div
+                            className="text-white p-6 text-center"
+                            style={{
+                                background: "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+                            }}
+                        >
+                            <div className="w-16 h-16 mx-auto mb-3 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl">
+                                ⚠️
+                            </div>
+                            <h2 className="text-2xl font-bold">Delete Account?</h2>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-4">
+                            <p className="text-gray-700 text-center leading-relaxed">
+                                Are you sure you want to permanently delete your account?
+                            </p>
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <p className="text-sm text-red-800 font-medium mb-2">
+                                    ⚠️ This action will:
+                                </p>
+                                <ul className="text-sm text-red-700 space-y-1 ml-4">
+                                    <li>• Delete all your bookmarks</li>
+                                    <li>• Remove your profile permanently</li>
+                                    <li>• Erase all personalized recommendations</li>
+                                    <li>• Cannot be undone</li>
+                                </ul>
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowDeleteConfirm(false);
+                                        handleDeleteAccount();
+                                    }}
+                                    className="flex-1 px-4 py-3 text-white font-semibold rounded-lg transition-all shadow-md"
+                                    style={{
+                                        background: "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+                                    }}
+                                >
+                                    Yes, Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Mobile overlay */}
             <div
                 className={`lg:hidden fixed inset-0 z-60 flex justify-end ${isOpen ? "pointer-events-auto" : "pointer-events-none"
