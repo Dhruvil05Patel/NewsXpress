@@ -1,10 +1,10 @@
-# 🛡️ Backend Unit Testing Report (White Box)
+#  Backend Unit Testing Report (White Box)
 
 - **Project:** NewsXpress
 - **Component:** Backend API & Services
 - **Test Framework:** Jest
 - **Final Line Coverage:** 98.92%
-- **Status:** ✅ Passed (Exceeds Requirements)
+- **Status:**  Passed (Exceeds Requirements)
 
 ---
 
@@ -22,18 +22,18 @@ All core business logic services achieved a perfect **100%** coverage score.
 
 | File | % Stmts | % Branch | % Funcs | % Lines | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **All files** | **98.96%** | **88.73%** | **100%** | **98.92%** | 🟢 **Excellent** |
+| **All files** | **98.96%** | **88.73%** | **100%** | **98.92%** |  **Excellent** |
 | **Services** | | | | | |
-| `ArticleService.js` | 100% | 92.85% | 100% | 100% | 🌟 Perfect |
-| `ProfileService.js` | 100% | 91.93% | 100% | 100% | 🌟 Perfect |
-| `UserInteractionService.js`| 100% | 86.48% | 100% | 100% | 🌟 Perfect |
-| `youtubeService.js` | 100% | 100% | 100% | 100% | 🌟 Perfect |
-| `FetchingNews.js` | 94.73% | 66.66% | 100% | 94.59% | 🟢 High |
-| `Summarizing.js` | 97.36% | 85.71% | 100% | 97.22% | 🟢 High |
+| `ArticleService.js` | 100% | 92.85% | 100% | 100% |  Perfect |
+| `ProfileService.js` | 100% | 91.93% | 100% | 100% |  Perfect |
+| `UserInteractionService.js`| 100% | 86.48% | 100% | 100% |  Perfect |
+| `youtubeService.js` | 100% | 100% | 100% | 100% | Perfect |
+| `FetchingNews.js` | 94.73% | 66.66% | 100% | 94.59% |  High |
+| `Summarizing.js` | 97.36% | 85.71% | 100% | 97.22% |  High |
 | **Controllers** | | | | | |
-| `emailController.js` | 100% | 100% | 100% | 100% | 🌟 Perfect |
-| `youtubeController.js` | 100% | 100% | 100% | 100% | 🌟 Perfect |
-| `authController.js` | 96.55% | 96% | 100% | 95.83% | 🟢 High |
+| `emailController.js` | 100% | 100% | 100% | 100% |  Perfect |
+| `youtubeController.js` | 100% | 100% | 100% | 100% |  Perfect |
+| `authController.js` | 96.55% | 96% | 100% | 95.83% |  High |
 
 *(Remaining uncovered lines are restricted to unreachable network error fallbacks and redundant edge-case logging).*
 

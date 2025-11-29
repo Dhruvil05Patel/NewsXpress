@@ -1,32 +1,11 @@
-# Backend Unit Test (White Box) Report
+#  Unit Testing (White Box)
 
-- **Project:** NewsXpress
-- **Tool Used:** Jest (The modern industry standard for Node.js, replacing Mocha)
+This folder contains all Markdown reports related to white-box unit testing for the project.
 
----
+##  Markdown Files
+- **backend_report.md** — White-box unit testing details for backend modules.
+- **frontend_report.md** — White-box unit testing details for frontend components.
+- **README.md** — Overview of the unit testing documentation.
 
-## 1. How Unit Testing Was Performed
-
-Unit testing ("White box testing") was implemented by co-locating test files with the source code. Each service file in the `backend/services/` directory has a corresponding `*.test.js` file that tests its functions in isolation.
-
-**Example:**
-* `ProfileService.js` (the application code)
-* `ProfileService.test.js` (the unit test for that code)
-
-We used Jest's built-in **mocking** functionality to fake database calls. This allows us to test the service's logic without needing a live database connection.
-
-## 2. How to Run Tests
-
-1.  Navigate to the `backend/` folder.
-2.  To run all unit tests:
-    ```bash
-    npm test
-    ```
-3.  To generate a code coverage report:
-    ```bash
-    npm run coverage
-    ```
-
-## 3. Code Coverage Report
-
-As required, our goal is to achieve 100% code coverage. The report below shows our current progress.
+##  Purpose
+To provide clear documentation of white-box testing performed on both backend and frontend parts of the system.
