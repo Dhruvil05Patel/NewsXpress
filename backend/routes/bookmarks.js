@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 // Middleware to verify Firebase ID token (optional; adapt path if different)
 const { verifyIdTokenMiddleware } = require('../middleware/auth');
 // Import models (adjust path/exports if your project differs)
-const { UserInteraction, Article, Profile } = require('../models');
+const { UserInteraction, Article, Profile } = require('../config/db');
 
 // List bookmarks for a profile
 router.get('/api/profiles/:profileId/bookmarks', verifyIdTokenMiddleware, async (req, res) => {
