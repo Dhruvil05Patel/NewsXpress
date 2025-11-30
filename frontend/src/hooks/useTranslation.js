@@ -54,7 +54,7 @@ export const useTranslation = () => {
       setIsTranslated(true);
     } catch (error) {
       console.error("Translation failed:", error);
-      notify.error("🚫 Translation failed. Please try again.");
+      notify.error("Translation failed. Please try again.");
     } finally {
       setIsTranslating(false);
     }

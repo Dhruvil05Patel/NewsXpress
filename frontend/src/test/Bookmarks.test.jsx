@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Bookmarks from '../components/Bookmarks';
-import * as api from '../services/api'; // Adjust path if needed
-import notify from '../utils/toast'; // Adjust path if needed
+import * as api from '../services/api';
+import notify from '../utils/toast';
 
 // --- MOCKS ---
 vi.mock('../services/api', () => ({
@@ -33,7 +33,7 @@ const localStorageMock = (() => {
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 describe('Bookmarks Component', () => {
-  
+
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
@@ -44,7 +44,7 @@ describe('Bookmarks Component', () => {
   const mockBookmarks = [
     {
       id: 'interaction-1',
-      article_id: 'art-1',
+      article_id: 'art-1', // <--- This is the ID the component uses
       bookmark_timestamp: '2025-01-01',
       note: 'My Note',
       article: {
@@ -71,8 +71,16 @@ describe('Bookmarks Component', () => {
   // --- 1. RENDERING TESTS ---
 
   it('renders Loading state initially', () => {
-    render(<Bookmarks />);
-    expect(screen.getByText(/Loading bookmarks.../i)).toBeInTheDocument();
+    // FIX: Set a profile so the component enters the async API fetch block.
+    // This delay allows the "Loading" state to be visible to the test.
+    window.localStorage.setItem('currentProfile', JSON.stringify(mockProfile));
+
+    // Return a promise that never resolves immediately to hold the loading state
+    api.getBookmarksForProfile.mockReturnValue(new Promise(() => { }));
+
+    const { container } = render(<Bookmarks />);
+    // Component shows skeleton loaders during loading
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
 
   it('renders Empty State if no bookmarks found', async () => {
@@ -100,7 +108,6 @@ describe('Bookmarks Component', () => {
   });
 
   it('renders Bookmarks from LocalStorage for Guest User', async () => {
-    // No profile in localStorage
     const localBookmarks = [
       { id: 'local-1', title: 'Local Article', newsUrl: 'http://local.com' }
     ];
@@ -124,16 +131,13 @@ describe('Bookmarks Component', () => {
 
     await waitFor(() => screen.getByText('Test Article 1'));
 
-    // Click Remove on first item
     const removeBtns = screen.getAllByText('Remove');
     fireEvent.click(removeBtns[0]);
 
     await waitFor(() => {
-      // Verify API was called with correct IDs
-      // Note: Your component uses item.id (which is interaction ID for server bookmarks)
-      expect(api.removeBookmarkApi).toHaveBeenCalledWith(mockProfile.id, 'interaction-1');
+      // FIX: Expect 'art-1' (article_id), NOT 'interaction-1'
+      expect(api.removeBookmarkApi).toHaveBeenCalledWith(mockProfile.id, 'art-1');
       expect(notify.success).toHaveBeenCalledWith('Bookmark removed');
-      // Item should disappear from UI
       expect(screen.queryByText('Test Article 1')).not.toBeInTheDocument();
     });
   });
@@ -149,11 +153,10 @@ describe('Bookmarks Component', () => {
     fireEvent.click(removeBtn);
 
     await waitFor(() => {
-      expect(api.removeBookmarkApi).not.toHaveBeenCalled(); // API should NOT be called
+      expect(api.removeBookmarkApi).not.toHaveBeenCalled();
       expect(notify.success).toHaveBeenCalledWith('Bookmark removed');
       expect(screen.queryByText('Local Article')).not.toBeInTheDocument();
-      
-      // Verify localStorage was updated
+
       const stored = JSON.parse(window.localStorage.getItem('bookmarks'));
       expect(stored).toHaveLength(0);
     });
@@ -169,22 +172,20 @@ describe('Bookmarks Component', () => {
     render(<Bookmarks />);
     await waitFor(() => screen.getByText('Test Article 1'));
 
-    // Find the textarea for the first article
     const textareas = screen.getAllByPlaceholderText('Add a private note...');
     const noteInput = textareas[0];
 
-    // Type note and blur (trigger save)
     fireEvent.change(noteInput, { target: { value: 'New Note Content' } });
     fireEvent.blur(noteInput);
 
     await waitFor(() => {
-      expect(api.addBookmark).toHaveBeenCalledWith(mockProfile.id, 'interaction-1', 'New Note Content');
+      // FIX: Expect 'art-1' (article_id), NOT 'interaction-1'
+      expect(api.addBookmark).toHaveBeenCalledWith(mockProfile.id, 'art-1', 'New Note Content');
       expect(notify.success).toHaveBeenCalledWith('Note saved');
     });
   });
 
   it('prevents Save Note for Guest User', async () => {
-    // Guest user setup
     const localBookmarks = [{ id: 'local-1', title: 'Local Article', key: 'local-1' }];
     window.localStorage.setItem('bookmarks', JSON.stringify(localBookmarks));
 
@@ -192,8 +193,7 @@ describe('Bookmarks Component', () => {
     await waitFor(() => screen.getByText('Local Article'));
 
     const noteInput = screen.getByPlaceholderText('Add a private note...');
-    
-    // Try to save
+
     fireEvent.change(noteInput, { target: { value: 'Guest Note' } });
     fireEvent.blur(noteInput);
 
@@ -208,24 +208,22 @@ describe('Bookmarks Component', () => {
   it('handles API Error when fetching bookmarks', async () => {
     window.localStorage.setItem('currentProfile', JSON.stringify(mockProfile));
     api.getBookmarksForProfile.mockRejectedValue(new Error('Network Error'));
-    
-    // Spy on console.error to suppress noise
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<Bookmarks />);
 
     await waitFor(() => {
       expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('Could not load bookmarks'));
-      // Should fall back to empty list or local
       expect(screen.getByText(/You have no saved articles yet/i)).toBeInTheDocument();
     });
+    consoleSpy.mockRestore();
   });
 
   it('handles API Error when removing bookmark', async () => {
     window.localStorage.setItem('currentProfile', JSON.stringify(mockProfile));
     api.getBookmarksForProfile.mockResolvedValue(mockBookmarks);
     api.removeBookmarkApi.mockRejectedValue(new Error('Delete Failed'));
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
     render(<Bookmarks />);
     await waitFor(() => screen.getByText('Test Article 1'));
@@ -235,7 +233,77 @@ describe('Bookmarks Component', () => {
 
     await waitFor(() => {
       expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('Could not remove bookmark'));
-      // Item should technically reappear or not disappear (UI logic handles this by setting state back)
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('handles Save Note API Error', async () => {
+    window.localStorage.setItem('currentProfile', JSON.stringify(mockProfile));
+    api.getBookmarksForProfile.mockResolvedValue(mockBookmarks);
+    api.addBookmark.mockRejectedValue(new Error('Save Failed'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
+    render(<Bookmarks />);
+    await waitFor(() => screen.getByText('Test Article 1'));
+
+    const textareas = screen.getAllByPlaceholderText('Add a private note...');
+    const noteInput = textareas[0];
+
+    fireEvent.change(noteInput, { target: { value: 'Fail Note' } });
+    fireEvent.blur(noteInput);
+
+    await waitFor(() => {
+      expect(notify.error).toHaveBeenCalledWith('Could not save note');
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('handles corrupt profile in localStorage', () => {
+    window.localStorage.setItem('currentProfile', 'invalid-json{');
+    render(<Bookmarks />);
+    // Should behave as guest (no profile id)
+    // If we have local bookmarks, they should show
+    expect(screen.queryByText('My Bookmarks')).toBeInTheDocument();
+  });
+
+  it('falls back to local bookmarks when server fetch fails', async () => {
+    window.localStorage.setItem('currentProfile', JSON.stringify(mockProfile));
+    // Set local bookmarks
+    const localBookmarks = [{ id: 'local-fallback', title: 'Fallback Article', newsUrl: 'http://fb.com' }];
+    window.localStorage.setItem('bookmarks', JSON.stringify(localBookmarks));
+
+    api.getBookmarksForProfile.mockRejectedValue(new Error('Network Error'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
+    render(<Bookmarks />);
+
+    await waitFor(() => {
+      expect(notify.error).toHaveBeenCalledWith(expect.stringContaining('Could not load bookmarks'));
+      // Should show the local bookmark
+      expect(screen.getByText('Fallback Article')).toBeInTheDocument();
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('normalizes server data with missing fields', async () => {
+    window.localStorage.setItem('currentProfile', JSON.stringify(mockProfile));
+    const imperfectBookmarks = [{
+      id: 'imp-1',
+      // No article_id, use id
+      bookmark_timestamp: '2025-01-01',
+      article: {
+        // No title, use headline or Untitled
+        // No imageUrl
+        // No url, use link or #
+        // No source
+      }
+    }];
+    api.getBookmarksForProfile.mockResolvedValue(imperfectBookmarks);
+
+    render(<Bookmarks />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Untitled')).toBeInTheDocument();
     });
   });
 

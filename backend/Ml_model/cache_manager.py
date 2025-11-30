@@ -20,20 +20,42 @@ class CacheManager:
     def connect(self):
         """Connect to Redis server"""
         try:
-            redis_host = os.getenv('REDIS_HOST', 'localhost')
-            redis_port = int(os.getenv('REDIS_PORT', 6379))
-            redis_password = os.getenv('REDIS_PASSWORD', None)
-            redis_db = int(os.getenv('REDIS_DB', 0))
-            
-            self.redis_client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                password=redis_password,
-                db=redis_db,
-                decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5
-            )
+            # Prefer a full connection URL when available (e.g., Upstash/Redis Cloud)
+            redis_url = os.getenv('REDIS_URL')
+
+            if redis_url:
+                # Example: rediss://:password@host:port/0
+                self.redis_client = redis.from_url(
+                    redis_url,
+                    decode_responses=True,
+                    socket_timeout=5,
+                    socket_connect_timeout=5,
+                )
+            else:
+                # Fallback to discrete host/port/password/db
+                redis_host = os.getenv('REDIS_HOST', 'localhost')
+                redis_port = int(os.getenv('REDIS_PORT', 6379))
+                redis_password = os.getenv('REDIS_PASSWORD', None)
+                redis_db = int(os.getenv('REDIS_DB', 0))
+                use_ssl = os.getenv('REDIS_SSL', 'false').lower() == 'true'
+
+                client_kwargs = dict(
+                    host=redis_host,
+                    port=redis_port,
+                    password=redis_password,
+                    db=redis_db,
+                    decode_responses=True,
+                    socket_timeout=5,
+                    socket_connect_timeout=5,
+                )
+                if use_ssl:
+                    # Many managed providers require TLS
+                    client_kwargs.update({
+                        'ssl': True,
+                        'ssl_cert_reqs': None,  # accept provider certs (adjust if you need strict)
+                    })
+
+                self.redis_client = redis.Redis(**client_kwargs)
             
             # Test connection
             self.redis_client.ping()
@@ -99,16 +121,18 @@ class CacheManager:
     
     def clear_user_cache(self, user_id):
         """Clear all cached recommendations for a user"""
+        # Align with api_server cache keys: rec:{method}:u={user_id}:...
         patterns = [
-            f"rec:collab:{user_id}:*",
-            f"rec:hybrid:{user_id}:*",
+            f"rec:collaborative:u={user_id}:*",
+            f"rec:hybrid:u={user_id}:*",
         ]
         for pattern in patterns:
             self.delete_pattern(pattern)
     
     def clear_article_cache(self, article_id):
         """Clear cached similar articles"""
-        self.delete_pattern(f"rec:similar:{article_id}:*")
+        # Align with api_server content-based keys: rec:content:...:a={article_id}:...
+        self.delete_pattern(f"rec:content:*a={article_id}:*")
     
     def get_cache_stats(self):
         """Get cache statistics"""

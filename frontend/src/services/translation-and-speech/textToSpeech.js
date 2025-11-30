@@ -1,4 +1,6 @@
-const backEndPoint = `${import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:4000'}/api/tts`;
+const backEndPoint = `${
+  import.meta.env.VITE_BACKEND_API_URL || "http://localhost:4000"
+}/api/tts`;
 
 export const textToSpeech = async (
   text,
@@ -6,7 +8,8 @@ export const textToSpeech = async (
   setIsFetchingAudio,
   setIsSpeaking,
   cancelPlaybackRef,
-  audioPlayer
+  audioPlayer,
+  abortController
 ) => {
   setIsFetchingAudio(true);
   setIsSpeaking(true);
@@ -15,19 +18,20 @@ export const textToSpeech = async (
 
   try {
     const response = await fetch(backEndPoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        text : text,
-        language_code : language_code,
+        text: text,
+        language_code: language_code,
       }),
+      signal: abortController?.signal,
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Unknown Error')
+      throw new Error(errorData.error || "Unknown Error");
     }
 
     const audioBlob = await response.blob();
@@ -43,7 +47,7 @@ export const textToSpeech = async (
     URL.revokeObjectURL(audioUrl);
   } catch (error) {
     throw error;
-  } finally{
+  } finally {
     setIsSpeaking(false);
     setIsFetchingAudio(false);
     cancelPlaybackRef.current = false;

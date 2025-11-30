@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
-import { useSmartRecommendations } from '../hooks/useInteractionTimer';
-import NewsCard from './NewsCard';
-import { BarChart3, Clock, BookOpen } from 'lucide-react';
-
-/**
- * SmartRecommendations Component
- * Displays personalized recommendations based on user's reading behavior and time spent on articles
-*/
-const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You', onArticleClick }) => {
-  const { recommendations, loading, error, analysis, refetch } = useSmartRecommendations(userId, limit);
+// SmartRecommendations: personalized list + optional analytics panel
+import React, { useState } from "react";
+import { useSmartRecommendations } from "../hooks/useInteractionTimer";
+import NewsCard from "./NewsCard";
+import { BarChart3, Clock, BookOpen } from "lucide-react";
+const SmartRecommendations = ({
+  userId,
+  limit = 10,
+  title = "Recommended For You",
+  onArticleClick,
+}) => {
+  const { recommendations, loading, error, analysis, refetch } =
+    useSmartRecommendations(userId, limit);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // Update timestamp when recommendations change
+  // Update timestamp when list changes
   React.useEffect(() => {
     if (recommendations.length > 0) {
       setLastUpdated(new Date());
@@ -20,12 +22,14 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
   }, [recommendations]);
 
   const handleRefresh = async () => {
-    console.log('🔄 Manual refresh triggered');
+    // manual refetch
+    console.log("🔄 Manual refresh triggered");
     await refetch();
     setLastUpdated(new Date());
   };
 
   const handleCardClick = (index) => {
+    // open reel
     if (!onArticleClick) return;
     // Normalize articles for ReelView format
     const normalizedArticles = recommendations.map((article) => ({
@@ -34,8 +38,10 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
       summary: article.summary,
       imageUrl: article.image_url,
       newsUrl: article.url || article.original_url,
-      source: article.source || 'NewsXpress',
-      timestamp: article.published_at ? new Date(article.published_at).toLocaleDateString() : '',
+      source: article.source || "NewsXpress",
+      timestamp: article.published_at
+        ? new Date(article.published_at).toLocaleDateString()
+        : "",
       category: article.category || article.topic,
     }));
     onArticleClick(normalizedArticles, index);
@@ -45,27 +51,57 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
     return null;
   }
 
-  // Loading state
+  // Loading skeleton
   if (loading) {
     return (
       <div className="my-8 px-4">
-        <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">
-          {title}
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="bg-gray-300 dark:bg-gray-700 h-48 rounded-lg mb-2"></div>
-              <div className="bg-gray-300 dark:bg-gray-700 h-4 rounded w-3/4 mb-2"></div>
-              <div className="bg-gray-300 dark:bg-gray-700 h-4 rounded w-1/2"></div>
+        <div
+          className="h-8 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded-lg mb-6 max-w-md animate-pulse"
+          style={{
+            backgroundSize: "200% 100%",
+            animation: "shimmer 1.5s infinite",
+          }}
+        ></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="rounded-lg overflow-hidden shadow-md">
+              <div
+                className="h-64 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 animate-pulse"
+                style={{
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 1.5s infinite",
+                }}
+              ></div>
+              <div className="p-3 space-y-2">
+                <div
+                  className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded w-3/4 animate-pulse"
+                  style={{
+                    backgroundSize: "200% 100%",
+                    animation: "shimmer 1.5s infinite",
+                  }}
+                ></div>
+                <div
+                  className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded w-1/2 animate-pulse"
+                  style={{
+                    backgroundSize: "200% 100%",
+                    animation: "shimmer 1.5s infinite",
+                  }}
+                ></div>
+              </div>
             </div>
           ))}
         </div>
+        <style>{`
+          @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+          }
+        `}</style>
       </div>
     );
   }
 
-  // Error or no recommendations state
+  // Empty state
   if (error || !recommendations || recommendations.length === 0) {
     return (
       <div className="my-8 px-4">
@@ -78,8 +114,9 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
             Keep Reading to Get Personalized Recommendations
           </h3>
           <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto">
-            Read at least 5 articles to unlock smart recommendations based on your interests.
-            We'll analyze the categories you spend the most time on to suggest relevant articles.
+            Read at least 5 articles to unlock smart recommendations based on
+            your interests. We'll analyze the categories you spend the most time
+            on to suggest relevant articles.
           </p>
           <div className="mt-6 flex justify-center gap-4 text-sm text-gray-700 dark:text-gray-300">
             <div className="flex items-center gap-2">
@@ -96,7 +133,7 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
     );
   }
 
-  // Recommendations available
+  // Render recommendations
   return (
     <div className="my-8 px-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
@@ -114,10 +151,17 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
             </svg>
-            {loading ? 'Refreshing...' : 'Refresh'}
+            {loading ? "Refreshing..." : "Refresh"}
           </button>
           {analysis && (
             <button
@@ -160,7 +204,8 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
                           {formatSeconds(category.total_time_seconds)}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {category.article_count} article{category.article_count !== 1 ? 's' : ''}
+                          {category.article_count} article
+                          {category.article_count !== 1 ? "s" : ""}
                         </p>
                       </div>
                       <div className="text-right">
@@ -202,7 +247,10 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
               <p className="text-xl font-bold text-gray-800 dark:text-white">
                 {formatSeconds(
                   analysis.total_interaction_count > 0
-                    ? Math.round(analysis.total_time_spent_seconds / analysis.total_interaction_count)
+                    ? Math.round(
+                      analysis.total_time_spent_seconds /
+                      analysis.total_interaction_count
+                    )
                     : 0
                 )}
               </p>
@@ -212,7 +260,7 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
       )}
 
       {/* Recommendations Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {recommendations.map((article, index) => {
           // Map backend fields to NewsCard props
           const mappedArticle = {
@@ -220,14 +268,16 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
             summary: article.summary,
             imageUrl: article.image_url,
             newsUrl: article.url || article.original_url,
-            source: article.source || 'NewsXpress',
-            timestamp: article.published_at ? new Date(article.published_at).toLocaleDateString() : '',
+            source: article.source || "NewsXpress",
+            timestamp: article.published_at
+              ? new Date(article.published_at).toLocaleDateString()
+              : "",
             category: article.category || article.topic,
           };
-          
+
           return (
-            <div 
-              key={article.id} 
+            <div
+              key={article.id}
               className="hover:shadow-lg transition-shadow cursor-pointer"
               onClick={() => handleCardClick(index)}
             >
@@ -236,11 +286,12 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
           );
         })}
       </div>
-      
+
       {/* Show count of displayed recommendations */}
       {recommendations.length > 0 && (
         <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-          Showing {recommendations.length} personalized article{recommendations.length !== 1 ? 's' : ''}
+          Showing {recommendations.length} personalized article
+          {recommendations.length !== 1 ? "s" : ""}
         </div>
       )}
 
@@ -248,14 +299,14 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
       {analysis && (
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
           <p>
-            Recommendations are based on your reading behavior in{' '}
+            Recommendations are based on your reading behavior in{" "}
             <span className="font-semibold text-gray-800 dark:text-white">
               {analysis.top_categories && analysis.top_categories.length > 0
                 ? analysis.top_categories
-                    .slice(0, 2)
-                    .map((c) => c.category)
-                    .join(' & ')
-                : 'various categories'}
+                  .slice(0, 2)
+                  .map((c) => c.category)
+                  .join(" & ")
+                : "various categories"}
             </span>
           </p>
         </div>
@@ -265,7 +316,8 @@ const SmartRecommendations = ({ userId, limit = 10, title = 'Recommended For You
 };
 
 function formatSeconds(seconds) {
-  if (!seconds || seconds < 0) return '0s';
+  // format duration
+  if (!seconds || seconds < 0) return "0s";
 
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);

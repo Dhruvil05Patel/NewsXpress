@@ -134,7 +134,7 @@ async function fetchSubscriberTokens(category) {
 const _sentCache = new Map();
 const _inFlight = new Set(); // prevent concurrent duplicate notifications for same key
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || process.env.VERCEL_URL || 'http://localhost:4000';
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://newsxpress-7bjk.onrender.com';
 
 function _shouldSkip(category, article) {
   const idOrTitle = article.id || article.title || 'unknown';
@@ -182,17 +182,28 @@ async function sendNotificationToTokens(tokens = [], payload = {}) {
           notification: {
             title: payload.title || "NewsXpress: new article",
             body: payload.body || "Tap to read",
-            icon: `${PUBLIC_BASE_URL.replace(/\/$/, '')}/logo.png`,
+            icon: `${PUBLIC_BASE_URL.replace(/\/$/, '')}/Logo4.png`,
             image: payload.data?.image || undefined,
+            badge: `${PUBLIC_BASE_URL.replace(/\/$/, '')}/Logo4.png`,
+            tag: payload.data?.category || 'newsxpress',
+            requireInteraction: false,
             data: {
               url: payload.data?.url || "",
               id: payload.data?.id || "",
               category: payload.data?.category || "",
               summary: payload.body || "",
-            }
+            },
+            actions: [
+              { action: 'open', title: '📖 Read Now' },
+              { action: 'save', title: '🔖 Save' }
+            ]
           },
           fcmOptions: {
-            link: payload.data?.url || '/' // click opens article
+            link: payload.data?.url || PUBLIC_BASE_URL
+          },
+          headers: {
+            Urgency: 'high',
+            TTL: '3600'
           }
         }
       });
@@ -239,15 +250,19 @@ async function notifySubscribersForCategory(category, article = {}) {
       ? rawImage
       : (rawImage ? `${PUBLIC_BASE_URL.replace(/\/$/, '')}/${rawImage.replace(/^\//,'')}` : "");
 
+    const categoryCapitalized = category.charAt(0).toUpperCase() + category.slice(1);
+    const cleanTitle = sanitize(article.title, 70);
+    const cleanSummary = limitWords(article.summary, 50);
+    
     const payload = {
-        title: `New ${category} update: ${article.title?.slice(0, 60)}`,
-        body: limitWords(article.summary, 100) || "New article published",
+      title: `📰 ${categoryCapitalized}: ${cleanTitle}`,
+      body: cleanSummary || "Breaking news - tap to read more",
       data: {
-        url: article.newsUrl || article.original_url || "",
+        url: article.newsUrl || article.original_url || `${PUBLIC_BASE_URL}/news/${article.id || ''}`,
         id: article.id || "",
         category: normalizedCategory,
         image: absoluteImage,
-          summary: limitWords(article.summary, 100) || "",
+        summary: cleanSummary || "",
       },
     };
 
@@ -267,6 +282,13 @@ module.exports = {
   // export fetchSubscriberTokens for you to implement if you want
   fetchSubscriberTokens,
 };
+
+// Helper: sanitize and truncate text
+function sanitize(str, max = 100) {
+  if (!str) return '';
+  const s = String(str).replace(/\s+/g, ' ').trim();
+  return s.length > max ? s.slice(0, max) + '…' : s;
+}
 
 // Helper: limit text to N words
 function limitWords(text, maxWords = 100) {

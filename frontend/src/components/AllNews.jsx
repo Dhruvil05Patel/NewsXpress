@@ -1,18 +1,11 @@
-// AllNews.jsx
-// Aggregated "latest" feed across all categories.
-// Responsibilities: fetch summarized articles once on mount, normalize backend payload
-// for card/reel consumption, gate extra results for guests, and launch ReelView overlay.
+// AllNews: fetch latest summarized articles, display grid + reel view
 
-// --- Imports ---
+// Imports
 import { useState, useEffect } from "react";
 import NewsCard from "./NewsCard";
 import ReelView from "./ReelView"; // Component for the full-screen story view
 
-// --- Helper Functions ---
-/**
- * A simple helper to get the current date in a long format.
- * @returns {string} The formatted date string (e.g., "Sunday, October 12, 2025").
- */
+// Current date formatted
 const getFormattedDate = () => {
   return new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -22,20 +15,27 @@ const getFormattedDate = () => {
   });
 };
 
-// Component: fetches + renders all news; manages ReelView open/index state.
+// Fetch + reel state
 import notify from "../utils/toast";
 
-export default function AllNews({ userProfile, onLoginClick }) {
-  // --- State Management ---
+export default function AllNews({
+  userProfile,
+  onLoginClick,
+  searchQuery = "",
+}) {
+  // State
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // State to manage the reel view modal.
-  // `isOpen` toggles visibility, `index` tracks the starting article.
+  // Reel modal state
   const [reelState, setReelState] = useState({ isOpen: false, index: 0 });
 
-  // --- Data Fetching ---
-  // Fetches news data from backend DB when the component mounts.
+  // Page title
+  useEffect(() => {
+    document.title = "Home | NewsXpress";
+  }, []);
+
+  // Initial fetch
   useEffect(() => {
     const fetchNewsFromApi = async () => {
       setLoading(true);
@@ -84,42 +84,101 @@ export default function AllNews({ userProfile, onLoginClick }) {
     fetchNewsFromApi();
   }, []); // Empty dependency array ensures this runs only once on mount.
 
-  // --- Event Handlers ---
-  /**
-   * Opens the ReelView, starting at the article that was clicked.
-   * @param {number} index - The index of the clicked news card.
-   */
+  // Open reel at index
   const handleCardClick = (index) => {
     setReelState({ isOpen: true, index: index });
   };
 
-  /**
-   * Closes the ReelView and resets its state.
-   */
+  // Close reel
   const handleCloseReel = () => {
     setReelState({ isOpen: false, index: 0 });
   };
 
-  // --- Conditional Rendering: Loading State ---
-  // Display a loading message while data is being fetched.
+  // Loading skeleton
   if (loading) {
     return (
       <main className="bg-newspaper min-h-screen pt-24">
-        <div className="flex justify-center items-center h-full">
-          <div className="font-serif text-lg text-stone-600">
-            Loading Headlines...
+        <div className="px-4 lg:px-10 py-12 w-full">
+          <div className="w-full mx-auto">
+            {/* Skeleton header */}
+            <div className="text-center mb-10">
+              <div
+                className="h-16 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded-lg mb-4 mx-auto max-w-xl animate-pulse"
+                style={{
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 1.5s infinite",
+                }}
+              ></div>
+              <div
+                className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded mx-auto max-w-md mb-2 animate-pulse"
+                style={{
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 1.5s infinite",
+                }}
+              ></div>
+              <div
+                className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded mx-auto max-w-sm animate-pulse"
+                style={{
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 1.5s infinite",
+                }}
+              ></div>
+            </div>
+            {/* Skeleton cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="rounded-lg overflow-hidden shadow-md">
+                  <div
+                    className="h-64 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 animate-pulse"
+                    style={{
+                      backgroundSize: "200% 100%",
+                      animation: "shimmer 1.5s infinite",
+                    }}
+                  ></div>
+                  <div className="p-4 space-y-3">
+                    <div
+                      className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded w-3/4 animate-pulse"
+                      style={{
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                      }}
+                    ></div>
+                    <div
+                      className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded animate-pulse"
+                      style={{
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                      }}
+                    ></div>
+                    <div
+                      className="h-4 bg-gradient-to-r from-stone-200 via-stone-300 to-stone-200 rounded w-5/6 animate-pulse"
+                      style={{
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+        <style>{`
+          @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+          }
+        `}</style>
       </main>
     );
   }
 
-  // --- Render ---
+  // Render
   return (
     <main className="bg-newspaper text-zinc-900 pt-24">
       <div className="px-4 lg:px-10 py-12 w-full">
         <div className="w-full mx-auto">
-          {/* Page Header */}
+          {/* Header */}
           <div className="text-center mb-10">
             <h1 className="font-serif text-5xl md:text-6xl font-bold mb-3">
               Today's Headlines
@@ -130,8 +189,14 @@ export default function AllNews({ userProfile, onLoginClick }) {
             </p>
             <div className="flex items-center justify-center gap-4 text-sm text-stone-500">
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-red-500"></span>Live
-                Updates
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{
+                    background:
+                      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 50%,#ff0066 100%)",
+                  }}
+                ></span>
+                Live Updates
               </div>
               <span>•</span>
               <span>{getFormattedDate()}</span>
@@ -144,49 +209,90 @@ export default function AllNews({ userProfile, onLoginClick }) {
             Featured Stories
           </h2>
 
-          {/* News Card Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {news.length > 0 ? (
-              (userProfile ? news : news.slice(0, 6)).map((item, index) => (
-                <NewsCard
-                  key={item.id || item.title}
-                  {...item}
-                  userProfile={userProfile}
-                  onCardClick={() => handleCardClick(index)}
-                />
-              ))
-            ) : (
-              <p className="text-stone-500">No news available</p>
-            )}
-          </div>
+          {(() => {
+            const q = (searchQuery || "").trim().toLowerCase();
+            const filteredNews = q
+              ? news.filter(
+                (n) =>
+                  (n.title || "").toLowerCase().includes(q) ||
+                  (n.summary || "").toLowerCase().includes(q)
+              )
+              : news;
+            const visibleNews = userProfile
+              ? filteredNews
+              : filteredNews.slice(0, 6);
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {filteredNews.length > 0 ? (
+                  visibleNews.map((item, index) => (
+                    <NewsCard
+                      key={item.id || item.title}
+                      {...item}
+                      userProfile={userProfile}
+                      onCardClick={() => handleCardClick(index)}
+                    />
+                  ))
+                ) : (
+                  <p className="text-stone-500">No matching headlines</p>
+                )}
+              </div>
+            );
+          })()}
 
-          {/* View More for unauthenticated users */}
-          {!userProfile && news.length > 6 && (
-            <div className="flex justify-center mt-8">
-              <button
-                onClick={() => {
-                  notify.info("🔒 Please login to view more headlines");
-                  if (onLoginClick) onLoginClick();
-                }}
-                className="px-6 py-3 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors"
-              >
-                View More
-              </button>
-            </div>
-          )}
+          {/* Guest view more gate */}
+          {(() => {
+            const q = (searchQuery || "").trim().toLowerCase();
+            const filteredLen = q
+              ? news.filter(
+                (n) =>
+                  (n.title || "").toLowerCase().includes(q) ||
+                  (n.summary || "").toLowerCase().includes(q)
+              ).length
+              : news.length;
+            return !userProfile && filteredLen > 6 ? (
+              <div className="flex justify-center mt-12 mb-8">
+                <button
+                  onClick={() => {
+                    notify.info("Please log in to view more headlines");
+                    if (onLoginClick) onLoginClick();
+                  }}
+                  className="px-6 py-3 rounded-full text-white transition-colors"
+                  style={{
+                    background:
+                      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+                    boxShadow:
+                      "0 4px 14px -2px rgba(255,0,80,0.45),0 2px 6px -1px rgba(0,0,0,0.25)",
+                  }}
+                >
+                  View More
+                </button>
+              </div>
+            ) : null;
+          })()}
         </div>
       </div>
 
-      {/* Conditionally render the ReelView overlay when a card is clicked. */}
-      {reelState.isOpen && (
-        <ReelView
-          news={news}
-          initialIndex={reelState.index}
-          onClose={handleCloseReel}
-          userProfile={userProfile}
-          onRequireLogin={onLoginClick}
-        />
-      )}
+      {/* Reel overlay */}
+      {reelState.isOpen &&
+        (() => {
+          const q = (searchQuery || "").trim().toLowerCase();
+          const filteredNews = q
+            ? news.filter(
+              (n) =>
+                (n.title || "").toLowerCase().includes(q) ||
+                (n.summary || "").toLowerCase().includes(q)
+            )
+            : news;
+          return (
+            <ReelView
+              news={filteredNews}
+              initialIndex={reelState.index}
+              onClose={handleCloseReel}
+              userProfile={userProfile}
+              onRequireLogin={onLoginClick}
+            />
+          );
+        })()}
     </main>
   );
 }

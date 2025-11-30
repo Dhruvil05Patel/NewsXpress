@@ -1,23 +1,44 @@
 import axios from "axios";
+import { auth } from "../components/auth/firebase";
+
 // Vite exposes env vars via `import.meta.env`. Do not use dotenv in browser code.
-const VITE_BACKEND_API_URL =
-	import.meta.env.VITE_BACKEND_API_URL || "http://localhost:4000";
+// Read backend URL exposed by Vite. If not set (common in quick dev runs),
+// fall back to localhost:4000 which is the backend default in this project.
+const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
+
 
 // ML API URL (separate service, typically on port 5001)
 const VITE_ML_API_URL =
 	import.meta.env.VITE_ML_API_URL || "http://localhost:5001";
 
-// Base URL for backend API
-const API_BASE_URL = VITE_BACKEND_API_URL;
 
 // Create an axios instance with default config
 const api = axios.create({
-	baseURL: API_BASE_URL,
+	baseURL: VITE_BACKEND_URL,
 	withCredentials: true, // Send cookies if needed
 	headers: {
 		"Content-Type": "application/json",
 	},
 });
+
+// Add request interceptor to attach Firebase auth token
+api.interceptors.request.use(
+	async (config) => {
+		try {
+			const user = auth.currentUser;
+			if (user) {
+				const token = await user.getIdToken();
+				config.headers.Authorization = `Bearer ${token}`;
+			}
+		} catch (error) {
+			console.warn("Failed to get auth token:", error);
+		}
+		return config;
+	},
+	(error) => {
+		return Promise.reject(error);
+	}
+);
 
 // Create axios instance for ML API
 const mlApi = axios.create({
@@ -111,16 +132,14 @@ export const removeBookmarkApi = async (profileId, articleId) => {
 };
 
 export const sendVerificationEmail = async (email, name) => {
-	const { data } = await api.post('/api/auth/send-verification', { email, name });
+	const { data } = await api.post('/api/auth/send-verification-email', { email, name });
 	return data;
 };
 
-export const sendResetPasswordEmail = async (email, name, resetUrl) => {
-	const response = await api.post("/api/auth/send-password-reset-email", {
-		email,
-		name,
-	});
-	return response.data;
+export const sendResetPasswordEmail = async (email, name) => {
+	console.log("Sending password reset email to:", email);
+	const { data } = await api.post('/api/auth/send-password-reset-email', { email, name });
+	return data;
 };
 
 // =====================================================

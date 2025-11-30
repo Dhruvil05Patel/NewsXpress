@@ -52,6 +52,3 @@ Desktop.ini
 # Test output
 jest-test-results.json
 test-results/
-
-#Firebase Config
-firebase-config.js

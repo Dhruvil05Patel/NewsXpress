@@ -1,0 +1,21 @@
+{
+  "name": "NewsXpress",
+  "short_name": "NewsXpress",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ff1e1e",
+  "description": "AI-powered news summaries and notifications.",
+  "icons": [
+    {
+      "src": "/Logo4.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/Logo4.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

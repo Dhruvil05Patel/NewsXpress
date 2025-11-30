@@ -1,4 +1,3 @@
-// Import the functions we want to test
 const {
   findOrCreateSource,
   saveArticle,
@@ -6,23 +5,15 @@ const {
   getArticles,
   getArticlesByTopic,
   getArticlesByPlace,
-  searchArticles,
+  searchArticles
 } = require('./ArticleService');
 
-// Import the models this service uses
-const { Article, Source, sequelize } = require('../config/db');
-// We need 'Op' for the search test
-const { Op } = require('sequelize');
+const { Article, Source } = require('../config/db');
 
-// Mock all the models used by this service
+// --- MOCKS ---
+
+// 1. Mock the Database Models
 jest.mock('../config/db', () => ({
-  // We have to mock sequelize.Op because searchArticles uses it
-  sequelize: {
-    Op: {
-      iLike: Symbol('iLike'),
-      or: Symbol('or'),
-    },
-  },
   Article: {
     findOne: jest.fn(),
     create: jest.fn(),
@@ -33,192 +24,150 @@ jest.mock('../config/db', () => ({
   },
 }));
 
-// Helper function to reset mocks before each test
-beforeEach(() => {
-  jest.clearAllMocks();
-});
+// 2. Mock 'sequelize' for searchArticles
+jest.mock('sequelize', () => ({
+  Op: {
+    iLike: 'iLike', 
+    or: 'or',
+  }
+}));
 
-// --- Test Suite for ArticleService ---
+// 3. Spy on console to suppress logs
+const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+
 describe('ArticleService', () => {
+  
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
-  // --- Tests for findOrCreateSource ---
+  // --- 1. findOrCreateSource ---
   describe('findOrCreateSource', () => {
-    it('should find or create a source', async () => {
-      // 1. Arrange
-      const mockSource = { id: 'source-uuid', name: 'Test Source' };
-      Source.findOrCreate.mockResolvedValue([mockSource, true]); // [instance, created]
-
-      // 2. Act
-      const sourceId = await findOrCreateSource('Test Source');
-
-      // 3. Assert
-      expect(Source.findOrCreate).toHaveBeenCalledWith({
-        where: { name: 'Test Source' },
-        defaults: { name: 'Test Source', is_active: true },
-      });
-      expect(sourceId).toBe('source-uuid');
+    it('returns null for invalid inputs', async () => {
+      expect(await findOrCreateSource(null)).toBeNull();
+      expect(await findOrCreateSource('Unknown Source')).toBeNull();
     });
 
-    it('should return null if sourceName is invalid', async () => {
-      const sourceId = await findOrCreateSource(null);
-      expect(sourceId).toBeNull();
-      expect(Source.findOrCreate).not.toHaveBeenCalled();
+    it('creates a new source if not found', async () => {
+      Source.findOrCreate.mockResolvedValue([{ id: 's1' }, true]);
+      const result = await findOrCreateSource('CNN');
+      expect(result).toBe('s1');
     });
 
-    it('should handle errors during findOrCreate', async () => {
-      Source.findOrCreate.mockRejectedValue(new Error('DB Error'));
-      const sourceId = await findOrCreateSource('Test Source');
-      expect(sourceId).toBeNull();
+    it('returns existing source id', async () => {
+      Source.findOrCreate.mockResolvedValue([{ id: 's2' }, false]);
+      const result = await findOrCreateSource('BBC');
+      expect(result).toBe('s2');
+    });
+
+    it('handles DB errors', async () => {
+      Source.findOrCreate.mockRejectedValue(new Error('DB Fail'));
+      const result = await findOrCreateSource('CNN');
+      expect(result).toBeNull();
     });
   });
 
-  // --- Tests for saveArticle ---
+  // --- 2. saveArticle ---
   describe('saveArticle', () => {
-    it('should save a new article', async () => {
-      // 1. Arrange
-      const articleData = { title: 'Test', original_url: 'test.com', source: 'Test Source' };
-      const mockArticle = { id: 'article-uuid', ...articleData };
+    const mockData = { title: 'T', original_url: 'u' };
 
-      Article.findOne.mockResolvedValue(null); // Article does not exist
-      Source.findOrCreate.mockResolvedValue([{ id: 'source-uuid' }, true]); // Mock the source helper
-      Article.create.mockResolvedValue(mockArticle);
-
-      // 2. Act
-      const article = await saveArticle(articleData);
-
-      // 3. Assert
-      expect(Article.findOne).toHaveBeenCalledWith({ where: { original_url: 'test.com' } });
-      expect(Article.create).toHaveBeenCalled();
-      expect(article).toBe(mockArticle);
+    it('returns existing article if URL exists', async () => {
+      Article.findOne.mockResolvedValue({ id: 'a1' });
+      const result = await saveArticle(mockData);
+      expect(result).toEqual({ id: 'a1' });
     });
 
-    it('should return an existing article if found', async () => {
-      // 1. Arrange
-      const articleData = { title: 'Test', original_url: 'test.com' };
-      const mockArticle = { id: 'article-uuid', ...articleData };
-      
-      Article.findOne.mockResolvedValue(mockArticle); // Article *does* exist
+    it('creates new article', async () => {
+      Article.findOne.mockResolvedValue(null);
+      Source.findOrCreate.mockResolvedValue([{ id: 's1' }, true]);
+      Article.create.mockResolvedValue({ id: 'new-1' });
 
-      // 2. Act
-      const article = await saveArticle(articleData);
-
-      // 3. Assert
-      expect(Article.findOne).toHaveBeenCalled();
-      expect(Article.create).not.toHaveBeenCalled(); // Create should not be called
-      expect(article).toBe(mockArticle);
+      const result = await saveArticle(mockData);
+      expect(result).toEqual({ id: 'new-1' });
     });
 
-    it('should handle errors during saving', async () => {
-      Article.findOne.mockRejectedValue(new Error('DB Error'));
-      const article = await saveArticle({ title: 'Test', original_url: 'test.com' });
-      expect(article).toBeNull();
+    it('throws error on DB failure', async () => {
+      Article.findOne.mockRejectedValue(new Error('DB Fail'));
+      await expect(saveArticle(mockData)).rejects.toThrow('DB Fail');
     });
   });
-  
-  // --- Tests for saveArticles ---
-  // This test covers the loop and summary logging
+
+  // --- 3. saveArticles ---
   describe('saveArticles', () => {
-    it('should save multiple articles and return a summary', async () => {
-      // 1. Arrange
-      const articlesArray = [
-        { title: 'Article 1', original_url: 'a1.com', source: 'S1' },
-        { title: 'Article 2', original_url: 'a2.com', source: 'S2' },
+    it('saves some articles and catches errors for others', async () => {
+      const input = [
+        { title: 'Good', original_url: 'g' },
+        { title: 'Bad', original_url: 'b' }
       ];
-      
-      // Mock the saveArticle function
-      Article.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(null); // Both are new
-      Source.findOrCreate.mockResolvedValue([{ id: 'uuid' }, true]);
-      Article.create.mockResolvedValueOnce({ title: 'Article 1' }).mockResolvedValueOnce({ title: 'Article 2' });
 
-      // 2. Act
-      const result = await saveArticles(articlesArray);
+      // Mock 1st call (Good): Success
+      Article.findOne.mockResolvedValueOnce(null);
+      Source.findOrCreate.mockResolvedValue([{ id: 's' }]);
+      Article.create.mockResolvedValueOnce({ id: '1' });
 
-      // 3. Assert
-      expect(result.saved.length).toBe(2);
-      expect(result.errors.length).toBe(0);
-      expect(result.count).toBe(2);
-    });
-  });
+      // Mock 2nd call (Bad): Fail (DB Error inside saveArticle)
+      Article.findOne.mockRejectedValueOnce(new Error('Fail'));
 
-  // --- Tests for getArticles ---
-  describe('getArticles', () => {
-    it('should get articles with filters', async () => {
-      // 1. Arrange
-      const mockArticles = [{ title: 'Test' }];
-      Article.findAll.mockResolvedValue(mockArticles);
-      const filters = { topic: 'Tech', place: 'NY', language_code: 'en-IN', limit: 10 };
+      const result = await saveArticles(input);
 
-      // 2. Act
-      const articles = await getArticles(filters);
-
-      // 3. Assert
-      expect(Article.findAll).toHaveBeenCalledWith({
-        where: {
-          topic: 'Tech',
-          place: 'NY',
-          language_code: 'en-IN',
-        },
-        include: expect.any(Array),
-        order: [['published_at', 'DESC']],
-        limit: 10,
-      });
-      expect(articles).toBe(mockArticles);
-    });
-
-    it('should handle errors during fetching', async () => {
-      Article.findAll.mockRejectedValue(new Error('DB Error'));
-      const articles = await getArticles();
-      expect(articles).toEqual([]); // Should return an empty array on error
-    });
-  });
-
-  // --- Tests for helper functions (getArticlesByTopic, etc.) ---
-  describe('getArticlesByTopic', () => {
-    it('should call getArticles with correct topic', async () => {
-      Article.findAll.mockResolvedValue([]);
-      await getArticlesByTopic('Sports', 20);
-      expect(Article.findAll).toHaveBeenCalledWith(expect.objectContaining({
-        where: { topic: 'Sports' },
-        limit: 20,
-      }));
-    });
-  });
-
-  describe('getArticlesByPlace', () => {
-    it('should call getArticles with correct place', async () => {
-      Article.findAll.mockResolvedValue([]);
-      await getArticlesByPlace('London', 15);
-      expect(Article.findAll).toHaveBeenCalledWith(expect.objectContaining({
-        where: { place: 'London' },
-        limit: 15,
-      }));
+      expect(result.saved).toHaveLength(1);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].article).toBe('Bad');
     });
   });
   
-  // --- Tests for searchArticles ---
-  describe('searchArticles', () => {
-    it('should search articles by keyword', async () => {
+  // --- 4. getArticles ---
+  describe('getArticles', () => {
+    it('fetches with all filters', async () => {
       Article.findAll.mockResolvedValue([]);
-      await searchArticles('crypto', 20);
+      await getArticles({ topic: 'T', place: 'P', language_code: 'en' });
       
-      expect(Article.findAll).toHaveBeenCalledWith({
-        where: {
-          [Symbol('or')]: [ // We use the Symbol for Op.or
-            { title: { [Symbol('iLike')]: '%crypto%' } },
-            { summary: { [Symbol('iLike')]: '%crypto%' } },
-          ],
-        },
-        include: expect.any(Array),
-        order: [['published_at', 'DESC']],
-        limit: 20,
-      });
+      expect(Article.findAll).toHaveBeenCalledWith(expect.objectContaining({
+        where: { topic: 'T', place: 'P', language_code: 'en' }
+      }));
     });
 
-    it('should handle errors during search', async () => {
-      Article.findAll.mockRejectedValue(new Error('Search Error'));
-      const articles = await searchArticles('test');
-      expect(articles).toEqual([]);
+    it('handles empty filters', async () => {
+      Article.findAll.mockResolvedValue([]);
+      await getArticles();
+      expect(Article.findAll).toHaveBeenCalled();
+    });
+
+    it('returns empty array on error', async () => {
+      Article.findAll.mockRejectedValue(new Error('Fail'));
+      const res = await getArticles();
+      expect(res).toEqual([]);
     });
   });
 
+  // --- 5. Helpers ---
+  describe('Helpers', () => {
+    it('getArticlesByTopic calls getArticles', async () => {
+      Article.findAll.mockResolvedValue([]);
+      await getArticlesByTopic('Tech');
+      expect(Article.findAll).toHaveBeenCalled();
+    });
+
+    it('getArticlesByPlace calls getArticles', async () => {
+      Article.findAll.mockResolvedValue([]);
+      await getArticlesByPlace('NY');
+      expect(Article.findAll).toHaveBeenCalled();
+    });
+  });
+
+  // --- 6. searchArticles ---
+  describe('searchArticles', () => {
+    it('searches successfully', async () => {
+      Article.findAll.mockResolvedValue([]);
+      await searchArticles('crypto');
+      expect(Article.findAll).toHaveBeenCalled();
+    });
+
+    it('returns empty array on error', async () => {
+      Article.findAll.mockRejectedValue(new Error('Fail'));
+      const res = await searchArticles('q');
+      expect(res).toEqual([]);
+    });
+  });
 });

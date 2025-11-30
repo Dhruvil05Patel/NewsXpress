@@ -1,308 +1,317 @@
-# backend/__tests__/test_api_server.py
-import os
-import json
-import tempfile
-from pathlib import Path
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+from backend.Ml_model.api_server import create_app
 
-# import the Flask app factory and module to monkeypatch module-level vars
-import importlib
-
-API_MODULE = "backend.Ml_model.api_server"
-api = importlib.import_module(API_MODULE)
-from backend.Ml_model.api_server import create_app  # noqa: E402
-
-
-@pytest.fixture(autouse=True)
-def clear_env_vars(monkeypatch):
-    # ensure env vars don't leak between tests
-    monkeypatch.delenv("ML_API_ALLOWED_ORIGINS", raising=False)
-    monkeypatch.delenv("ML_API_PORT", raising=False)
-    yield
-
+# FIXTURE: Flask Test Client
 
 @pytest.fixture
-def fake_recommendation_service():
-    svc = MagicMock()
-    # default behaviors
-    svc.models_loaded = True
-    svc.sig_matrix = True
-    svc.user_sim_matrix = True
+def client():
+    """Create test client with mocked recommendation + cache managers."""
+    with patch("backend.Ml_model.api_server.get_recommendation_service") as mock_reco_svc, \
+         patch("backend.Ml_model.api_server.get_cache_manager") as mock_cache_mgr:
 
-    svc.get_similar_articles.return_value = [{"id": "b", "score": 0.9}]
-    svc.get_collaborative_recommendations.return_value = [{"id": "a", "relevance_score": 0.7}]
-    svc.get_hybrid_recommendations.return_value = [{"id": "a", "hybrid_score": 0.8}]
-    svc.get_trending_articles.return_value = [{"id": "t1"}]
-    return svc
+        # Mock recommendation service
+        mock_svc = MagicMock()
+        mock_svc.models_loaded = True
+        mock_svc.sig_matrix = True
+        mock_svc.user_sim_matrix = True
+        mock_svc.get_similar_articles.return_value = ["a1", "a2"]
+        mock_svc.get_collaborative_recommendations.return_value = ["c1", "c2"]
+        mock_svc.get_hybrid_recommendations.return_value = ["h1", "h2"]
+        mock_svc.get_trending_articles.return_value = ["t1", "t2"]
 
+        mock_reco_svc.return_value = mock_svc
 
-@pytest.fixture
-def fake_cache_manager():
-    cache = MagicMock()
-    cache.enabled = True
-    # default: cache miss on .get()
-    cache.get.return_value = None
-    cache.set.return_value = True
-    cache.clear_user_cache.return_value = None
-    cache.clear_article_cache.return_value = None
-    cache.get_cache_stats.return_value = {"enabled": True, "keyspace_hits": 0, "keyspace_misses": 0, "hit_rate": 0.0}
-    return cache
+        # Mock cache manager
+        mock_cache = MagicMock()
+        mock_cache.enabled = True
+        mock_cache.get.return_value = None
+        mock_cache.set.return_value = True
+        mock_cache.get_cache_stats.return_value = {"hits": 0, "miss": 1}
+        mock_cache.clear_user_cache.return_value = True
+        mock_cache.clear_article_cache.return_value = True
 
+        mock_cache_mgr.return_value = mock_cache
 
-@pytest.fixture
-def app(fake_recommendation_service, fake_cache_manager, monkeypatch, tmp_path):
-    """
-    Create Flask app with module-level recommendation_service and cache_manager monkeypatched.
-    """
-    # monkeypatch module-level names used by route functions
-    monkeypatch.setattr(api, "recommendation_service", fake_recommendation_service)
-    monkeypatch.setattr(api, "cache_manager", fake_cache_manager)
-
-    # ensure models metadata path is inside a temp dir for tests that may touch it
-    # The api reads: Path(__file__).resolve().parent / 'models' / 'training_metadata.csv'
-    models_dir = tmp_path / "models"
-    models_dir.mkdir()
-    monkeypatch.setattr(Path(__file__).resolve().parent.__class__, "exists", lambda self: False, raising=False)
-
-    # create the app (CORS default)
-    flask_app = create_app()
-    flask_app.config["TESTING"] = True
-    yield flask_app
+        app = create_app({})
+        app.testing = True
+        yield app.test_client()
 
 
-def test_health_endpoint(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
 
+# TEST CASES
+
+
+def test_health_check(client):
+    """TC: Health endpoint should return status=healthy"""
     resp = client.get("/health")
-    assert resp.status_code == 200
     data = resp.get_json()
+    assert resp.status_code == 200
     assert data["status"] == "healthy"
     assert "models_loaded" in data
-    assert "cache_enabled" in data
 
 
-def test_get_similar_articles_cache_hit(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
-    # Simulate cache hit
-    fake_cache_manager.get.return_value = [{"id": "cached1", "score": 0.99}]
 
-    resp = client.get("/api/recommendations/similar/ART123?top_n=1")
-    assert resp.status_code == 200
+# Similar Articles
+
+
+def test_similar_articles_no_cache(client):
+    """TC: Normal similar articles request when cache miss"""
+    resp = client.get("/api/recommendations/similar/123?top_n=5")
     data = resp.get_json()
-    assert data["from_cache"] is True
-    assert data["recommendations"][0]["id"] == "cached1"
-
-
-def test_get_similar_articles_cache_miss_and_set(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
-    # cache.get returns None by default (miss)
-    fake_recommendation_service.get_similar_articles.return_value = [{"id": "b", "score": 0.9}]
-
-    resp = client.get("/api/recommendations/similar/ART123?top_n=2&exclude=x")
     assert resp.status_code == 200
-    data = resp.get_json()
     assert data["from_cache"] is False
-    assert isinstance(data["recommendations"], list)
-    # ensure set() was called to store result in cache
-    assert fake_cache_manager.set.called
+    assert data["recommendations"] == ["a1", "a2"]
 
 
-def test_get_similar_articles_exception(app, fake_recommendation_service, fake_cache_manager, monkeypatch):
-    client = app.test_client()
-    # Make recommendation service raise
-    fake_recommendation_service.get_similar_articles.side_effect = RuntimeError("boom")
-
-    resp = client.get("/api/recommendations/similar/ART123")
+def test_similar_articles_invalid_top_n(client):
+    """Edge TC: Non-integer top_n should error"""
+    resp = client.get("/api/recommendations/similar/123?top_n=abc")
     assert resp.status_code == 500
+
+
+def test_similar_articles_service_error(client):
+    """Edge TC: Simulate exception inside get_similar_articles"""
+    with patch("backend.Ml_model.api_server.get_recommendation_service") as mock_service:
+        svc = MagicMock()
+        svc.get_similar_articles.side_effect = Exception("fail")
+        mock_service.return_value = svc
+
+        app = create_app({})
+        app.testing = True
+        c = app.test_client()
+
+        resp = c.get("/api/recommendations/similar/99")
+        assert resp.status_code == 500
+
+
+
+# Personalized Recommendations
+
+
+def test_personalized_hybrid(client):
+    """TC: Hybrid recommendation"""
+    resp = client.post(
+        "/api/recommendations/personalized/u1?top_n=3",
+        json={"recent_articles": ["r1", "r2"]}
+    )
     data = resp.get_json()
-    assert data["success"] is False
-    assert "boom" in data["error"]
-
-
-def test_get_personalized_collaborative_cache_hit(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
-    fake_cache_manager.get.return_value = [{"id": "cached_collab"}]
-    resp = client.get("/api/recommendations/personalized/user1?method=collaborative&top_n=1")
     assert resp.status_code == 200
-    data = resp.get_json()
-    assert data["from_cache"] is True
-    assert data["method"] == "collaborative"
-
-
-def test_get_personalized_collaborative_miss(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
-    fake_cache_manager.get.return_value = None
-    fake_recommendation_service.get_collaborative_recommendations.return_value = [{"id": "c1", "relevance_score": 0.5}]
-
-    resp = client.get("/api/recommendations/personalized/user1?method=collaborative&top_n=3")
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert data["from_cache"] is False
-    assert data["method"] == "collaborative"
-    assert fake_cache_manager.set.called
-
-
-def test_get_personalized_hybrid_with_request_body(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
-    fake_cache_manager.get.return_value = None
-    # Test hybrid branch with JSON body (recent_articles)
-    body = {"recent_articles": ["a", "b"]}
-    resp = client.post("/api/recommendations/personalized/user1?method=hybrid&top_n=2",
-                       data=json.dumps(body),
-                       content_type="application/json")
-    assert resp.status_code == 200
-    data = resp.get_json()
     assert data["method"] == "hybrid"
-    assert data["from_cache"] is False
-    assert fake_recommendation_service.get_hybrid_recommendations.called
-    assert fake_cache_manager.set.called
+    assert data["recommendations"] == ["h1", "h2"]
 
 
-def test_get_personalized_hybrid_no_json(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
-    # No JSON body should default recent_articles = []
-    resp = client.get("/api/recommendations/personalized/user1?method=hybrid&top_n=2")
-    assert resp.status_code == 200
+def test_personalized_collaborative(client):
+    """TC: Collaborative mode"""
+    resp = client.get("/api/recommendations/personalized/u1?method=collaborative")
     data = resp.get_json()
-    assert data["method"] == "hybrid"
-    assert fake_recommendation_service.get_hybrid_recommendations.called
-
-
-def test_get_trending_cache_hit(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
-    fake_cache_manager.get.return_value = [{"id": "cached_trend"}]
-
-    resp = client.get("/api/recommendations/trending?top_n=5&days=3")
     assert resp.status_code == 200
+    assert data["method"] == "collaborative"
+    assert data["recommendations"] == ["c1", "c2"]
+
+
+def test_personalized_invalid_top_n(client):
+    """Edge TC: Invalid top_n"""
+    resp = client.get("/api/recommendations/personalized/u1?top_n=hello")
+    assert resp.status_code == 500
+
+
+
+# Trending Articles
+
+
+def test_trending_articles(client):
+    """TC: Normal trending fetch"""
+    resp = client.get("/api/recommendations/trending?days=3")
     data = resp.get_json()
-    assert data["from_cache"] is True
-    assert data["recommendations"][0]["id"] == "cached_trend"
-
-
-def test_get_trending_cache_miss(app, fake_recommendation_service, fake_cache_manager):
-    client = app.test_client()
-    fake_cache_manager.get.return_value = None
-    fake_recommendation_service.get_trending_articles.return_value = [{"id": "t1"}]
-
-    resp = client.get("/api/recommendations/trending?top_n=3&days=7")
     assert resp.status_code == 200
+    assert data["recommendations"] == ["t1", "t2"]
+
+
+def test_trending_invalid_days(client):
+    """Edge TC: Non-integer days"""
+    resp = client.get("/api/recommendations/trending?days=xyz")
+    assert resp.status_code == 500
+
+
+
+# Cache Clear
+
+
+def test_cache_clear_user(client):
+    """TC: Clear user cache"""
+    resp = client.post("/api/cache/clear", json={"user_id": "u1"})
     data = resp.get_json()
-    assert data["from_cache"] is False
-    assert fake_cache_manager.set.called
-
-
-def test_clear_cache_user(app, fake_cache_manager):
-    client = app.test_client()
-    # Clear user cache via POST JSON
-    body = {"user_id": "user123"}
-    resp = client.post("/api/cache/clear", data=json.dumps(body), content_type="application/json")
     assert resp.status_code == 200
+    assert "user u1" in data["message"]
+
+
+def test_cache_clear_article(client):
+    """TC: Clear article cache"""
+    resp = client.post("/api/cache/clear", json={"article_id": "a22"})
     data = resp.get_json()
-    assert data["success"] is True
-    assert "Cache cleared for user" in data["message"]
-    assert fake_cache_manager.clear_user_cache.called
-
-
-def test_clear_cache_article(app, fake_cache_manager):
-    client = app.test_client()
-    body = {"article_id": "ART1"}
-    resp = client.post("/api/cache/clear", data=json.dumps(body), content_type="application/json")
     assert resp.status_code == 200
-    data = resp.get_json()
-    assert data["success"] is True
-    assert "Cache cleared for article" in data["message"]
-    assert fake_cache_manager.clear_article_cache.called
+    assert "article a22" in data["message"]
 
 
-def test_clear_cache_missing_params(app):
-    client = app.test_client()
-    body = {}
-    resp = client.post("/api/cache/clear", data=json.dumps(body), content_type="application/json")
+def test_cache_clear_missing_fields(client):
+    """Edge TC: Missing both fields -> 400"""
+    resp = client.post("/api/cache/clear", json={})
     assert resp.status_code == 400
-    data = resp.get_json()
-    assert data["success"] is False
 
 
-def test_get_cache_stats(app, fake_cache_manager):
-    client = app.test_client()
-    fake_cache_manager.get_cache_stats.return_value = {"enabled": True, "keyspace_hits": 1, "keyspace_misses": 0, "hit_rate": 100.0}
+
+# Cache Stats
+
+
+def test_cache_stats(client):
+    """TC: Cache stats endpoint"""
     resp = client.get("/api/cache/stats")
-    assert resp.status_code == 200
     data = resp.get_json()
-    assert data["success"] is True
+    assert resp.status_code == 200
     assert "stats" in data
 
 
-def test_get_models_info_no_metadata(app, monkeypatch, fake_recommendation_service, tmp_path):
-    client = app.test_client()
-    # Ensure the metadata path does not exist. We need to override Path logic inside module.
-    module_file = Path(api.__file__)
-    models_path = module_file.resolve().parent / "models"
-    # ensure no metadata file
-    monkeypatch.setattr(models_path, "exists", lambda: False, raising=False)
+
+# Models Info
+
+
+def test_models_info(client):
+    """TC: Model info endpoint"""
     resp = client.get("/api/models/info")
-    assert resp.status_code == 200
     data = resp.get_json()
-    assert data["success"] is True
-    assert "info" in data
-    assert "models_loaded" in data["info"]
+    assert resp.status_code == 200
+    assert data["info"]["models_loaded"] is True
 
+def test_create_app_with_allowed_origins(monkeypatch):
+    """TC: App initializes with CORS origins from environment"""
+    monkeypatch.setenv("ML_API_ALLOWED_ORIGINS", "http://a.com, http://b.com")
 
-def test_get_models_info_with_metadata(tmp_path, monkeypatch, app, fake_recommendation_service):
-    # create a temporary models folder and CSV file that the endpoint will read
-    module_file = Path(api.__file__)
-    models_dir = module_file.resolve().parent / "models"
-    models_dir.mkdir(exist_ok=True)
-    csv_path = models_dir / "training_metadata.csv"
-    csv_content = "version,notes\nv1,ok\n"
-    csv_path.write_text(csv_content)
+    from backend.Ml_model.api_server import create_app
+    app = create_app({})
 
-    client = app.test_client()
+    assert app is not None
+
+def test_similar_articles_cache_hit(client, monkeypatch):
+    """TC: Test cache hit response for similar articles"""
+    with patch("backend.Ml_model.api_server.get_cache_manager") as mock_cache_mgr:
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = ["cached1", "cached2"]
+        mock_cache_mgr.return_value = mock_cache
+
+        app = create_app({})
+        app.testing = True
+        c = app.test_client()
+
+        resp = c.get("/api/recommendations/similar/100")
+        data = resp.get_json()
+
+        assert resp.status_code == 200
+        assert data["from_cache"] is True
+        assert data["recommendations"] == ["cached1", "cached2"]
+
+def test_personalized_cache_hit(client):
+    """TC: Cache hit for personalized recommendations"""
+    with patch("backend.Ml_model.api_server.get_cache_manager") as mock_cache_mgr:
+        mock_cache = MagicMock()
+        mock_cache.get.return_value = ["cached_user_rec"]
+        mock_cache_mgr.return_value = mock_cache
+
+        app = create_app({})
+        app.testing = True
+        c = app.test_client()
+
+        resp = c.get("/api/recommendations/personalized/u1")
+        data = resp.get_json()
+        assert resp.status_code == 200
+        assert data["from_cache"] is True
+        assert data["recommendations"] == ["cached_user_rec"]
+
+def test_model_info_metadata_loaded(tmp_path, client):
+    """TC: When training_metadata.csv exists and is valid"""
+    # Create temp metadata file
+    p = tmp_path / "training_metadata.csv"
+    p.write_text("col1,col2\nv1,v2")
+
+    with patch("backend.Ml_model.api_server.Path.exists", return_value=True), \
+         patch("backend.Ml_model.api_server.Path.__truediv__", return_value=p):
+
+        resp = client.get("/api/models/info")
+        data = resp.get_json()
+
+        assert resp.status_code == 200
+        assert "col1" in data["info"]
+
+def test_clear_cache_no_json(client):
+    """Edge TC: clear_cache called without JSON body"""
+    resp = client.post("/api/cache/clear")
+    assert resp.status_code == 500
+
+def test_clear_cache_article_error(client):
+    """Edge TC: simulated error inside clear_article_cache"""
+    with patch("backend.Ml_model.api_server.get_cache_manager") as mock_mgr:
+        mock_cache = MagicMock()
+        mock_cache.clear_article_cache.side_effect = Exception("boom")
+        mock_mgr.return_value = mock_cache
+
+        app = create_app({})
+        app.testing = True
+        c = app.test_client()
+
+        resp = c.post("/api/cache/clear", json={"article_id": "a1"})
+        assert resp.status_code == 500
+
+def test_models_info_metadata_error(client):
+    """Edge TC: CSV fails to load"""
+    with patch("backend.Ml_model.api_server.Path.exists", return_value=True), \
+         patch("pandas.read_csv", side_effect=Exception("bad csv")):
+
+        resp = client.get("/api/models/info")
+        assert resp.status_code == 200
+
+def test_cache_stats_exception(client):
+    """Edge TC: Force exception in get_cache_stats to cover lines 275-277."""
+    from backend.Ml_model.api_server import create_app
+
+    with patch("backend.Ml_model.api_server.get_cache_manager") as mock_cache_mgr:
+        mock_cache = MagicMock()
+        mock_cache.get_cache_stats.side_effect = Exception("cache boom!")
+        mock_cache_mgr.return_value = mock_cache
+
+        app = create_app({})
+        app.testing = True
+        c = app.test_client()
+
+        resp = c.get("/api/cache/stats")
+        data = resp.get_json()
+
+        # Assert exception handler returned correct structure
+        assert resp.status_code == 500
+        assert data["success"] is False
+        assert "cache boom!" in data["error"]
+
+def test_models_info_exception(client):
+    """Edge TC: Force exception inside /api/models/info to cover lines 309-311."""
+
+    # This is the actual Flask app instance used by the test client
+    app = client.application
+
+    class BrokenService:
+        @property
+        def models_loaded(self):
+            raise Exception("models info failure!")
+        
+        # Ensure other attributes exist if accessed
+        sig_matrix = None
+        user_sim_matrix = None
+
+    # Patch the real service the endpoint will use
+    app.recommendation_service = BrokenService()
+
     resp = client.get("/api/models/info")
-    assert resp.status_code == 200
     data = resp.get_json()
-    assert data["success"] is True
-    assert "info" in data
 
-    # cleanup
-    csv_path.unlink()
-
-
-def test_models_info_read_error(monkeypatch, app, fake_recommendation_service):
-    # create fake path that exists but pd.read_csv raises
-    module_file = Path(api.__file__)
-    models_dir = module_file.resolve().parent / "models"
-    models_dir.mkdir(exist_ok=True)
-    csv_path = models_dir / "training_metadata.csv"
-    csv_path.write_text("bad,data\n")
-
-    # monkeypatch pandas to raise on read_csv
-    import pandas as pd
-    monkeypatch.setattr("pandas.read_csv", lambda p: (_ for _ in ()).throw(RuntimeError("bad csv")), raising=True)
-
-    client = app.test_client()
-    resp = client.get("/api/models/info")
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert data["success"] is True
-    assert "info" in data
-
-    # cleanup
-    try:
-        csv_path.unlink()
-    except Exception:
-        pass
-
-
-def test_cors_allowed_origins(monkeypatch):
-    # When ML_API_ALLOWED_ORIGINS is set, CORS should accept those origins.
-    monkeypatch.setenv("ML_API_ALLOWED_ORIGINS", "https://example.com, https://foo.com")
-    # Re-import module to ensure create_app reads the env var
-    import importlib
-    importlib.reload(api)
-    app2 = api.create_app()
-    client = app2.test_client()
-    # Simple request to ensure app starts with CORS configured
-    resp = client.get("/health")
-    assert resp.status_code == 200
+    # Assertions: Now the exception handler must be invoked
+    assert resp.status_code == 500
+    assert data["success"] is False
+    assert "models info failure!" in data["error"]

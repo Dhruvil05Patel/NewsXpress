@@ -1,5 +1,5 @@
-const admin = require("firebase-admin");
-
+const admin = require("../../config/firebaseAdmin");
+const newsxpressUrl = process.env.NEWSXPRESS_URL;
 // Make sure Firebase admin is initialized
 // admin.initializeApp({...})
 
@@ -7,7 +7,7 @@ exports.generateVerificationLink = async (email) => {
   return await admin
     .auth()
     .generateEmailVerificationLink(email, {
-      url: "http://localhost:5173/all", // Redirect URL after verification
+      url: newsxpressUrl, // Redirect URL after verification
       handleCodeInApp: true,
     });
 };
@@ -17,7 +17,7 @@ exports.generatePasswordResetLink = async (email) => {
   return await admin
     .auth()
     .generatePasswordResetLink(email, {
-      url: "http://localhost:5173/all", // Redirect URL after password reset
+      url: newsxpressUrl, // Redirect URL after password reset
       handleCodeInApp: true,
     });
 }

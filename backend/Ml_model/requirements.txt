@@ -13,6 +13,7 @@ psycopg2-binary>=2.9.9
 # API Server
 Flask>=3.0.0
 Flask-CORS>=4.0.0
+gunicorn>=21.2.0
 
 # Caching
 redis>=5.0.0

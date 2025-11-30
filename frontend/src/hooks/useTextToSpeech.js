@@ -18,6 +18,8 @@ export const useTextToSpeech = (selectedLanguage) => {
   const audioPlayer = useRef(null);
   // A flag to immediately stop audio playback if the user requests it.
   const cancelPlaybackRef = useRef(false);
+  // AbortController to cancel ongoing fetch requests
+  const abortControllerRef = useRef(null);
 
   /**
    * Handles the play/stop functionality for the text-to-speech feature.
@@ -36,6 +38,8 @@ export const useTextToSpeech = (selectedLanguage) => {
 
     // Reset cancellation flag for new playback
     cancelPlaybackRef.current = false;
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
 
     if (textToSpeak) {
       try {
@@ -45,16 +49,40 @@ export const useTextToSpeech = (selectedLanguage) => {
           setIsFetchingAudio,
           setIsSpeaking,
           cancelPlaybackRef,
-          audioPlayer
+          audioPlayer,
+          abortControllerRef.current
         );
       } catch (error) {
-        notify.error(
-          error.message || "Something went wrong while fetching audio."
-        );
+        // Don't show error if it was intentionally aborted
+        if (error.name !== "AbortError") {
+          notify.error(
+            error.message || "Something went wrong while fetching audio."
+          );
+        }
       }
     } else {
-      notify.warn("🔊 No content available to listen to");
+      notify.warn("No content available to listen to");
     }
+  };
+
+  /**
+   * Cleanup function to abort ongoing requests and stop playback
+   */
+  const cleanup = () => {
+    // Abort any ongoing fetch request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    // Stop audio playback
+    cancelPlaybackRef.current = true;
+    if (audioPlayer.current) {
+      audioPlayer.current.pause();
+      audioPlayer.current = null;
+    }
+    // Reset states
+    setIsSpeaking(false);
+    setIsFetchingAudio(false);
   };
 
   return {
@@ -62,5 +90,6 @@ export const useTextToSpeech = (selectedLanguage) => {
     isFetchingAudio,
     handleListen,
     audioPlayer,
+    cleanup,
   };
 };

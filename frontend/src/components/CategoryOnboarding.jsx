@@ -1,7 +1,10 @@
+// CategoryOnboarding: choose notification categories + optionally capture FCM token
 import { useMemo, useState, useEffect } from "react";
 import { updateProfile } from "../services/api";
 import { getFCMToken } from "../utils/getFCMToken";
+import notify from "../utils/toast";
 
+// Available categories
 const DEFAULT_CATEGORIES = [
   "Technology",
   "Business",
@@ -21,51 +24,71 @@ export default function CategoryOnboarding({
 }) {
   const [saving, setSaving] = useState(false);
   const selectedSet = useMemo(
-    () => new Set(initialSelected && initialSelected.length ? initialSelected : []),
+    () =>
+      new Set(initialSelected && initialSelected.length ? initialSelected : []),
     [initialSelected]
   );
   const [selected, setSelected] = useState(Array.from(selectedSet));
 
+  // Toggle selection
   const toggle = (name) => {
     setSelected((prev) =>
       prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]
     );
   };
 
+  // Save selections (lowercase + optional FCM token)
   const save = async () => {
+    if (selected.length === 0) {
+      notify.warn("Please select at least one category");
+      return;
+    }
+
     try {
       setSaving(true);
-      
+
       // Convert categories to lowercase before sending to backend
-      const lowercaseCategories = selected.map(cat => cat.toLowerCase());
+      const lowercaseCategories = selected.map((cat) => cat.toLowerCase());
       const payload = { categories: lowercaseCategories };
-      
+
       // Try to get FCM token (will request permission if needed)
       try {
         console.log("🔔 Requesting FCM token for notifications...");
         const token = await getFCMToken();
         if (token) {
           payload.fcm_token = token;
-          console.log("✅ FCM token acquired and will be saved");
+          console.log("FCM token acquired and will be saved");
+          notify.success("Notification permissions granted");
         } else {
-          console.warn("⚠️ No FCM token available - notifications may not work");
+          console.warn("No FCM token available - notifications may not work");
+          notify.info(
+            "Notification permissions not granted. You can enable them later in settings"
+          );
         }
       } catch (err) {
-        console.warn("⚠️ FCM token acquisition failed:", err);
+        console.warn("FCM token acquisition failed:", err);
+        notify.warn(
+          "Unable to enable notifications. You can enable them later"
+        );
         // Continue anyway - categories will still be saved
       }
-      
-      console.log("📤 Saving profile with:", { categories: lowercaseCategories, hasToken: !!payload.fcm_token });
+
+      console.log("📤 Saving profile with:", {
+        categories: lowercaseCategories,
+        hasToken: !!payload.fcm_token,
+      });
       await updateProfile(profile.id, payload);
       console.log("✅ Profile updated successfully");
-      
+
+      notify.success("Preferences saved successfully");
+
       // Dispatch event so AuthContext can refresh
-      window.dispatchEvent(new Event('profile-updated'));
-      
+      window.dispatchEvent(new Event("profile-updated"));
+
       onClose && onClose(selected);
     } catch (e) {
-      console.error("❌ Failed to save categories:", e?.message || e);
-      alert("Failed to save preferences. Please try again.");
+      console.error("Failed to save categories:", e?.message || e);
+      notify.error("Failed to save preferences. Please try again");
     } finally {
       setSaving(false);
     }

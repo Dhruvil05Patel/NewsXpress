@@ -1,21 +1,45 @@
 // Template for verification email
-const { title, subtitle, button, fallbackLink } = require("./components");
-const { palette } = require("../theme");
+const { colors } = require("../../../config/email/sharedStyles");
+const { sectionLabel, title, subtitle, button, fallbackLink, note } = require("../../../config/email/components");
 
-exports.verificationEmailContent = ({ name, verificationUrl, expirationHours }) => `
-  <p style="margin:0 0 8px;color:${palette.muted};letter-spacing:0.3em;text-transform:uppercase;font-size:12px;">
-    Verify & Access
-  </p>
+exports.verificationEmailContent = ({
+  name = "Explorer",
+  verificationUrl,
+  expirationHours = 24,
+}) => `
+  <!-- Section Label -->
+  ${sectionLabel("Verify Email")}
 
+  <!-- Title -->
   ${title(`Welcome to the fastest briefing room, ${name}`)}
 
-  ${subtitle("Confirm your email to unlock AI summaries, personalised translation, and text-to-speech.")}
+  <!-- Subtitle -->
+  ${subtitle(`
+    You're just one step away from unlocking personalised AI summaries,
+    multilingual translations, and seamless text-to-speech.
+  `)}
 
+  <!-- CTA Button -->
   ${button("Verify my NewsXpress email", verificationUrl)}
 
-  <div style="text-align:center;font-size:12px;letter-spacing:0.25em;color:${palette.muted};text-transform:uppercase;">
+  <!-- Expiry Note -->
+  <div style="
+    margin-top: 14px;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 0.25em;
+    color: ${colors.muted};
+    text-transform: uppercase;
+  ">
     Link expires in ${expirationHours} hours
   </div>
 
+  <!-- Fallback Link -->
   ${fallbackLink(verificationUrl)}
+
+  <!-- Final Note -->
+  ${note(`
+    Didn't create this account?  
+    You can safely ignore this email.
+  `)}
 `;

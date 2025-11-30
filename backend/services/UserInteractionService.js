@@ -9,73 +9,28 @@ const { UserInteraction, Article, Profile } = require('../config/db');
 const { Op } = require('sequelize');
 
 async function trackInteraction(profileId, articleId, timeSpentSeconds = 0, categoryName = null) {
+  console.warn('⚠️ trackInteraction is deprecated. Use UserActivityService.trackActivity() instead.');
+  
   try {
-    // Existence checks to provide clearer error responses
-    const profile = await Profile.findByPk(profileId);
-    if (!profile) {
-      const err = new Error('NOT_FOUND: Profile');
-      err.code = 'PROFILE_NOT_FOUND';
-      throw err;
-    }
-    const article = await Article.findByPk(articleId);
-    if (!article) {
-      const err = new Error('NOT_FOUND: Article');
-      err.code = 'ARTICLE_NOT_FOUND';
-      throw err;
-    }
-    console.log(`trackInteraction resolved entities profile=${profileId} article=${articleId}`);
-    const roundedTime = Math.round(timeSpentSeconds || 0);
-
-    // Check if interaction exists
-    let interaction = await UserInteraction.findOne({
+    // Simply create/update interaction timestamp without storing time data
+    const [interaction] = await UserInteraction.findOrCreate({
       where: {
         profile_id: profileId,
         article_id: articleId,
       },
-    });
-
-    let data = {
-      time_spent_seconds: roundedTime,
-      visits: 1,
-      category: categoryName,
-    };
-
-    if (interaction) {
-      // Parse existing time data from note
-      let existingData = {};
-      try {
-        existingData = interaction.note ? JSON.parse(interaction.note) : {};
-      } catch (e) {
-        existingData = {};
-      }
-
-      // Accumulate time and increment visits
-      data = {
-        time_spent_seconds: (existingData.time_spent_seconds || 0) + roundedTime,
-        visits: (existingData.visits || 1) + 1,
-        category: categoryName || existingData.category,
-      };
-
-      interaction.note = JSON.stringify(data);
-      interaction.interaction_at = new Date();
-      await interaction.save();
-      console.log(`✅ Interaction updated: ${articleId} (Total: ${data.time_spent_seconds}s, Visits: ${data.visits})`);
-    } else {
-      // Create new interaction row
-      interaction = await UserInteraction.create({
+      defaults: {
         profile_id: profileId,
         article_id: articleId,
         interaction_at: new Date(),
-        note: JSON.stringify(data),
-      });
-      console.log(`✅ Interaction created: ${articleId} (Time: ${data.time_spent_seconds}s, Visits: ${data.visits})`);
-    }
+      },
+    });
 
+    interaction.interaction_at = new Date();
+    await interaction.save();
+    
     return interaction;
-
   } catch (error) {
-    console.error('Error in trackInteraction:', { message: error.message, code: error.code, stack: error.stack });
-    // Re-throw preserving original message/code for route handling
+    console.error('Error in trackInteraction:', error.message);
     throw error;
   }
 }
@@ -89,19 +44,19 @@ async function addBookmark(profileId, articleId, note = null) {
         article_id: articleId,
       },
       defaults: {
-        // These are set if a new row is created
         profile_id: profileId,
         article_id: articleId,
-        bookmark_timestamp: new Date(), // Set the bookmark time
-        note: note,
-        interaction_at: new Date(), // Set the first interaction time
+        bookmark_timestamp: new Date(),
+        note: note || null, // User's personal note for this bookmark
+        interaction_at: new Date(),
       },
     });
 
     if (!created) {
-      // The interaction row already existed, so just update it
+      // Update existing interaction
       interaction.bookmark_timestamp = new Date();
-      if (note) {
+      // Update note if provided, otherwise keep existing
+      if (note !== undefined) {
         interaction.note = note;
       }
       await interaction.save();
@@ -120,7 +75,6 @@ async function addBookmark(profileId, articleId, note = null) {
 
 async function removeBookmark(profileId, articleId) {
   try {
-    // Find the specific interaction
     const interaction = await UserInteraction.findOne({
       where: {
         profile_id: profileId,
@@ -129,9 +83,8 @@ async function removeBookmark(profileId, articleId) {
     });
 
     if (interaction) {
-      // "Remove" the bookmark by nullifying its fields
+      // Only nullify bookmark timestamp, keep note in case user wants it back
       interaction.bookmark_timestamp = null;
-      interaction.note = null;
       await interaction.save();
       
       console.log(`✅ Bookmark removed for article: ${articleId}`);
@@ -139,7 +92,7 @@ async function removeBookmark(profileId, articleId) {
     }
 
     console.log(`⚠️ No bookmark found to remove for article: ${articleId}`);
-    return null; // No bookmark was found to remove
+    return null;
 
   } catch (error) {
     console.error('Error in removeBookmark:', error.message);
@@ -176,48 +129,29 @@ async function getBookmarksByProfile(profileId) {
 }
 
 /**
- * Parse time data from note field (JSON format)
+ * Get user's top categories - now uses UserActivity table
+ * @deprecated Use UserActivityService.getUserTopCategories() instead
  */
-function parseTimeData(noteJson) {
-  try {
-    return noteJson ? JSON.parse(noteJson) : { time_spent_seconds: 0, visits: 0, category: null };
-  } catch (e) {
-    return { time_spent_seconds: 0, visits: 0, category: null };
-  }
-}
-
 async function getUserTopCategories(profileId, limit = 5) {
   try {
-    const interactions = await UserInteraction.findAll({
-      where: { profile_id: profileId },
-      attributes: ['note'],
-      raw: true,
-    });
-
-    // Aggregate time by category from note field
-    const categoryMap = {};
-    interactions.forEach(interaction => {
-      const data = parseTimeData(interaction.note);
-      if (data.category) {
-        if (!categoryMap[data.category]) {
-          categoryMap[data.category] = { total_time_seconds: 0, article_count: 0 };
-        }
-        categoryMap[data.category].total_time_seconds += data.time_spent_seconds || 0;
-        categoryMap[data.category].article_count += 1;
-      }
-    });
-
-    // Convert to array, sort by time, and limit
-    const topCategories = Object.entries(categoryMap)
-      .map(([category, stats]) => ({ category, ...stats }))
-      .sort((a, b) => b.total_time_seconds - a.total_time_seconds)
-      .slice(0, limit);
-
-    return topCategories;
-
+    // Import UserActivityService to avoid circular dependency
+    const UserActivityService = require('./UserActivityService');
+    return await UserActivityService.getUserTopCategories(profileId, limit);
   } catch (error) {
     console.error('Error in getUserTopCategories:', error.message);
-    throw new Error('Could not retrieve user categories.');
+    // Fallback to bookmarked categories if no activity data
+    const bookmarks = await getBookmarksByProfile(profileId);
+    const categoryMap = {};
+    
+    bookmarks.forEach(bookmark => {
+      const category = bookmark.article?.topic || 'Unknown';
+      categoryMap[category] = (categoryMap[category] || 0) + 1;
+    });
+    
+    return Object.entries(categoryMap)
+      .map(([category, count]) => ({ category, article_count: count, total_time_seconds: 0 }))
+      .sort((a, b) => b.article_count - a.article_count)
+      .slice(0, limit);
   }
 }
 

@@ -1,5 +1,5 @@
 const admin = require('../../config/firebaseAdmin');
-const { findOrCreateProfileByAuthId } = require('../../services/ProfileService');
+const { findOrCreateProfileByAuthId, firebaseUidToUuid } = require('../../services/ProfileService');
 
 /**
  * POST /api/auth/sync
@@ -55,6 +55,66 @@ async function sync(req, res) {
   }
 }
 
+/**
+ * DELETE /api/auth/delete-user
+ * Body: { email }
+ * Deletes user from Firebase Auth by email and cascades deletion in backend database.
+ */
+async function deleteUser(req, res) {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    // Get user from Firebase by email
+    let userRecord;
+    try {
+      userRecord = await admin.auth().getUserByEmail(email);
+    } catch (err) {
+      console.error('User not found in Firebase:', err.message);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const uid = userRecord.uid;
+    const databaseUid = firebaseUidToUuid(uid);
+
+    // Delete from Firebase Auth (use the real Firebase UID)
+    try {
+      await admin.auth().deleteUser(uid);
+      console.log(`✅ Deleted user ${uid} (${email}) from Firebase Auth`);
+    } catch (firebaseErr) {
+      console.error('Firebase user deletion failed:', firebaseErr.message);
+      return res.status(500).json({ 
+        message: 'Failed to delete user from Firebase', 
+        error: firebaseErr.message 
+      });
+    }
+
+    // Delete from backend database (cascading deletes handled by Sequelize associations)
+    const { Profile } = require('../../config/db');
+    // Profiles are stored with UUID derived from Firebase UID
+    const deleted = await Profile.destroy({ where: { id: databaseUid } });
+
+    if (deleted) {
+      console.log(`✅ Deleted profile ${databaseUid} from database (cascaded: bookmarks, interactions)`);
+      return res.status(200).json({ 
+        success: true, 
+        message: 'User account deleted successfully' 
+      });
+    } else {
+      console.log(`⚠️ No profile found for ${databaseUid} in database`);
+      return res.status(200).json({ 
+        success: true, 
+        message: 'User deleted from Firebase (no database record found)' 
+      });
+    }
+
+  } catch (err) {
+    console.error('Error in authController.deleteUser:', err.message);
+    return res.status(500).json({ message: 'Failed to delete user', error: err.message });
+  }
+}
+
 module.exports = {
   sync,
+  deleteUser,
 };

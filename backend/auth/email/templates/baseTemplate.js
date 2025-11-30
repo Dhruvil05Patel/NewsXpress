@@ -1,5 +1,5 @@
-// for base HTML structure of email templates
-const { palette } = require("../theme");
+// Base HTML wrapper for all email templates
+const { styles, colors } = require("../../../config/email/sharedStyles");
 const { social } = require("../social");
 
 exports.baseTemplate = (contentHtml) => `
@@ -7,70 +7,112 @@ exports.baseTemplate = (contentHtml) => `
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>NewsXpress</title>
+
   <style>
     body {
-      margin: 0;
-      font-family: "Inter", "Space Grotesk", sans-serif;
-      background: ${palette.bg};
-      color: ${palette.text};
+      ${styles.body}
+      background: linear-gradient(135deg, #fff6f7, #ffe9ec);
     }
+
+    /* Core Reset */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    .wrapper {
+      max-width: 650px;
+      width: 100%;
+      margin: auto;
+    }
+
+    /* Branding */
+    .brand {
+      ${styles.headerLogo}
+    }
+
+    .tagline {
+      ${styles.headerSubtitle}
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+    }
+
+    .divider {
+      ${styles.divider}
+    }
+
+    /* Card container */
+    .card {
+      ${styles.card}
+      background: #fff7f8; /* subtle light reddish instead of pure white */
+      border: 1px solid ${colors.border};
+    }
+
+    /* Footer */
+    .footer {
+      ${styles.footer}
+      background: #fff1f3; /* very light reddish footer */
+      border-top: 1px solid ${colors.border};
+    }
+
+    .footer-links a {
+      color: ${colors.brand};
+      text-decoration: none;
+      font-weight: 600;
+      margin: 0 12px;
+    }
+
+    /* Responsive */
     @media (max-width: 640px) {
-      .panel { padding: 24px !important; }
-      .cta   { display: block !important; width: 100% !important; text-align:center !important; }
+      body { padding: 20px; }
+      .card { padding: 22px !important; }
     }
   </style>
 </head>
 
-<body style="padding:36px 0;background:${palette.bg};">
-  <table width="100%" role="presentation">
+
+<body>
+  <table role="presentation">
     <tr>
       <td align="center">
-        <table width="640" style="max-width:640px;">
-          
+        <table role="presentation" class="wrapper">
+
           <!-- Branding -->
           <tr>
-            <td style="text-align:center;padding-bottom:20px;">
-              <div style="font-size:30px;font-weight:700;letter-spacing:0.12em;color:${palette.text};text-transform:uppercase;">
-                News<span style="color:${palette.accent};">X</span>press
-              </div>
-              <div style="font-size:13px;color:${palette.muted};letter-spacing:0.4em;text-transform:uppercase;">
-                Instant • Curated • Multilingual
-              </div>
+            <td style="text-align:center; padding-bottom:20px;">
+              <div class="brand">NewsXpress</div>
+              <div class="tagline">Instant • Curated • Multilingual</div>
+              <div class="divider"></div>
             </td>
           </tr>
 
-          <!-- Gradient frame -->
+          <!-- Main Card -->
           <tr>
-            <td style="border-radius:28px;padding:2px;background:${palette.gradient};box-shadow:0 25px 60px rgba(15,23,42,0.55);">
-              <table width="100%" class="panel"
-                style="background:${palette.panel};border-radius:26px;padding:32px;border:1px solid ${palette.border};">
-
-                <tr><td>${contentHtml}</td></tr>
-
-              </table>
+            <td>
+              <div class="card">
+                ${contentHtml}
+              </div>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="text-align:center;padding-top:28px;color:${palette.muted};font-size:12px;">
-              <div style="margin-bottom:8px;">Connect with us</div>
-              <div>
-                ${social
-                  .map(
-                    (entry) => `
-                      <a href="${entry.href}"
-                        style="color:${palette.accentAlt};text-decoration:none;margin:0 10px;font-weight:600;">
-                        ${entry.label}
-                      </a>
-                    `
-                  )
-                  .join("")}
+            <td class="footer">
+              <div style="margin-top: 18px; color: ${
+                colors.muted
+              }; font-size: 12px;">
+                Need help? Email us at
+                <a href="mailto:news10express@gmail.com" style="color:${
+                  colors.brand
+                }; text-decoration:none; font-weight:600;">
+                  news10express@gmail.com
+                </a>
               </div>
-              <div style="margin-top:16px;">
-                © ${new Date().getFullYear()} NewsXpress · Crafted in India
+
+              <div style="margin-top: 10px;">
+                &copy; ${new Date().getFullYear()} NewsXpress — Crafted in India
               </div>
             </td>
           </tr>

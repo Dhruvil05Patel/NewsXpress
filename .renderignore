@@ -1,0 +1,4 @@
+# Ignore local virtualenvs and OS cruft
+**/venv/
+**/.DS_Store
+**/__pycache__/
