@@ -1,4 +1,5 @@
 // SignUp: registration + validation + email verify prompt after creation
+// SignUp: registration + validation + email verify prompt after creation
 import React, { useState } from "react";
 import notify from "../utils/toast";
 import "../assets/LoginPage.css";
@@ -20,6 +21,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
   const [ageError, setAgeError] = useState("");
 
   // Password rules
+  // Password rules
   const passwordChecks = [
     { id: 1, label: "At least 8 characters", valid: password.length >= 8 },
     { id: 2, label: "1 uppercase letter (A-Z)", valid: /[A-Z]/.test(password) },
@@ -32,6 +34,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
     },
   ];
 
+  // Username rules
   // Username rules
   const usernameChecks = [
     {
@@ -74,6 +77,16 @@ function SignUp({ onClose, onSwitchToLogin }) {
   ];
   const usernameValid = username && usernameChecks.every((c) => c.valid);
 
+  // Full Name validation (do not sanitize input; allow typing anything):
+  // Constraints: non-empty, starts with a letter, only letters & spaces, length < 50.
+  const fullNameChecks = [
+    { id: 1, label: "Starts with a letter", valid: /^[A-Za-z]/.test(fullName) },
+    { id: 2, label: "Only letters and spaces", valid: /^[A-Za-z ]+$/.test(fullName) },
+    { id: 3, label: "Less than 50 characters", valid: fullName.length < 50 },
+    { id: 4, label: "Not empty", valid: fullName.trim().length > 0 }
+  ];
+  const fullNameValid = fullName && fullNameChecks.every(c => c.valid);
+
   // Age check
   const isOldEnough = (dobString) => {
     if (!dobString) return false;
@@ -87,6 +100,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
     return age >= 13;
   };
 
+  // Handle submit
   // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -130,6 +144,7 @@ function SignUp({ onClose, onSwitchToLogin }) {
   };
 
   // Render
+  // Render
   return (
     <>
       <div className="overlay">
@@ -152,6 +167,18 @@ function SignUp({ onClose, onSwitchToLogin }) {
               autoComplete="off"
               formNoValidate
             />
+            {fullName && (
+              <ul className="password-rules" style={{ marginTop: "6px" }}>
+                {fullNameChecks.filter(check => !check.valid).map(check => (
+                  <li key={check.id} className="rule-text">❌ {check.label}</li>
+                ))}
+                {fullNameValid && (
+                  <li className="rule-text" style={{ color: "#16a34a" }}>
+                    ✅ Full Name looks good
+                  </li>
+                )}
+              </ul>
+            )}
 
             <label>Username</label>
             <input
@@ -260,7 +287,8 @@ function SignUp({ onClose, onSwitchToLogin }) {
                 (confirmPassword && password !== confirmPassword) ||
                 isLoading ||
                 !isOldEnough(dob) ||
-                !usernameValid
+                !usernameValid ||
+                !fullNameValid
               }
             >
               {isLoading ? "Signing up..." : "Sign Up"}

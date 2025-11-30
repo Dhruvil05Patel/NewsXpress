@@ -58,7 +58,35 @@ export default function ReelView({
       el.removeEventListener("wheel", handleWheel, { passive: false });
   }, [handleWheel]);
 
-  // Touch swipe state
+  // Keyboard navigation (Arrow keys)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (childOverlayOpen) return; // don't interfere with modal interactions
+      
+      const maxIndex = userProfile
+        ? news.length - 1
+        : Math.min(5, news.length - 1);
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        if (currentIndex < maxIndex) {
+          setCurrentIndex((prev) => prev + 1);
+        } else if (!userProfile && onRequireLogin) {
+          onRequireLogin();
+        }
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        if (currentIndex > 0) {
+          setCurrentIndex((prev) => prev - 1);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentIndex, childOverlayOpen, userProfile, news.length, onRequireLogin]);
+
+  // Touch handling
   const [touchStart, setTouchStart] = useState(null);
 
   const handleTouchStart = (e) => {
