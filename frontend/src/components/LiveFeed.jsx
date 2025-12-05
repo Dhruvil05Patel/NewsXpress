@@ -8,6 +8,11 @@ export default function LiveFeed() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Set page title on mount
+    useEffect(() => {
+        document.title = "Live Feed | NewsXpress";
+    }, []);
+
     useEffect(() => {
         async function fetchStreams() {
             try {

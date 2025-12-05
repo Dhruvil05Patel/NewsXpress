@@ -15,6 +15,7 @@ import {
   User,
   Search,
   Home,
+  Code2,
 } from "lucide-react";
 import notify from "../utils/toast"; // toast helper
 
@@ -25,6 +26,7 @@ export default function Navbar({
   onToggleProfile,
   searchQuery = "",
   onSearchChange,
+  profileOpen = false,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -217,6 +219,25 @@ export default function Navbar({
               <Search className="absolute right-2.5 pb-3 top-1/2 -translate-y-1/2 w-4 h-40 text-gray-400 pointer-events-none" />
             </div>
           </div>
+          {/* Developers link */}
+          <button
+            onClick={() => navigate("/developers")}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#fef2f2";
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+            className={`hidden lg:inline-flex p-2 rounded-full transition-all duration-200 shrink-0 ${location.pathname === "/developers"
+                ? "bg-red-50 text-red-600"
+                : "text-gray-700 hover:text-red-600"
+              }`}
+            aria-label="Developers page"
+          >
+            <Code2 className="w-6 h-6" />
+          </button>
           {/* Profile trigger */}
           <button
             onClick={onToggleProfile}
@@ -228,7 +249,10 @@ export default function Navbar({
               e.currentTarget.style.backgroundColor = "transparent";
               e.currentTarget.style.transform = "scale(1)";
             }}
-            className="hidden lg:inline-flex p-2 rounded-full text-gray-700 hover:text-red-600 transition-all duration-200 shrink-0"
+            className={`hidden lg:inline-flex p-2 rounded-full transition-all duration-200 shrink-0 ${profileOpen
+                ? "bg-red-50 text-red-600"
+                : "text-gray-700 hover:text-red-600"
+              }`}
             aria-label="Toggle profile panel"
           >
             <User className="w-6 h-6" />
@@ -257,7 +281,7 @@ export default function Navbar({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <nav className="space-y-1">
+            <nav className="space-y-1 flex-1">
               {categories.map((category) => {
                 const IconComponent = category.icon;
                 const route = categoryRoutes[category.name] || "/all";
@@ -299,6 +323,27 @@ export default function Navbar({
                 );
               })}
             </nav>
+            {/* Developers link at bottom of sidebar */}
+            <div className="pt-4 mt-auto border-t border-gray-200">
+              <button
+                onClick={() => {
+                  navigate("/developers");
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${location.pathname === "/developers"
+                    ? "bg-red-50 text-red-600"
+                    : "text-gray-600 hover:text-red-600 hover:bg-red-50"
+                  }`}
+              >
+                <Code2
+                  className={`w-4 h-4 flex-shrink-0 ${location.pathname === "/developers"
+                      ? "text-red-500"
+                      : "text-gray-600"
+                    }`}
+                />
+                <span className="text-left">Developers</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -329,7 +374,8 @@ export default function Navbar({
           </button>
           <button
             onClick={onToggleProfile}
-            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 text-gray-600`}
+            className={`flex flex-col items-center space-y-1 p-2 rounded-md transition-all duration-200 ${profileOpen ? "text-red-600 scale-105" : "text-gray-600"
+              }`}
           >
             <User className="w-6 h-6" />
             <span className="text-xs font-medium">Profile</span>

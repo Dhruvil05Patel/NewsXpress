@@ -1,6 +1,12 @@
 // App root: routing, auth gating, global modals, verification flow
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import CategoryOnboarding from "./components/CategoryOnboarding";
 import Navbar from "./components/Navbar";
 import Profile from "./components/Profile";
@@ -12,6 +18,7 @@ import Bookmarks from "./components/Bookmarks";
 import PersonalizedFeed from "./components/PersonalizedFeed";
 import HelpSupport from "./components/HelpSupport";
 import LiveFeed from "./components/LiveFeed";
+import Developers from "./components/Developers";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import notify from "./utils/toast";
@@ -137,6 +144,17 @@ function AppContent() {
   // Profile sidebar state
   const [profileOpen, setProfileOpen] = useState(false);
 
+  // Scroll to top on route change
+  function ScrollToTop() {
+    const { pathname } = useLocation();
+
+    useEffect(() => {
+      window.scrollTo(0, 0);
+    }, [pathname]);
+
+    return null;
+  }
+
   // Lightweight protected route gate
   const LoginRequired = ({
     title = "Login Required",
@@ -164,6 +182,7 @@ function AppContent() {
   // Render router + overlays
   return (
     <BrowserRouter>
+      <ScrollToTop />
       {/* Main container */}
       <div className="min-h-screen bg-gray-50">
         <Navbar
@@ -172,6 +191,7 @@ function AppContent() {
           onToggleProfile={() => setProfileOpen((p) => !p)}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          profileOpen={profileOpen}
         />
         <Profile
           isOpen={profileOpen}
@@ -204,114 +224,190 @@ function AppContent() {
           <Route
             path="/technology"
             element={
-              <CategoryNews
-                category="Technology"
-                {...categories.technology}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Technology"
+                  {...categories.technology}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Technology News"
+                  description="Log in to access technology news and updates."
+                />
+              )
             }
           />
           <Route
             path="/business"
             element={
-              <CategoryNews
-                category="Business"
-                {...categories.business}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Business"
+                  {...categories.business}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Business News"
+                  description="Log in to access business and financial news."
+                />
+              )
             }
           />
           <Route
             path="/science"
             element={
-              <CategoryNews
-                category="Science"
-                {...categories.science}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Science"
+                  {...categories.science}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Science News"
+                  description="Log in to explore scientific discoveries and research."
+                />
+              )
             }
           />
           <Route
             path="/sports"
             element={
-              <CategoryNews
-                category="Sports"
-                {...categories.sports}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Sports"
+                  {...categories.sports}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Sports News"
+                  description="Log in to access sports scores and highlights."
+                />
+              )
             }
           />
           <Route
             path="/environment"
             element={
-              <CategoryNews
-                category="Environment"
-                {...categories.environment}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Environment"
+                  {...categories.environment}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Environment News"
+                  description="Log in to stay updated on climate and sustainability."
+                />
+              )
             }
           />
           <Route
             path="/politics"
             element={
-              <CategoryNews
-                category="Politics"
-                {...categories.politics}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Politics"
+                  {...categories.politics}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Politics News"
+                  description="Log in to access political headlines and analysis."
+                />
+              )
             }
           />
           <Route
             path="/health"
             element={
-              <CategoryNews
-                category="Health"
-                {...categories.health}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Health"
+                  {...categories.health}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Health News"
+                  description="Log in to access health and wellness updates."
+                />
+              )
             }
           />
           <Route
             path="/entertainment"
             element={
-              <CategoryNews
-                category="Entertainment"
-                {...categories.entertainment}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Entertainment"
+                  {...categories.entertainment}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Entertainment News"
+                  description="Log in to access entertainment and celebrity news."
+                />
+              )
             }
           />
-          <Route path="/live" element={<LiveFeed />} />
+          <Route
+            path="/live"
+            element={
+              userProfile ? (
+                <LiveFeed />
+              ) : (
+                <LoginRequired
+                  title="Live Feed"
+                  description="Log in to watch live broadcasts and streams."
+                />
+              )
+            }
+          />
           {/* Legacy redirect */}
           <Route path="/world-news" element={<Navigate to="/all" replace />} />
           <Route
             path="/crime"
             element={
-              <CategoryNews
-                category="Crime"
-                {...categories.crime}
-                userProfile={userProfile}
-                onLoginClick={openLogin}
-                searchQuery={searchQuery}
-              />
+              userProfile ? (
+                <CategoryNews
+                  category="Crime"
+                  {...categories.crime}
+                  userProfile={userProfile}
+                  onLoginClick={openLogin}
+                  searchQuery={searchQuery}
+                />
+              ) : (
+                <LoginRequired
+                  title="Crime News"
+                  description="Log in to access crime and justice news."
+                />
+              )
             }
           />
+          <Route path="/developers" element={<Developers />} />
           <Route
             path="/bookmarks"
             element={

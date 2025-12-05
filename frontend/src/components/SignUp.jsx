@@ -1,10 +1,11 @@
 // SignUp: registration + validation + email verify prompt after creation
 // SignUp: registration + validation + email verify prompt after creation
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import notify from "../utils/toast";
 import "../assets/LoginPage.css";
 import { registerUser } from "./auth/controller/authController";
 import { auth } from "./auth/firebase";
+import { checkUsernameAvailability } from "../services/api";
 
 function SignUp({ onClose, onSwitchToLogin }) {
   // Form state
@@ -19,6 +20,8 @@ function SignUp({ onClose, onSwitchToLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [ageError, setAgeError] = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState(null); // null | true | false
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   // Password rules
   // Password rules
@@ -77,15 +80,42 @@ function SignUp({ onClose, onSwitchToLogin }) {
   ];
   const usernameValid = username && usernameChecks.every((c) => c.valid);
 
+  // Check username availability with debounce
+  useEffect(() => {
+    if (!username || username.length < 5 || !usernameValid) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setCheckingUsername(true);
+      try {
+        const result = await checkUsernameAvailability(username);
+        setUsernameAvailable(result.available);
+      } catch (error) {
+        console.error("Error checking username:", error);
+        setUsernameAvailable(null);
+      } finally {
+        setCheckingUsername(false);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [username, usernameValid]);
+
   // Full Name validation (do not sanitize input; allow typing anything):
   // Constraints: non-empty, starts with a letter, only letters & spaces, length < 50.
   const fullNameChecks = [
     { id: 1, label: "Starts with a letter", valid: /^[A-Za-z]/.test(fullName) },
-    { id: 2, label: "Only letters and spaces", valid: /^[A-Za-z ]+$/.test(fullName) },
+    {
+      id: 2,
+      label: "Only letters and spaces",
+      valid: /^[A-Za-z ]+$/.test(fullName),
+    },
     { id: 3, label: "Less than 50 characters", valid: fullName.length < 50 },
-    { id: 4, label: "Not empty", valid: fullName.trim().length > 0 }
+    { id: 4, label: "Not empty", valid: fullName.trim().length > 0 },
   ];
-  const fullNameValid = fullName && fullNameChecks.every(c => c.valid);
+  const fullNameValid = fullName && fullNameChecks.every((c) => c.valid);
 
   // Age check
   const isOldEnough = (dobString) => {
@@ -147,8 +177,28 @@ function SignUp({ onClose, onSwitchToLogin }) {
   // Render
   return (
     <>
-      <div className="overlay">
-        <div className="modal">
+      <div
+        className="overlay"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 10000,
+          overflowY: "auto",
+          padding: "24px",
+          backgroundColor: "rgba(0,0,0,0.5)",
+          backdropFilter: "blur(2px)",
+        }}
+      >
+        <div
+          className="modal"
+          style={{
+            margin: "0 auto",
+            maxWidth: "480px",
+            background: "#fff",
+            borderRadius: "12px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+          }}
+        >
           <button className="close-btn" onClick={onClose}>
             &times;
           </button>
@@ -169,9 +219,13 @@ function SignUp({ onClose, onSwitchToLogin }) {
             />
             {fullName && (
               <ul className="password-rules" style={{ marginTop: "6px" }}>
-                {fullNameChecks.filter(check => !check.valid).map(check => (
-                  <li key={check.id} className="rule-text">❌ {check.label}</li>
-                ))}
+                {fullNameChecks
+                  .filter((check) => !check.valid)
+                  .map((check) => (
+                    <li key={check.id} className="rule-text">
+                      ❌ {check.label}
+                    </li>
+                  ))}
                 {fullNameValid && (
                   <li className="rule-text" style={{ color: "#16a34a" }}>
                     ✅ Full Name looks good
@@ -192,7 +246,9 @@ function SignUp({ onClose, onSwitchToLogin }) {
               maxLength={30}
             />
             {username && username.length < 5 && (
-              <p className="error-text" style={{ marginTop: "4px" }}>❌ Username must be at least 5 characters.</p>
+              <p className="error-text" style={{ marginTop: "4px" }}>
+                ❌ Username must be at least 5 characters.
+              </p>
             )}
             {username && username.length >= 5 && (
               <ul className="password-rules" style={{ marginTop: "6px" }}>
@@ -203,11 +259,25 @@ function SignUp({ onClose, onSwitchToLogin }) {
                       ❌ {check.label}
                     </li>
                   ))}
-                {usernameValid && (
-                  <li className="rule-text" style={{ color: "#16a34a" }}>
-                    ✅ Username looks good
+                {usernameValid && checkingUsername && (
+                  <li className="rule-text" style={{ color: "#6b7280" }}>
+                    ⏳ Checking availability...
                   </li>
                 )}
+                {usernameValid &&
+                  !checkingUsername &&
+                  usernameAvailable === false && (
+                    <li className="rule-text" style={{ color: "#dc2626" }}>
+                      ❌ Username is already taken
+                    </li>
+                  )}
+                {usernameValid &&
+                  !checkingUsername &&
+                  usernameAvailable === true && (
+                    <li className="rule-text" style={{ color: "#16a34a" }}>
+                      ✅ Username is available
+                    </li>
+                  )}
               </ul>
             )}
 
@@ -288,8 +358,11 @@ function SignUp({ onClose, onSwitchToLogin }) {
                 isLoading ||
                 !isOldEnough(dob) ||
                 !usernameValid ||
-                !fullNameValid
+                !fullNameValid ||
+                usernameAvailable === false ||
+                checkingUsername
               }
+              style={{ width: "100%" }}
             >
               {isLoading ? "Signing up..." : "Sign Up"}
             </button>
