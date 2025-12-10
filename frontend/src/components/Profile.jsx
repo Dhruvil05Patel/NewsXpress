@@ -3,673 +3,710 @@ import React, { useState, useEffect, useRef } from "react";
 import { X, Bookmark, TrendingUp, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
-    updateProfile as apiUpdateProfile,
-    checkUsernameAvailability,
+  updateProfile as apiUpdateProfile,
+  checkUsernameAvailability,
 } from "../services/api";
 import notify from "../utils/toast";
 import { logoutUser } from "./auth/controller/authController";
+import CategoryOnboarding from "./CategoryOnboarding";
 
 // Controlled externally via isOpen/onClose
 export default function Profile({
-    isOpen, // visible state
-    onClose, // close handler
-    userProfile, // profile data (guest = null)
-    onLoginClick, // open login modal
+  isOpen, // visible state
+  onClose, // close handler
+  userProfile, // profile data (guest = null)
+  onLoginClick, // open login modal
 }) {
-    const navigate = useNavigate();
-    const [notifications, setNotifications] = useState(true);
-    const [showSettingsPanel, setShowSettingsPanel] = useState(false);
-    const [editingName, setEditingName] = useState(false);
-    const [editingUsername, setEditingUsername] = useState(false);
-    const [newName, setNewName] = useState(userProfile?.full_name || "");
-    const [newUsername, setNewUsername] = useState(userProfile?.username || "");
-    const [usernameAvailable, setUsernameAvailable] = useState(true);
-    const [checkingUsername, setCheckingUsername] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const fileInputRef = useRef(null);
-    const [uploadPreview, setUploadPreview] = useState(null);
-    const [selectedFileName, setSelectedFileName] = useState(null);
-    const nameInputRef = useRef(null);
-    const usernameInputRef = useRef(null);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState(true);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [newName, setNewName] = useState(userProfile?.full_name || "");
+  const [newUsername, setNewUsername] = useState(userProfile?.username || "");
+  const [usernameAvailable, setUsernameAvailable] = useState(true);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef(null);
+  const [uploadPreview, setUploadPreview] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState(null);
+  const nameInputRef = useRef(null);
+  const usernameInputRef = useRef(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCategoryPreferences, setShowCategoryPreferences] = useState(false);
 
-    useEffect(() => {
-        setNewName(userProfile?.full_name || "");
-        setNewUsername(userProfile?.username || "");
-    }, [userProfile?.full_name, userProfile?.username]);
+  useEffect(() => {
+    setNewName(userProfile?.full_name || "");
+    setNewUsername(userProfile?.username || "");
+  }, [userProfile?.full_name, userProfile?.username]);
 
-    // Reset state on close
-    useEffect(() => {
-        if (!isOpen) {
-            setShowSettingsPanel(false);
-            setEditingName(false);
-            setEditingUsername(false);
-            setCheckingUsername(false);
-            setNewName(userProfile?.full_name || "");
-            setNewUsername(userProfile?.username || "");
+  // Reset state on close
+  useEffect(() => {
+    if (!isOpen) {
+      setShowSettingsPanel(false);
+      setEditingName(false);
+      setEditingUsername(false);
+      setCheckingUsername(false);
+      setNewName(userProfile?.full_name || "");
+      setNewUsername(userProfile?.username || "");
+    }
+  }, [isOpen, userProfile?.full_name, userProfile?.username]);
+
+  // Maintain cursor at end on focus
+  useEffect(() => {
+    if (editingName && nameInputRef.current) {
+      try {
+        nameInputRef.current.focus();
+        const v = nameInputRef.current.value || "";
+        nameInputRef.current.setSelectionRange(v.length, v.length);
+      } catch {}
+    }
+  }, [editingName]);
+
+  useEffect(() => {
+    if (editingUsername && usernameInputRef.current) {
+      try {
+        usernameInputRef.current.focus();
+        const v = usernameInputRef.current.value || "";
+        usernameInputRef.current.setSelectionRange(v.length, v.length);
+      } catch {}
+    }
+  }, [editingUsername]);
+
+  // Delete account handler
+  // Simulated delete account
+  const handleDeleteAccount = async () => {
+    if (!userProfile?.email) {
+      notify.error("Please log in to delete your account");
+      return;
+    }
+
+    try {
+      notify.warn("Account deletion in progress...");
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_API_URL}/api/auth/delete-user`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: userProfile.email }),
         }
-    }, [isOpen, userProfile?.full_name, userProfile?.username]);
+      );
 
-    // Maintain cursor at end on focus
-    useEffect(() => {
-        if (editingName && nameInputRef.current) {
-            try {
-                nameInputRef.current.focus();
-                const v = nameInputRef.current.value || "";
-                nameInputRef.current.setSelectionRange(v.length, v.length);
-            } catch { }
-        }
-    }, [editingName]);
-
-    useEffect(() => {
-        if (editingUsername && usernameInputRef.current) {
-            try {
-                usernameInputRef.current.focus();
-                const v = usernameInputRef.current.value || "";
-                usernameInputRef.current.setSelectionRange(v.length, v.length);
-            } catch { }
-        }
-    }, [editingUsername]);
-
-    // Delete account handler
-    // Simulated delete account
-    const handleDeleteAccount = async () => {
-        if (!userProfile?.email) {
-            notify.error("Please log in to delete your account");
-            return;
-        }
-        
+      if (!res.ok) {
+        const text = await res.text();
+        let message = "Failed to delete account";
         try {
-            notify.warn("Account deletion in progress...");
-            const res = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/auth/delete-user`, {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ email: userProfile.email }),
-            });
-            
-            if (!res.ok) {
-                const text = await res.text();
-                let message = "Failed to delete account";
-                try {
-                    const data = JSON.parse(text);
-                    message = data?.message || message;
-                } catch {}
-                throw new Error(message);
-            }
-            
-            const data = await res.json();
-            notify.success("Account has been successfully deleted");
-            window.dispatchEvent(new Event("account-deleted"));
-            
-            try {
-                await logoutUser();
-            } catch {}
-            window.location.reload();
-        } catch (err) {
-            console.error("Delete account error:", err);
-            notify.error(err.message || "Failed to delete account. Please try again");
-        }
-    };
+          const data = JSON.parse(text);
+          message = data?.message || message;
+        } catch {}
+        throw new Error(message);
+      }
 
-    // Demo deletion event log
-    useEffect(() => {
-        const handler = () => console.log("Account Deleted");
-        window.addEventListener("account-deleted", handler);
-        return () => window.removeEventListener("account-deleted", handler);
-    }, []);
-    // Save name
-    const handleSaveName = async () => {
-        if (!userProfile?.id)
-            return notify.error("Profile not found. Please log in again");
-        setSaving(true);
-        try {
-            await apiUpdateProfile(userProfile.id, { full_name: newName });
-            notify.success("Full name updated successfully");
-            window.dispatchEvent(new Event("profile-updated"));
-            setEditingName(false);
-        } catch (err) {
-            notify.error("Failed to update full name. Please try again");
-        } finally {
-            setSaving(false);
-        }
-    };
+      const data = await res.json();
+      notify.success("Account has been successfully deleted");
+      window.dispatchEvent(new Event("account-deleted"));
 
-    // Save username
-    const handleSaveUsername = async () => {
-        if (!userProfile?.id)
-            return notify.error("Profile not found. Please log in again");
-        if (!usernameAvailable) return notify.error("Username is already taken");
-        if (!newUsername.trim()) return notify.error("Username cannot be empty");
-        setSaving(true);
-        try {
-            await apiUpdateProfile(userProfile.id, { username: newUsername.trim() });
-            notify.success("Username updated successfully");
-            window.dispatchEvent(new Event("profile-updated"));
-            setEditingUsername(false);
-        } catch (err) {
-            notify.error("Failed to update username. Please try again");
-        } finally {
-            setSaving(false);
-        }
-    };
+      try {
+        await logoutUser();
+      } catch {}
+      window.location.reload();
+    } catch (err) {
+      console.error("Delete account error:", err);
+      notify.error(err.message || "Failed to delete account. Please try again");
+    }
+  };
 
-    // Debounced availability check
-    useEffect(() => {
-        if (
-            !editingUsername ||
-            !newUsername ||
-            newUsername === userProfile?.username
-        ) {
-            setUsernameAvailable(true);
-            return;
-        }
-        const timeoutId = setTimeout(async () => {
-            if (newUsername.trim() === "") {
-                setUsernameAvailable(false);
-                return;
-            }
-            setCheckingUsername(true);
-            try {
-                const result = await checkUsernameAvailability(
-                    newUsername.trim(),
-                    userProfile?.id
-                );
-                setUsernameAvailable(result.available);
-            } catch (err) {
-                setUsernameAvailable(false);
-            } finally {
-                setCheckingUsername(false);
-            }
-        }, 500);
-        return () => clearTimeout(timeoutId);
-    }, [newUsername, editingUsername, userProfile?.username, userProfile?.id]);
+  // Demo deletion event log
+  useEffect(() => {
+    const handler = () => console.log("Account Deleted");
+    window.addEventListener("account-deleted", handler);
+    return () => window.removeEventListener("account-deleted", handler);
+  }, []);
+  // Save name
+  const handleSaveName = async () => {
+    if (!userProfile?.id)
+      return notify.error("Profile not found. Please log in again");
+    setSaving(true);
+    try {
+      await apiUpdateProfile(userProfile.id, { full_name: newName });
+      notify.success("Full name updated successfully");
+      window.dispatchEvent(new Event("profile-updated"));
+      setEditingName(false);
+    } catch (err) {
+      notify.error("Failed to update full name. Please try again");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    // Validation rules
-    const usernameChecks = [
-        {
-            id: 1,
-            label: "Only letters, numbers, underscores, periods",
-            valid: newUsername ? /^[A-Za-z0-9._]+$/.test(newUsername) : false,
-        },
-        {
-            id: 2,
-            label: "No spaces",
-            valid: newUsername ? !/\s/.test(newUsername) : false,
-        },
-        {
-            id: 3,
-            label: "Does not start or end with a period",
-            valid: newUsername
-                ? !newUsername.startsWith(".") && !newUsername.endsWith(".")
-                : false,
-        },
-        {
-            id: 4,
-            label: "No consecutive periods",
-            valid: newUsername ? !/\.{2,}/.test(newUsername) : false,
-        },
-        {
-            id: 5,
-            label: "Max 30 characters",
-            valid: newUsername ? newUsername.length <= 30 : false,
-        },
-        {
-            id: 6,
-            label: "Starts with letter or number",
-            valid: newUsername ? /^[A-Za-z0-9]/.test(newUsername) : false,
-        },
-    ];
-    const usernameValid = newUsername && usernameChecks.every((c) => c.valid);
+  // Save username
+  const handleSaveUsername = async () => {
+    if (!userProfile?.id)
+      return notify.error("Profile not found. Please log in again");
+    if (!usernameAvailable) return notify.error("Username is already taken");
+    if (!newUsername.trim()) return notify.error("Username cannot be empty");
+    setSaving(true);
+    try {
+      await apiUpdateProfile(userProfile.id, { username: newUsername.trim() });
+      notify.success("Username updated successfully");
+      window.dispatchEvent(new Event("profile-updated"));
+      setEditingUsername(false);
+    } catch (err) {
+      notify.error("Failed to update username. Please try again");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    const handleHelpClick = () => {
-        navigate("/help");
-        onClose();
-    };
+  // Debounced availability check
+  useEffect(() => {
+    if (
+      !editingUsername ||
+      !newUsername ||
+      newUsername === userProfile?.username
+    ) {
+      setUsernameAvailable(true);
+      return;
+    }
+    const timeoutId = setTimeout(async () => {
+      if (newUsername.trim() === "") {
+        setUsernameAvailable(false);
+        return;
+      }
+      setCheckingUsername(true);
+      try {
+        const result = await checkUsernameAvailability(
+          newUsername.trim(),
+          userProfile?.id
+        );
+        setUsernameAvailable(result.available);
+      } catch (err) {
+        setUsernameAvailable(false);
+      } finally {
+        setCheckingUsername(false);
+      }
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [newUsername, editingUsername, userProfile?.username, userProfile?.id]);
 
-    // Toggle notifications
-    const handleNotificationToggle = () => {
-        setNotifications((prev) => {
-            const next = !prev;
-            notify.info(
-                next
-                    ? "Notifications have been enabled"
-                    : "Notifications have been disabled"
-            );
-            return next;
-        });
-    };
+  // Validation rules
+  const usernameChecks = [
+    {
+      id: 1,
+      label: "Only letters, numbers, underscores, periods",
+      valid: newUsername ? /^[A-Za-z0-9._]+$/.test(newUsername) : false,
+    },
+    {
+      id: 2,
+      label: "No spaces",
+      valid: newUsername ? !/\s/.test(newUsername) : false,
+    },
+    {
+      id: 3,
+      label: "Does not start or end with a period",
+      valid: newUsername
+        ? !newUsername.startsWith(".") && !newUsername.endsWith(".")
+        : false,
+    },
+    {
+      id: 4,
+      label: "No consecutive periods",
+      valid: newUsername ? !/\.{2,}/.test(newUsername) : false,
+    },
+    {
+      id: 5,
+      label: "Max 30 characters",
+      valid: newUsername ? newUsername.length <= 30 : false,
+    },
+    {
+      id: 6,
+      label: "Starts with letter or number",
+      valid: newUsername ? /^[A-Za-z0-9]/.test(newUsername) : false,
+    },
+  ];
+  const usernameValid = newUsername && usernameChecks.every((c) => c.valid);
 
-    const gradientStyle = {
-        background:
-            "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
-        boxShadow:
-            "0 4px 12px -2px rgba(255,0,80,0.35), 0 2px 5px -1px rgba(0,0,0,0.25)",
-        color: "#fff",
-    };
+  const handleHelpClick = () => {
+    navigate("/help");
+    onClose();
+  };
 
-    const PanelContent = () => (
-        <div className="p-6 space-y-6 bg-white h-full">
-            <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-5 border border-red-100 transition-all duration-300 hover:shadow-md">
-                <h3 className="text-base font-bold text-gray-900 mb-3 tracking-tight">
-                    Profile
-                </h3>
-                <div className="flex items-center space-x-4">
-                    {userProfile?.avatar_url ? (
-                        <img
-                            src={userProfile.avatar_url}
-                            alt="Profile"
-                            className="w-16 h-16 rounded-full object-cover border-2 border-red-200"
-                        />
-                    ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg">
-                            {(
-                                (
-                                    userProfile?.full_name ||
-                                    userProfile?.displayName ||
-                                    "G"
-                                ).charAt(0) || "G"
-                            ).toUpperCase()}
-                        </div>
-                    )}
-                    <div>
-                        <p className="font-bold text-gray-900 text-base">
-                            {userProfile?.full_name || "Guest User"}
-                        </p>
-                        <p className="text-xs text-gray-600">{userProfile?.email || ""}</p>
-                        <p className="text-xs text-gray-600">
-                            @{userProfile?.username || "unknown"}
-                        </p>
-                    </div>
-                </div>
+  // Toggle notifications
+  const handleNotificationToggle = () => {
+    setNotifications((prev) => {
+      const next = !prev;
+      notify.info(
+        next
+          ? "Notifications have been enabled"
+          : "Notifications have been disabled"
+      );
+      return next;
+    });
+  };
+
+  const gradientStyle = {
+    background:
+      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+    boxShadow:
+      "0 4px 12px -2px rgba(255,0,80,0.35), 0 2px 5px -1px rgba(0,0,0,0.25)",
+    color: "#fff",
+  };
+
+  const PanelContent = () => (
+    <div className="p-6 space-y-6 bg-white h-full">
+      <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-5 border border-red-100 transition-all duration-300 hover:shadow-md">
+        <h3 className="text-base font-bold text-gray-900 mb-3 tracking-tight">
+          Profile
+        </h3>
+        <div className="flex items-center space-x-4">
+          {userProfile?.avatar_url ? (
+            <img
+              src={userProfile.avatar_url}
+              alt="Profile"
+              className="w-16 h-16 rounded-full object-cover border-2 border-red-200"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg">
+              {(
+                (
+                  userProfile?.full_name ||
+                  userProfile?.displayName ||
+                  "G"
+                ).charAt(0) || "G"
+              ).toUpperCase()}
             </div>
-            {userProfile && (
-                <div className="space-y-2">
-                    <button
-                        onClick={() => {
-                            navigate("/bookmarks");
-                            onClose && onClose();
-                        }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg text-gray-700 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-all duration-200"
-                    >
-                        <Bookmark className="w-5 h-5 text-gray-500" />
-                        <span>Bookmarks</span>
-                    </button>
-                    <button
-                        onClick={() => {
-                            navigate("/feed/personalized");
-                            onClose && onClose();
-                        }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg text-gray-700 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-all duration-200"
-                    >
-                        <TrendingUp className="w-5 h-5 text-gray-500" />
-                        <span>Personalized Feed</span>
-                    </button>
-                </div>
-            )}
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-sm text-gray-900">
-                        Profile Settings
-                    </h4>
-                    <button
-                        onClick={() => {
-                            if (!userProfile) return onLoginClick && onLoginClick();
-                            setShowSettingsPanel((s) => !s);
-                        }}
-                        className="text-sm text-red-600 font-semibold"
-                    >
-                        {showSettingsPanel ? "Close" : "Open"}
-                    </button>
-                </div>
-                {showSettingsPanel && (
-                    <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200 shadow-sm">
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="text-sm font-medium">Full Name</div>
-                                <button
-                                    onClick={() => setEditingName((v) => !v)}
-                                    className="text-xs text-gray-600"
-                                >
-                                    {editingName ? "Cancel" : "Edit"}
-                                </button>
-                            </div>
-                            {editingName ? (
-                                <div className="flex gap-2">
-                                    <input
-                                        value={newName}
-                                        onChange={(e) => setNewName(e.target.value)}
-                                        ref={nameInputRef}
-                                        autoFocus
-                                        className="flex-1 px-3 py-2 border rounded-md text-sm"
-                                        aria-label="Edit full name"
-                                        placeholder="Enter your full name"
-                                    />
-                                    <button
-                                        onClick={handleSaveName}
-                                        className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
-                                        disabled={saving}
-                                    >
-                                        Save
-                                    </button>
-                                </div>
-                            ) : (
-                                <div
-                                    className="text-sm text-gray-700 cursor-pointer"
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => setEditingName(true)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.preventDefault();
-                                            setEditingName(true);
-                                        }
-                                    }}
-                                >
-                                    {userProfile?.full_name || "Not set"}
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="text-sm font-medium">Username</div>
-                                <button
-                                    onClick={() => setEditingUsername((v) => !v)}
-                                    className="text-xs text-gray-600"
-                                >
-                                    {editingUsername ? "Cancel" : "Edit"}
-                                </button>
-                            </div>
-                            {editingUsername ? (
-                                <div className="space-y-2">
-                                    <div className="flex gap-2">
-                                        <input
-                                            value={newUsername}
-                                            onChange={(e) => setNewUsername(e.target.value.trim())}
-                                            ref={usernameInputRef}
-                                            autoFocus
-                                            className={`flex-1 px-3 py-2 border rounded-md text-sm ${checkingUsername
-                                                    ? "border-gray-300"
-                                                    : newUsername && newUsername !== userProfile?.username
-                                                        ? usernameAvailable && usernameValid
-                                                            ? "border-green-500 focus:ring-green-500"
-                                                            : "border-red-500 focus:ring-red-500"
-                                                        : "border-gray-300"
-                                                }`}
-                                            aria-label="Edit username"
-                                            placeholder="Enter your username"
-                                        />
-                                        <button
-                                            onClick={handleSaveUsername}
-                                            className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
-                                            disabled={
-                                                saving ||
-                                                !usernameAvailable ||
-                                                !usernameValid ||
-                                                checkingUsername ||
-                                                !newUsername.trim()
-                                            }
-                                        >
-                                            Save
-                                        </button>
-                                    </div>
-                                    {/* Username validation messages */}
-                                    {newUsername && !usernameValid && (
-                                        <ul className="text-xs text-gray-600 space-y-1">
-                                            {usernameChecks
-                                                .filter((c) => !c.valid)
-                                                .map((c) => (
-                                                    <li key={c.id}>❌ {c.label}</li>
-                                                ))}
-                                        </ul>
-                                    )}
-                                    {checkingUsername &&
-                                        newUsername &&
-                                        newUsername !== userProfile?.username && (
-                                            <p className="text-xs text-gray-500">
-                                                Checking availability...
-                                            </p>
-                                        )}
-                                    {!checkingUsername &&
-                                        newUsername &&
-                                        newUsername !== userProfile?.username && (
-                                            <p
-                                                className={`text-xs ${usernameAvailable && usernameValid
-                                                        ? "text-green-600"
-                                                        : "text-red-600"
-                                                    }`}
-                                            >
-                                                {usernameAvailable && usernameValid
-                                                    ? "✓ Username is available"
-                                                    : usernameAvailable && !usernameValid
-                                                        ? "✗ Username does not meet requirements"
-                                                        : "✗ Username is already taken"}
-                                            </p>
-                                        )}
-                                </div>
-                            ) : (
-                                <div
-                                    className="text-sm text-gray-700 cursor-pointer"
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => setEditingUsername(true)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                            e.preventDefault();
-                                            setEditingUsername(true);
-                                        }
-                                    }}
-                                >
-                                    @{userProfile?.username || "Not set"}
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <button
-                                onClick={handleHelpClick}
-                                className="w-full px-4 py-2 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 font-medium shadow-sm hover:bg-red-100 transition"
-                            >
-                                Help & Support
-                            </button>
-                        </div>
-                        <div>
-                            <div className="flex items-center justify-between py-2">
-                                <div className="flex items-center space-x-3">
-                                    <Bell className="w-5 h-5 text-gray-600" />
-                                    <span className="text-sm font-medium text-gray-700">
-                                        Notifications
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={handleNotificationToggle}
-                                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${notifications ? "bg-red-500" : "bg-gray-200"
-                                        }`}
-                                    aria-label="Toggle notifications"
-                                >
-                                    <span
-                                        aria-hidden="true"
-                                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifications ? "translate-x-5" : "translate-x-0"
-                                            }`}
-                                    />
-                                </button>
-                            </div>
-                            {/* Delete account demo */}
-                            <div className="pt-2">
-                                <button
-                                    onClick={() => setShowDeleteConfirm(true)}
-                                    className="w-full px-4 py-2 text-sm font-semibold rounded-md text-white shadow-sm transition-all"
-                                    style={{
-                                        background:
-                                            "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 40%,#ff0066 85%)",
-                                        boxShadow: "0 4px 12px -2px rgba(255,0,80,0.45)",
-                                        letterSpacing: ".3px",
-                                    }}
-                                    aria-label="Delete account"
-                                >
-                                    Delete Account
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-            <div className="p-4 border-t">
-                {!userProfile ? (
-                    <button
-                        onClick={() => {
-                            onLoginClick && onLoginClick();
-                            onClose();
-                        }}
-                        className="w-full text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200"
-                        style={gradientStyle}
-                    >
-                        Login to Save Preferences
-                    </button>
-                ) : (
-                    <button
-                        onClick={async () => {
-                            try {
-                                await logoutUser();
-                                window.location.reload();
-                            } catch (error) {
-                                console.error("Logout error:", error);
-                            }
-                        }}
-                        className="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200 shadow-md flex items-center justify-center gap-2"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fillRule="evenodd"
-                                d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
-                                clipRule="evenodd"
-                            />
-                        </svg>
-                        Logout
-                    </button>
-                )}
-            </div>
+          )}
+          <div>
+            <p className="font-bold text-gray-900 text-base">
+              {userProfile?.full_name || "Guest User"}
+            </p>
+            <p className="text-xs text-gray-600">{userProfile?.email || ""}</p>
+            <p className="text-xs text-gray-600">
+              @{userProfile?.username || "unknown"}
+            </p>
+          </div>
         </div>
-    );
-
-    return (
-        <>
-            {/* Delete Confirmation Modal */}
-            {showDeleteConfirm && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                        {/* Header */}
-                        <div
-                            className="text-white p-6 text-center"
-                            style={{
-                                background: "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
-                            }}
-                        >
-                            <div className="w-16 h-16 mx-auto mb-3 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl">
-                                ⚠️
-                            </div>
-                            <h2 className="text-2xl font-bold">Delete Account?</h2>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-6 space-y-4">
-                            <p className="text-gray-700 text-center leading-relaxed">
-                                Are you sure you want to permanently delete your account?
-                            </p>
-                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                                <p className="text-sm text-red-800 font-medium mb-2">
-                                    ⚠️ This action will:
-                                </p>
-                                <ul className="text-sm text-red-700 space-y-1 ml-4">
-                                    <li>• Delete all your bookmarks</li>
-                                    <li>• Remove your profile permanently</li>
-                                    <li>• Erase all personalized recommendations</li>
-                                    <li>• Cannot be undone</li>
-                                </ul>
-                            </div>
-
-                            {/* Buttons */}
-                            <div className="flex gap-3 pt-2">
-                                <button
-                                    onClick={() => setShowDeleteConfirm(false)}
-                                    className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowDeleteConfirm(false);
-                                        handleDeleteAccount();
-                                    }}
-                                    className="flex-1 px-4 py-3 text-white font-semibold rounded-lg transition-all shadow-md"
-                                    style={{
-                                        background: "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
-                                    }}
-                                >
-                                    Yes, Delete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Mobile overlay */}
-            <div
-                className={`lg:hidden fixed inset-0 z-60 flex justify-end ${isOpen ? "pointer-events-auto" : "pointer-events-none"
-                    }`}
-            >
-                <div
-                    className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${isOpen ? "bg-opacity-40" : "bg-opacity-0 pointer-events-none"
-                        }`}
-                    onClick={onClose}
-                />
-                <div
-                    className={`relative w-[30rem] bg-white shadow-xl h-full flex flex-col z-70 transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"
-                        }`}
+      </div>
+      {userProfile && (
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              navigate("/bookmarks");
+              onClose && onClose();
+            }}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg text-gray-700 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-all duration-200"
+          >
+            <Bookmark className="w-5 h-5 text-gray-500" />
+            <span>Bookmarks</span>
+          </button>
+          <button
+            onClick={() => {
+              navigate("/feed/personalized");
+              onClose && onClose();
+            }}
+            className="w-full flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg text-gray-700 hover:text-red-600 hover:bg-red-50 border border-gray-200 hover:border-red-200 transition-all duration-200"
+          >
+            <TrendingUp className="w-5 h-5 text-gray-500" />
+            <span>Personalized Feed</span>
+          </button>
+        </div>
+      )}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-sm text-gray-900">
+            Profile Settings
+          </h4>
+          <button
+            onClick={() => {
+              if (!userProfile) return onLoginClick && onLoginClick();
+              setShowSettingsPanel((s) => !s);
+            }}
+            className="text-sm text-red-600 font-semibold"
+          >
+            {showSettingsPanel ? "Close" : "Open"}
+          </button>
+        </div>
+        {showSettingsPanel && (
+          <div className="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-200 shadow-sm">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium">Full Name</div>
+                <button
+                  onClick={() => setEditingName((v) => !v)}
+                  className="text-xs text-gray-600"
                 >
-                    <div className="flex justify-between items-center p-4 border-b">
-                        <h3 className="text-base font-bold text-gray-900">
-                            Profile & Settings
-                        </h3>
-                        <button
-                            onClick={onClose}
-                            className="p-2 -mr-2 rounded-md text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                    <div className="overflow-y-auto">
-                        <PanelContent />
-                    </div>
+                  {editingName ? "Cancel" : "Edit"}
+                </button>
+              </div>
+              {editingName ? (
+                <div className="flex gap-2">
+                  <input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    ref={nameInputRef}
+                    autoFocus
+                    className="flex-1 px-3 py-2 border rounded-md text-sm"
+                    aria-label="Edit full name"
+                    placeholder="Enter your full name"
+                  />
+                  <button
+                    onClick={handleSaveName}
+                    className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
+                    disabled={saving}
+                  >
+                    Save
+                  </button>
                 </div>
+              ) : (
+                <div
+                  className="text-sm text-gray-700 cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setEditingName(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setEditingName(true);
+                    }
+                  }}
+                >
+                  {userProfile?.full_name || "Not set"}
+                </div>
+              )}
             </div>
-            {/* Desktop sidebar */}
-            <aside
-                className={`hidden xl:block fixed right-0 top-16 bottom-0 w-[30rem] bg-white border-l border-gray-200 overflow-y-auto z-70 transition-transform duration-300 ease-in-out ${isOpen ? "translate-x-0" : "translate-x-full"
-                    }`}
-            >
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="text-base font-bold text-gray-900">
-                        Profile & Settings
-                    </h3>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-medium">Username</div>
+                <button
+                  onClick={() => setEditingUsername((v) => !v)}
+                  className="text-xs text-gray-600"
+                >
+                  {editingUsername ? "Cancel" : "Edit"}
+                </button>
+              </div>
+              {editingUsername ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value.trim())}
+                      ref={usernameInputRef}
+                      autoFocus
+                      className={`flex-1 px-3 py-2 border rounded-md text-sm ${
+                        checkingUsername
+                          ? "border-gray-300"
+                          : newUsername && newUsername !== userProfile?.username
+                          ? usernameAvailable && usernameValid
+                            ? "border-green-500 focus:ring-green-500"
+                            : "border-red-500 focus:ring-red-500"
+                          : "border-gray-300"
+                      }`}
+                      aria-label="Edit username"
+                      placeholder="Enter your username"
+                    />
                     <button
-                        onClick={onClose}
-                        className="p-2 -mr-2 rounded-md text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
-                        aria-label="Close profile sidebar"
+                      onClick={handleSaveUsername}
+                      className="px-3 py-2 bg-red-600 text-white rounded-md text-sm disabled:opacity-60"
+                      disabled={
+                        saving ||
+                        !usernameAvailable ||
+                        !usernameValid ||
+                        checkingUsername ||
+                        !newUsername.trim()
+                      }
                     >
-                        <X className="w-5 h-5" />
+                      Save
                     </button>
+                  </div>
+                  {/* Username validation messages */}
+                  {newUsername && !usernameValid && (
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      {usernameChecks
+                        .filter((c) => !c.valid)
+                        .map((c) => (
+                          <li key={c.id}>❌ {c.label}</li>
+                        ))}
+                    </ul>
+                  )}
+                  {checkingUsername &&
+                    newUsername &&
+                    newUsername !== userProfile?.username && (
+                      <p className="text-xs text-gray-500">
+                        Checking availability...
+                      </p>
+                    )}
+                  {!checkingUsername &&
+                    newUsername &&
+                    newUsername !== userProfile?.username && (
+                      <p
+                        className={`text-xs ${
+                          usernameAvailable && usernameValid
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {usernameAvailable && usernameValid
+                          ? "✓ Username is available"
+                          : usernameAvailable && !usernameValid
+                          ? "✗ Username does not meet requirements"
+                          : "✗ Username is already taken"}
+                      </p>
+                    )}
                 </div>
-                <div className="overflow-y-auto">
-                    <PanelContent />
+              ) : (
+                <div
+                  className="text-sm text-gray-700 cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setEditingUsername(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setEditingUsername(true);
+                    }
+                  }}
+                >
+                  @{userProfile?.username || "Not set"}
                 </div>
-            </aside>
-        </>
-    );
+              )}
+            </div>
+            <div>
+              <button
+                onClick={handleHelpClick}
+                className="w-full px-4 py-2 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 font-medium shadow-sm hover:bg-red-100 transition"
+              >
+                Help & Support
+              </button>
+            </div>
+            <div>
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center space-x-3">
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Notifications
+                  </span>
+                </div>
+                <button
+                  onClick={handleNotificationToggle}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
+                    notifications ? "bg-red-500" : "bg-gray-200"
+                  }`}
+                  aria-label="Toggle notifications"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+                      notifications ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  if (!userProfile) return onLoginClick && onLoginClick();
+                  setShowCategoryPreferences(true);
+                }}
+                className="w-full mt-2 px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-md border border-blue-100 font-medium shadow-sm hover:bg-blue-100 transition"
+              >
+                Manage Category Preferences
+              </button>
+              {/* Delete account demo */}
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full px-4 py-2 text-sm font-semibold rounded-md text-white shadow-sm transition-all"
+                  style={{
+                    background:
+                      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 40%,#ff0066 85%)",
+                    boxShadow: "0 4px 12px -2px rgba(255,0,80,0.45)",
+                    letterSpacing: ".3px",
+                  }}
+                  aria-label="Delete account"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="p-4 border-t">
+        {!userProfile ? (
+          <button
+            onClick={() => {
+              onLoginClick && onLoginClick();
+              onClose();
+            }}
+            className="w-full text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200"
+            style={gradientStyle}
+          >
+            Login to Save Preferences
+          </button>
+        ) : (
+          <button
+            onClick={async () => {
+              try {
+                await logoutUser();
+                window.location.reload();
+              } catch (error) {
+                console.error("Logout error:", error);
+              }
+            }}
+            className="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200 shadow-md flex items-center justify-center gap-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Logout
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div
+              className="text-white p-6 text-center"
+              style={{
+                background:
+                  "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+              }}
+            >
+              <div className="w-16 h-16 mx-auto mb-3 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl">
+                ⚠️
+              </div>
+              <h2 className="text-2xl font-bold">Delete Account?</h2>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <p className="text-gray-700 text-center leading-relaxed">
+                Are you sure you want to permanently delete your account?
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 font-medium mb-2">
+                  ⚠️ This action will:
+                </p>
+                <ul className="text-sm text-red-700 space-y-1 ml-4">
+                  <li>• Delete all your bookmarks</li>
+                  <li>• Remove your profile permanently</li>
+                  <li>• Erase all personalized recommendations</li>
+                  <li>• Cannot be undone</li>
+                </ul>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    handleDeleteAccount();
+                  }}
+                  className="flex-1 px-4 py-3 text-white font-semibold rounded-lg transition-all shadow-md"
+                  style={{
+                    background:
+                      "linear-gradient(135deg,#ff1e1e 0%,#ff4d4d 35%,#ff0066 75%,#ff1e1e 100%)",
+                  }}
+                >
+                  Yes, Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile overlay */}
+      <div
+        className={`lg:hidden fixed inset-0 z-60 flex justify-end ${
+          isOpen ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+      >
+        <div
+          className={`fixed inset-0 transition-opacity duration-300 ease-in-out ${
+            isOpen ? "bg-opacity-40" : "bg-opacity-0 pointer-events-none"
+          }`}
+          onClick={onClose}
+        />
+        <div
+          className={`relative w-[30rem] bg-white shadow-xl h-full flex flex-col z-70 transition-transform duration-300 ease-in-out ${
+            isOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-base font-bold text-gray-900">
+              Profile & Settings
+            </h3>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 rounded-md text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="overflow-y-auto">
+            <PanelContent />
+          </div>
+        </div>
+      </div>
+      {/* Desktop sidebar */}
+      <aside
+        className={`hidden xl:block fixed right-0 top-16 bottom-0 w-[30rem] bg-white border-l border-gray-200 overflow-y-auto z-70 transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="text-base font-bold text-gray-900">
+            Profile & Settings
+          </h3>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 rounded-md text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors duration-200"
+            aria-label="Close profile sidebar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto">
+          <PanelContent />
+        </div>
+      </aside>
+      {/* Category Preferences Modal */}
+      {showCategoryPreferences && userProfile && (
+        <CategoryOnboarding
+          profile={userProfile}
+          initialSelected={userProfile?.categories || []}
+          onClose={(selected) => {
+            setShowCategoryPreferences(false);
+            if (selected) {
+              notify.success("Category preferences updated");
+            }
+          }}
+        />
+      )}
+    </>
+  );
 }
