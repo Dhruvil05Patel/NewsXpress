@@ -14,7 +14,7 @@ export default function ReelView({
   onRequireLogin,
 }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex ?? 0);
-  const scrollTimeout = useRef(null);
+  const lastScrollTime = useRef(0);
   const audioPlayersRef = useRef([]);
   const cleanupFunctionsRef = useRef([]); // Store cleanup functions from all cards
   const containerRef = useRef(null); // needed for non-passive wheel listener
@@ -29,11 +29,16 @@ export default function ReelView({
     };
   }, []);
 
-  // Wheel handler (throttled, guest limit)
+  // Wheel handler (minimal debounce for Instagram-like immediate scrolling)
   const handleWheel = (e) => {
     if (childOverlayOpen) return; // allow modal to handle its own scrolling
     e.preventDefault(); // suppress native scroll when no modal is open
-    if (scrollTimeout.current) return;
+
+    // Prevent multiple scrolls - require 300ms between scroll actions
+    const now = Date.now();
+    if (now - lastScrollTime.current < 300) return;
+    lastScrollTime.current = now;
+
     const delta = e.deltaY;
     const maxIndex = userProfile
       ? news.length - 1
@@ -44,9 +49,6 @@ export default function ReelView({
     } else if (delta < 0) {
       if (currentIndex > 0) setCurrentIndex((prev) => prev - 1);
     }
-    scrollTimeout.current = setTimeout(() => {
-      scrollTimeout.current = null;
-    }, 500);
   };
 
   // Attach wheel listener
@@ -62,7 +64,7 @@ export default function ReelView({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (childOverlayOpen) return; // don't interfere with modal interactions
-      
+
       const maxIndex = userProfile
         ? news.length - 1
         : Math.min(5, news.length - 1);
@@ -84,7 +86,13 @@ export default function ReelView({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, childOverlayOpen, userProfile, news.length, onRequireLogin]);
+  }, [
+    currentIndex,
+    childOverlayOpen,
+    userProfile,
+    news.length,
+    onRequireLogin,
+  ]);
 
   // Touch handling
   const [touchStart, setTouchStart] = useState(null);
@@ -152,7 +160,7 @@ export default function ReelView({
             onTouchEnd={handleTouchEnd}
           >
             <div
-              className="h-full transition-transform duration-500 ease-out"
+              className="h-full"
               style={{ transform: `translateY(-${currentIndex * 100}%)` }}
             >
               {news.map((item, index) => (
