@@ -1,41 +1,79 @@
 const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 
-function initFirebaseAdmin() {
-  if (admin.apps && admin.apps.length) return admin;
-
-  const keyJson = process.env.FIREBASE_ADMIN_CREDENTIALS || null;
-
-  const fs = require('fs');
-  const path = require('path');
+function getFirebaseCredentials() {
+  // Try checking the local JSON file first
   const localKeyPath = path.join(__dirname, '../news-x-press-firebase-adminsdk-fbsvc-565eef2281.json');
-
-  let credential;
-
   if (fs.existsSync(localKeyPath)) {
     try {
-      const serviceAccount = require(localKeyPath);
-      credential = admin.credential.cert(serviceAccount);
+      return require(localKeyPath);
     } catch (err) {
       console.warn('Failed to load local Firebase JSON file:', err.message);
     }
   }
 
-  if (!credential) {
-    if (keyJson) {
-      try {
-        // Clean up escaped newlines and double quotes if the env variable contains escaped string formatting
-        const cleanedKeyJson = keyJson.replace(/\\n/g, '\n').replace(/\\"/g, '"');
-        const parsed = JSON.parse(cleanedKeyJson);
-        credential = admin.credential.cert(parsed);
-      } catch (err) {
-        console.error('Failed to parse FIREBASE_ADMIN_SDK JSON:', err.message);
-        throw err;
-      }
-    } else {
-      throw new Error('FIREBASE_ADMIN_CREDENTIALS environment variable not set');
+  const keyJson = process.env.FIREBASE_ADMIN_CREDENTIALS || null;
+  // If it's loaded as a complete single line JSON
+  if (keyJson && keyJson.trim() !== '{') {
+    try {
+      return JSON.parse(keyJson);
+    } catch (err) {
+      // Fall through to manual parsing
     }
   }
 
+  // Manually parse .env for multiline FIREBASE_ADMIN_CREDENTIALS
+  try {
+    const envPath = path.join(__dirname, '../.env');
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const lines = envContent.split(/\r?\n/);
+      let insideJson = false;
+      let jsonLines = [];
+
+      for (const line of lines) {
+        if (line.trim().startsWith('FIREBASE_ADMIN_CREDENTIALS=')) {
+          insideJson = true;
+          const startOfJson = line.substring(line.indexOf('=') + 1).trim();
+          jsonLines.push(startOfJson);
+          if (startOfJson.endsWith('}')) {
+            break;
+          }
+          continue;
+        }
+
+        if (insideJson) {
+          jsonLines.push(line);
+          if (line.trim().endsWith('}') || line.trim().startsWith('}')) {
+            break;
+          }
+        }
+      }
+
+      if (jsonLines.length > 0) {
+        const fullJsonStr = jsonLines.join('\n');
+        return JSON.parse(fullJsonStr);
+      }
+    }
+  } catch (err) {
+    console.error('Failed to parse .env file manually:', err.message);
+  }
+
+  throw new Error('FIREBASE_ADMIN_CREDENTIALS environment variable not set or invalid');
+}
+
+function initFirebaseAdmin() {
+  if (admin.apps && admin.apps.length) return admin;
+
+  let credential;
+  try {
+    const serviceAccount = getFirebaseCredentials();
+    credential = admin.credential.cert(serviceAccount);
+  } catch (err) {
+    console.error('Failed to initialize Firebase Admin credential:', err.message);
+    throw err;
+  }
 
   const databaseURL = process.env.FIREBASE_REALTIME_DATABASE_URL;
   
@@ -45,7 +83,6 @@ function initFirebaseAdmin() {
       databaseURL: databaseURL 
     });
   } else {
-    // initialize without credential so that admin SDK methods will throw explicitly
     admin.initializeApp();
   }
 
