@@ -5,17 +5,35 @@ function initFirebaseAdmin() {
 
   const keyJson = process.env.FIREBASE_ADMIN_CREDENTIALS || null;
 
+  const fs = require('fs');
+  const path = require('path');
+  const localKeyPath = path.join(__dirname, '../news-x-press-firebase-adminsdk-fbsvc-565eef2281.json');
+
   let credential;
-  if (keyJson) {
+
+  if (fs.existsSync(localKeyPath)) {
     try {
-      const parsed = JSON.parse(keyJson);
-      credential = admin.credential.cert(parsed);
+      const serviceAccount = require(localKeyPath);
+      credential = admin.credential.cert(serviceAccount);
     } catch (err) {
-      console.error('Failed to parse FIREBASE_ADMIN_SDK JSON:', err.message);
-      throw err;
+      console.warn('Failed to load local Firebase JSON file:', err.message);
     }
-  }else{
-    throw new Error('FIREBASE_ADMIN_CREDENTIALS environment variable not set');
+  }
+
+  if (!credential) {
+    if (keyJson) {
+      try {
+        // Clean up escaped newlines and double quotes if the env variable contains escaped string formatting
+        const cleanedKeyJson = keyJson.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+        const parsed = JSON.parse(cleanedKeyJson);
+        credential = admin.credential.cert(parsed);
+      } catch (err) {
+        console.error('Failed to parse FIREBASE_ADMIN_SDK JSON:', err.message);
+        throw err;
+      }
+    } else {
+      throw new Error('FIREBASE_ADMIN_CREDENTIALS environment variable not set');
+    }
   }
 
 

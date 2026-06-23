@@ -264,6 +264,33 @@ app.get("/api/debug/subscribers/:category", async (req, res) => {
 });
 
 // =============================================================
+// ======================= HEALTH CHECK =========================
+// =============================================================
+app.get("/api/health", async (req, res) => {
+  try {
+    const { sequelize } = require("./config/db");
+    // Verify database connection is alive
+    await sequelize.authenticate();
+    
+    res.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      database: "connected",
+      environment: process.env.NODE_ENV || "development"
+    });
+  } catch (error) {
+    console.error("Health check failed:", error.message);
+    res.status(500).json({
+      status: "unhealthy",
+      timestamp: new Date().toISOString(),
+      database: "disconnected",
+      error: error.message
+    });
+  }
+});
+
+// =============================================================
 // ========================= CRON ==============================
 // =============================================================
 app.post("/cron/fetch-latest", async (req, res) => {
