@@ -8,14 +8,38 @@ let initialized = false;
  */
 function initNotifier() {
   if (initialized) return;
-  const saJson = process.env.FIREBASE_SA_JSON;
-  if (!saJson) {
-    console.warn("FIREBASE_SA_JSON not found in env — notifier will be disabled.");
-    return;
+  
+  const fs = require('fs');
+  const path = require('path');
+  const localKeyPath = path.join(__dirname, '../../news-x-press-firebase-adminsdk-fbsvc-565eef2281.json');
+
+  let credentials;
+
+  if (fs.existsSync(localKeyPath)) {
+    try {
+      credentials = require(localKeyPath);
+    } catch (err) {
+      console.warn("Failed to load local Firebase JSON file for notifier:", err.message);
+    }
   }
+
+  if (!credentials) {
+    const saJson = process.env.FIREBASE_SA_JSON;
+    if (!saJson) {
+      console.warn("FIREBASE_SA_JSON not found in env — notifier will be disabled.");
+      return;
+    }
+    try {
+      // Clean up escaped newlines and double quotes if the env variable contains escaped string formatting
+      const cleanedSaJson = saJson.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+      credentials = JSON.parse(cleanedSaJson);
+    } catch (err) {
+      console.error("Failed to parse FIREBASE_SA_JSON:", err.message);
+      return;
+    }
+  }
+
   try {
-    const credentials = JSON.parse(saJson);
-    
     // Check if app already exists, use it instead of creating new one
     if (admin.apps.length > 0) {
       console.log("Firebase Admin app already exists, reusing existing instance.");
