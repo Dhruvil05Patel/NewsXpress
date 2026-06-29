@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const fs = require('fs');
 const path = require('path');
 
@@ -64,12 +65,13 @@ function getFirebaseCredentials() {
 }
 
 function initFirebaseAdmin() {
-  if (admin.apps && admin.apps.length) return admin;
+  const apps = getApps();
+  if (apps && apps.length) return admin;
 
   let credential;
   try {
     const serviceAccount = getFirebaseCredentials();
-    credential = admin.credential.cert(serviceAccount);
+    credential = cert(serviceAccount);
   } catch (err) {
     console.error('Failed to initialize Firebase Admin credential:', err.message);
     throw err;
@@ -78,15 +80,16 @@ function initFirebaseAdmin() {
   const databaseURL = process.env.FIREBASE_REALTIME_DATABASE_URL;
   
   if (credential) {
-    admin.initializeApp({ 
+    initializeApp({ 
       credential,
       databaseURL: databaseURL 
     });
   } else {
-    admin.initializeApp();
+    initializeApp();
   }
 
   return admin;
 }
 
 module.exports = initFirebaseAdmin();
+
