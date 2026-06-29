@@ -1,4 +1,4 @@
-const admin = require("firebase-admin");
+const admin = require("../../config/firebaseAdmin");
 
 let initialized = false;
 
@@ -30,12 +30,16 @@ function initNotifier() {
       return;
     }
     try {
-      // Clean up escaped newlines and double quotes if the env variable contains escaped string formatting
-      const cleanedSaJson = saJson.replace(/\\n/g, '\n').replace(/\\"/g, '"');
-      credentials = JSON.parse(cleanedSaJson);
+      credentials = JSON.parse(saJson);
     } catch (err) {
-      console.error("Failed to parse FIREBASE_SA_JSON:", err.message);
-      return;
+      try {
+        // Clean up escaped newlines and double quotes if the env variable contains escaped string formatting
+        const cleanedSaJson = saJson.replace(/\\n/g, '\n').replace(/\\"/g, '"');
+        credentials = JSON.parse(cleanedSaJson);
+      } catch (innerErr) {
+        console.error("Failed to parse FIREBASE_SA_JSON:", err.message);
+        return;
+      }
     }
   }
 
