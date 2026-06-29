@@ -14,24 +14,24 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@getbrevo/brevo": "^3.0.1",
-    "@google-cloud/text-to-speech": "^6.4.0",
-    "@google-cloud/translate": "^9.2.1",
-    "@google/genai": "^1.18.0",
+    "@getbrevo/brevo": "^5.0.4",
+    "@google-cloud/text-to-speech": "^6.4.1",
+    "@google-cloud/translate": "^9.4.2",
+    "@google/genai": "^2.10.0",
     "@google/generative-ai": "^0.24.1",
-    "axios": "^1.13.2",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
-    "express": "^5.1.0",
-    "firebase-admin": "^13.6.0",
-    "groq-sdk": "^0.32.0",
-    "nodemailer": "^7.0.10",
-    "nodemon": "^3.1.10",
-    "pg": "^8.16.3",
-    "sequelize": "^6.37.7",
-    "uuid": "^13.0.0"
+    "axios": "^1.18.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "firebase-admin": "^14.1.0",
+    "groq-sdk": "^1.3.0",
+    "nodemailer": "^9.0.1",
+    "nodemon": "^3.1.14",
+    "pg": "^8.22.0",
+    "sequelize": "^6.37.8",
+    "uuid": "^14.0.1"
   },
   "devDependencies": {
-    "jest": "^30.2.0"
+    "jest": "^30.4.2"
   }
 }
