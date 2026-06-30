@@ -1,4 +1,7 @@
-const admin = require('firebase-admin');
+const { initializeApp, cert, getApps, getApp } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getMessaging } = require('firebase-admin/messaging');
+const { getDatabase } = require('firebase-admin/database');
 const fs = require('fs');
 const path = require('path');
 
@@ -63,30 +66,69 @@ function getFirebaseCredentials() {
   throw new Error('FIREBASE_ADMIN_CREDENTIALS environment variable not set or invalid');
 }
 
+let defaultApp = null;
+
+const adminWrapper = {
+  get apps() {
+    return getApps();
+  },
+  initializeApp(options, name) {
+    const app = initializeApp(options, name);
+    if (!name || name === '[DEFAULT]') {
+      defaultApp = app;
+    }
+    return app;
+  },
+  credential: {
+    cert(serviceAccount) {
+      return cert(serviceAccount);
+    }
+  },
+  auth(app) {
+    return getAuth(app || defaultApp || getApp());
+  },
+  messaging(app) {
+    return getMessaging(app || defaultApp || getApp());
+  },
+  database(app) {
+    return getDatabase(app || defaultApp || getApp());
+  }
+};
+
 function initFirebaseAdmin() {
-  if (admin.apps && admin.apps.length) return admin;
+  if (getApps().length) return adminWrapper;
 
   let credential;
+  const databaseURL = process.env.FIREBASE_REALTIME_DATABASE_URL;
+
   try {
     const serviceAccount = getFirebaseCredentials();
-    credential = admin.credential.cert(serviceAccount);
+    if (serviceAccount && typeof serviceAccount.private_key === 'string') {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+    credential = cert(serviceAccount);
   } catch (err) {
-    console.error('Failed to initialize Firebase Admin credential:', err.message);
+    console.warn('Failed to load Firebase credential from env/file. Attempting fallback:', err.message);
+  }
+
+  try {
+    if (credential) {
+      adminWrapper.initializeApp({ 
+        credential,
+        databaseURL: databaseURL 
+      });
+    } else {
+      adminWrapper.initializeApp({
+        databaseURL: databaseURL
+      });
+    }
+  } catch (err) {
+    console.error('Firebase Admin initialization failed:', err.message);
     throw err;
   }
 
-  const databaseURL = process.env.FIREBASE_REALTIME_DATABASE_URL;
-  
-  if (credential) {
-    admin.initializeApp({ 
-      credential,
-      databaseURL: databaseURL 
-    });
-  } else {
-    admin.initializeApp();
-  }
-
-  return admin;
+  return adminWrapper;
 }
 
 module.exports = initFirebaseAdmin();
+

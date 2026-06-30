@@ -1,4 +1,4 @@
-const Brevo = require("@getbrevo/brevo");
+const { BrevoClient } = require("@getbrevo/brevo");
 
 // Load environment variables
 const apiKey = process.env.BREVO_API_KEY || process.env.BREVO_KEY;
@@ -14,12 +14,15 @@ if (!senderEmail) {
   throw new Error("Missing Brevo sender email (BREVO_SENDER_EMAIL).");
 }
 
-// Brevo transactional API client
-const brevo = new Brevo.TransactionalEmailsApi();
-brevo.setApiKey(
-  Brevo.TransactionalEmailsApiApiKeys.apiKey,
-  apiKey
-);
+// Brevo client instance
+const client = new BrevoClient({ apiKey });
+
+// Backward-compatible wrapper for v3 legacy code
+const brevo = {
+  sendTransacEmail(params) {
+    return client.transactionalEmails.sendTransacEmail(params);
+  }
+};
 
 module.exports = {
   brevo,
@@ -32,3 +35,4 @@ module.exports = {
     name: senderName,
   }
 };
+
